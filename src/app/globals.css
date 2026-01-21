@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F5F5F7;
+  --foreground: #1D1D1F;
+  --accent: #C9A962;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-unbounded), system-ui, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Three.js canvas container */
+.canvas-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+}
+
+/* Loading Screen Animations */
+@keyframes loading-line {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes loading-dot {
+  0% {
+    left: 0%;
+    opacity: 1;
+  }
+  100% {
+    left: calc(100% - 6px);
+    opacity: 1;
+  }
+}
+
+.animate-loading-line {
+  animation: loading-line 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.animate-loading-dot {
+  animation: loading-dot 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.duration-600 {
+  transition-duration: 600ms;
+}
+
+/* Diamond animations for hero section */
+@keyframes diamond-from-left {
+  0% {
+    transform: translateX(-100vw);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateX(-8%);
+    opacity: 1;
+  }
+}
+
+@keyframes diamond-from-right {
+  0% {
+    transform: translateX(100vw);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateX(8%);
+    opacity: 1;
+  }
+}
+
+.animate-diamond-from-left {
+  animation: diamond-from-left 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-diamond-from-right {
+  animation: diamond-from-right 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
