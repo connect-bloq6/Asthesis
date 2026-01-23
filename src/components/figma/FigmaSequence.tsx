@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useFigma, useFigmaImages } from '@/hooks/useFigma'
-import { FigmaAnimation, FigmaAnimations } from './FigmaAnimation'
+import FigmaAnimation, { FigmaAnimations } from './FigmaAnimation'
 import { motion, useScroll, useTransform } from 'framer-motion'
 
 export interface FigmaSequenceProps {
@@ -65,7 +65,6 @@ export default function FigmaSequence({
   const { scrollYProgress } = useScroll({
     target: isMounted && containerRef.current ? containerRef : undefined,
     offset: ['start start', 'end end'],
-    layoutEffect: false, // Important for Next.js
   })
 
   // Calculate which screen to show based on scroll

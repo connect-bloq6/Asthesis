@@ -134,16 +134,16 @@ function getNodeStyles(node: FigmaNode): CSSProperties {
         const color = figmaColorToCSS(stop.color)
         return `${color} ${stop.position * 100}%`
       }).join(', ')
-      styles.background = `linear-gradient(${fill.gradientHandlePositions?.[0] || '180deg'}, ${stops})`
+      styles.background = `linear-gradient(${(fill as any).gradientHandlePositions?.[0] || '180deg'}, ${stops})`
     }
   }
 
   // Border/Stroke
-  if (node.strokes && Array.isArray(node.strokes) && node.strokes.length > 0) {
-    const stroke = node.strokes[0]
+  if ('strokes' in node && Array.isArray((node as any).strokes) && (node as any).strokes.length > 0) {
+    const stroke = (node as any).strokes[0]
     if (stroke.type === 'SOLID' && stroke.color) {
       styles.borderColor = figmaColorToCSS(stroke.color)
-      styles.borderWidth = `${node.strokeWeight || 1}px`
+      styles.borderWidth = `${('strokeWeight' in node ? (node as any).strokeWeight : 1) || 1}px`
       styles.borderStyle = 'solid'
     }
   }
@@ -201,7 +201,7 @@ function getNodeClassName(node: FigmaNode): string {
   }
 
   // Clipping
-  if (node.clipsContent) {
+  if ('clipsContent' in node && (node as any).clipsContent) {
     classes.push('overflow-hidden')
   }
 
@@ -223,15 +223,15 @@ function renderTextNode(
     styles.fontFamily = node.style.fontFamily || 'inherit'
     styles.fontSize = `${node.style.fontSize || 16}px`
     styles.fontWeight = node.style.fontWeight || 400
-    styles.lineHeight = node.style.lineHeightPx 
-      ? `${node.style.lineHeightPx}px`
-      : node.style.lineHeightPercent 
-        ? `${node.style.lineHeightPercent}%`
+    styles.lineHeight = (node.style as any).lineHeightPx 
+      ? `${(node.style as any).lineHeightPx}px`
+      : (node.style as any).lineHeightPercent 
+        ? `${(node.style as any).lineHeightPercent}%`
         : 'normal'
     styles.letterSpacing = node.style.letterSpacing 
       ? `${node.style.letterSpacing}px`
       : 'normal'
-    styles.textAlign = node.style.textAlignHorizontal?.toLowerCase() || 'left'
+    styles.textAlign = (node.style as any).textAlignHorizontal?.toLowerCase() || 'left'
     styles.color = node.fills?.[0]?.type === 'SOLID' && node.fills[0].color
       ? figmaColorToCSS(node.fills[0].color)
       : 'inherit'
@@ -323,8 +323,8 @@ function renderImageNode(
 ): React.ReactNode {
   // For images, we'd need to fetch the image URL
   // This is a placeholder - you'd need to get the image from Figma API
-  const imageUrl = node.fills?.[0]?.imageRef 
-    ? `https://figma.com/image/${node.fills[0].imageRef}` // This would need actual implementation
+  const imageUrl = node.fills && (node.fills[0] as any)?.imageRef 
+    ? `https://figma.com/image/${(node.fills[0] as any).imageRef}` // This would need actual implementation
     : undefined
 
   if (!imageUrl) {

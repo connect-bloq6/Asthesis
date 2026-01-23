@@ -71,7 +71,6 @@ export default function FigmaHybridRenderer({
   const { scrollYProgress } = useScroll({
     target: isMounted && containerRef.current ? containerRef : undefined,
     offset: ['start start', 'end end'],
-    layoutEffect: false,
   })
 
   const screenProgress = useTransform(

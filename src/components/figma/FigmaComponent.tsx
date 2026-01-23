@@ -73,7 +73,7 @@ export default function FigmaComponent({
         typography: {} as Record<string, any>,
       }
 
-      function extractFromNode(node: FigmaNode) {
+      const extractFromNode = (node: FigmaNode) => {
         if (node.fills && Array.isArray(node.fills)) {
           node.fills.forEach((fill) => {
             if (fill.type === 'SOLID' && fill.color) {

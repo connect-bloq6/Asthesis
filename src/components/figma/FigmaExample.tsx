@@ -6,8 +6,8 @@
  * This is a reference implementation. Replace with your actual Figma file IDs and node IDs.
  */
 
-import { FigmaComponent } from './FigmaComponent'
-import { FigmaAnimation, FigmaAnimations } from './FigmaAnimation'
+import FigmaComponent from './FigmaComponent'
+import FigmaAnimation, { FigmaAnimations } from './FigmaAnimation'
 import { useFigma } from '@/hooks/useFigma'
 
 export default function FigmaExample() {

@@ -196,7 +196,7 @@ export default function FigmaPrototype({
               exit="exit"
               transition={{
                 duration: transition.duration || 0.6,
-                ease: transition.easing || [0.16, 1, 0.3, 1],
+                ease: (transition.easing || [0.16, 1, 0.3, 1]) as any,
               }}
               className="absolute inset-0 flex items-center justify-center"
             >

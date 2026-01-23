@@ -143,7 +143,7 @@ function FigmaNodeRenderer({
 function getNodeStyles(
   node: FigmaNode,
   renderAs: 'tailwind' | 'css' | 'inline'
-): { className: string; style: React.CSSProperties } {
+): { className: string; style: React.CSSProperties | undefined } {
   const classes: string[] = []
   const styles: React.CSSProperties = {}
 
@@ -176,11 +176,11 @@ function getNodeStyles(
   }
 
   // Border
-  if (node.strokes && node.strokes.length > 0) {
-    const stroke = node.strokes[0]
+  if ('strokes' in node && Array.isArray((node as any).strokes) && (node as any).strokes.length > 0) {
+    const stroke = (node as any).strokes[0]
     if (stroke.type === 'SOLID' && stroke.color) {
       styles.borderColor = figmaColorToCSS(stroke.color)
-      styles.borderWidth = `${node.strokeWeight || 1}px`
+      styles.borderWidth = `${('strokeWeight' in node ? (node as any).strokeWeight : 1) || 1}px`
       styles.borderStyle = 'solid'
     }
   }
@@ -324,10 +324,10 @@ function getTextStyles(
   }
 
   // Line height
-  if (style.lineHeightPx) {
-    styles.lineHeight = `${style.lineHeightPx}px`
-  } else if (style.lineHeightPercent) {
-    styles.lineHeight = `${style.lineHeightPercent}%`
+  if ((style as any).lineHeightPx) {
+    styles.lineHeight = `${(style as any).lineHeightPx}px`
+  } else if ((style as any).lineHeightPercent) {
+    styles.lineHeight = `${(style as any).lineHeightPercent}%`
   }
 
   // Letter spacing
@@ -336,16 +336,16 @@ function getTextStyles(
   }
 
   // Text align
-  if (style.textAlignHorizontal) {
+  if ((style as any).textAlignHorizontal) {
     if (renderAs === 'inline') {
-      styles.textAlign = style.textAlignHorizontal.toLowerCase() as any
+      styles.textAlign = (style as any).textAlignHorizontal.toLowerCase() as any
     } else if (renderAs === 'tailwind') {
-      if (style.textAlignHorizontal === 'LEFT') classes.push('text-left')
-      else if (style.textAlignHorizontal === 'CENTER') classes.push('text-center')
-      else if (style.textAlignHorizontal === 'RIGHT') classes.push('text-right')
-      else if (style.textAlignHorizontal === 'JUSTIFIED') classes.push('text-justify')
+      if ((style as any).textAlignHorizontal === 'LEFT') classes.push('text-left')
+      else if ((style as any).textAlignHorizontal === 'CENTER') classes.push('text-center')
+      else if ((style as any).textAlignHorizontal === 'RIGHT') classes.push('text-right')
+      else if ((style as any).textAlignHorizontal === 'JUSTIFIED') classes.push('text-justify')
     } else {
-      styles.textAlign = style.textAlignHorizontal.toLowerCase() as any
+      styles.textAlign = (style as any).textAlignHorizontal.toLowerCase() as any
     }
   }
 

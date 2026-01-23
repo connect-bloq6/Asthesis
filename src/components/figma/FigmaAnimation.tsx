@@ -59,10 +59,11 @@ export default function FigmaAnimation({
     if (animation.exit) motionProps.exit = animation.exit
     if (animation.transition) {
       motionProps.transition = {
-        ...animation.transition,
-        ease: typeof animation.transition.ease === 'string'
-          ? animation.transition.ease
-          : animation.transition.ease,
+        ...(animation.transition.duration !== undefined && { duration: animation.transition.duration }),
+        ...(animation.transition.delay !== undefined && { delay: animation.transition.delay }),
+        ...(animation.transition.repeat !== undefined && { repeat: animation.transition.repeat }),
+        ...(animation.transition.repeatType !== undefined && { repeatType: animation.transition.repeatType as any }),
+        ...(animation.transition.ease !== undefined && { ease: animation.transition.ease as any }),
       }
     }
   }
