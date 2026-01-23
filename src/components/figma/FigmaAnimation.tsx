@@ -51,10 +51,7 @@ export default function FigmaAnimation({
   className,
   style,
 }: FigmaAnimationProps) {
-  const motionProps: MotionProps = {
-    className,
-    style,
-  }
+  const motionProps: MotionProps & { className?: string; style?: React.CSSProperties } = {}
 
   if (animation) {
     if (animation.initial) motionProps.initial = animation.initial
@@ -75,7 +72,7 @@ export default function FigmaAnimation({
     motionProps.viewport = viewport || { once: true }
   }
 
-  return <motion.div {...motionProps}>{children}</motion.div>
+  return <motion.div {...motionProps} className={className} style={style}>{children}</motion.div>
 }
 
 /**
