@@ -23,7 +23,7 @@ export default function Home() {
   const [sixthScrollProgress, setSixthScrollProgress] = useState(0)
   const [seventhScrollProgress, setSeventhScrollProgress] = useState(0)
   const [eighthScrollProgress, setEighthScrollProgress] = useState(0)
-  const [ninthScrollProgress, setNinthScrollProgress] = useState(0)
+  const [featureScrollProgress, setFeatureScrollProgress] = useState(0)
   const scrollAtCenterRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -170,8 +170,9 @@ export default function Home() {
       
       setEighthScrollProgress(eighthProgress)
       
-      // Track ninth scroll progress (animation 9)
-      let ninthProgress = 0
+      // Track feature scroll progress (for accordion animation)
+      // Extended range to cover all 7 features sequentially
+      let featureProgress = 0
       if (scrollAtCenterRef.current !== null) {
         const thirdScrollDelay = windowHeight * 0.10
         const thirdAnimationStart = scrollAtCenterRef.current + thirdScrollDelay
@@ -186,15 +187,17 @@ export default function Home() {
         const seventhScrollRange = 800
         const eighthAnimationStart = seventhAnimationStart + seventhScrollRange + (windowHeight * 0.10)
         const eighthScrollRange = 800
-        const ninthAnimationStart = eighthAnimationStart + eighthScrollRange + (windowHeight * 0.10) // Animation 8 end + 10% delay
-        const ninthScrollRange = 800 // pixels for full animation 9
+        const featureAnimationStart = eighthAnimationStart + eighthScrollRange
+        // Very fast scroll range: ~100px per feature × 7 features = 700px total
+        // This makes scrolling through all features feel instant like three.js
+        const featureScrollRange = 700
         
-        if (scrollY >= ninthAnimationStart) {
-          ninthProgress = Math.min(1, (scrollY - ninthAnimationStart) / ninthScrollRange)
+        if (scrollY >= featureAnimationStart) {
+          featureProgress = Math.min(1, (scrollY - featureAnimationStart) / featureScrollRange)
         }
       }
       
-      setNinthScrollProgress(ninthProgress)
+      setFeatureScrollProgress(featureProgress)
     }
 
     let ticking = false
@@ -250,7 +253,7 @@ export default function Home() {
         <FutureSection scrollProgress={seventhScrollProgress} />
 
         {/* Features Section - appears during scroll animation 8 */}
-        <FeaturesSection scrollProgress={eighthScrollProgress} ninthScrollProgress={ninthScrollProgress} />
+        <FeaturesSection scrollProgress={eighthScrollProgress} featureScrollProgress={featureScrollProgress} />
 
         {/* Coming Soon Section */}
         <ComingSoonSection />
@@ -275,25 +278,6 @@ export default function Home() {
           {/* Spacer for animation 7 completion (800px for seventhScrollRange) */}
         </section>
 
-        {/* Spacer to ensure animation 8 can complete */}
-        {/* <section 
-          className="h-[800px]"
-          style={{
-            background: 'linear-gradient(180deg, #000000 0%, #242424 100%)'
-          }}
-        >
-          {/* Spacer for animation 8 completion (800px for eighthScrollRange) 
-        </section> */}
-
-        {/* Spacer to ensure animation 9 can complete */}
-     {/*}   <section 
-          className="h-[800px]"
-          style={{
-            background: 'linear-gradient(180deg, #000000 0%, #242424 100%)'
-          }}
-        >
-          {/* Spacer for animation 9 completion (800px for ninthScrollRange) 
-        </section> */}
       </main>
     </>
   )

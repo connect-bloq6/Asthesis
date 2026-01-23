@@ -4,35 +4,114 @@ import { useRef, useEffect, useState } from 'react'
 
 interface FeaturesSectionProps {
   scrollProgress: number
-  ninthScrollProgress?: number
+  featureScrollProgress?: number
 }
 
-export default function FeaturesSection({ scrollProgress, ninthScrollProgress = 0 }: FeaturesSectionProps) {
+export default function FeaturesSection({ scrollProgress, featureScrollProgress = 0 }: FeaturesSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
-  const firstButtonRef = useRef<HTMLButtonElement>(null)
-  const [buttonWidth, setButtonWidth] = useState<number | null>(null)
+  const [localScrollProgress, setLocalScrollProgress] = useState(0)
   
-  // Start appearing as animation 8 progresses, then stay fully visible and static during animation 9
-  const sectionOpacity = scrollProgress >= 1 ? 1 : scrollProgress // Fully visible once animation 8 completes
-  const sectionTransform = scrollProgress >= 1 ? 0 : (1 - scrollProgress) * 50 // Stop moving once animation 8 completes
-
-  // Capture initial button width
-  useEffect(() => {
-    if (firstButtonRef.current && buttonWidth === null) {
-      const width = firstButtonRef.current.offsetWidth
-      setButtonWidth(width)
-    }
-  }, [buttonWidth])
+  // Start appearing as animation 8 progresses
+  const sectionOpacity = scrollProgress >= 1 ? 1 : scrollProgress
+  const sectionTransform = scrollProgress >= 1 ? 0 : (1 - scrollProgress) * 50
 
   const features = [
-    { name: 'Lidar gait mapping', hasChevron: false },
-    { name: 'Thermal vision', hasChevron: false },
-    { name: 'Dual HD cameras', hasChevron: 'up' },
-    { name: 'CO2 +', hasChevron: false },
-    { name: 'One-touch', hasChevron: 'down' },
-    { name: 'Cloud analytics', hasChevron: false },
-    { name: 'Immutable log', hasChevron: false }
+    { 
+      name: 'Lidar gait mapping', 
+      hasChevron: false,
+      description: 'Understands daily movement patterns to identify changes without constant attention'
+    },
+    { 
+      name: 'Thermal vision', 
+      hasChevron: false,
+      description: 'Detects temperature variations for health monitoring and environmental awareness'
+    },
+    { 
+      name: 'Dual HD cameras', 
+      hasChevron: 'up',
+      description: 'Provides visual context when permitted using physical privacy shutter controls'
+    },
+    { 
+      name: 'CO2 +', 
+      hasChevron: false,
+      description: 'Monitors air quality and environmental conditions in real-time'
+    },
+    { 
+      name: 'One-touch', 
+      hasChevron: 'down',
+      description: 'Instant emergency alerts and quick access to essential functions'
+    },
+    { 
+      name: 'Cloud analytics', 
+      hasChevron: false,
+      description: 'Advanced data processing and insights powered by secure cloud infrastructure'
+    },
+    { 
+      name: 'Immutable log', 
+      hasChevron: false,
+      description: 'Tamper-proof record keeping ensures data integrity and compliance'
+    }
   ]
+
+  // Reference to the features list container
+  const featuresListRef = useRef<HTMLDivElement>(null)
+  
+  // Track scroll position relative to the features list for instant feature switching
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!featuresListRef.current) return
+      
+      const rect = featuresListRef.current.getBoundingClientRect()
+      const windowHeight = window.innerHeight
+      
+      // FIXED: Progress starts when list top reaches 80% of viewport (visible area)
+      // Progress ends when list bottom reaches 20% of viewport
+      // This ensures features cycle while the list is actually visible on screen
+      
+      const startTrigger = windowHeight * 0.8 // List top at 80% of viewport height
+      const endTrigger = windowHeight * 0.2   // List bottom at 20% of viewport height
+      
+      const listHeight = rect.height
+      
+      // Calculate progress based on where the list is in the viewport
+      // Progress = 0 when rect.top = startTrigger (list just becoming visible)
+      // Progress = 1 when rect.bottom = endTrigger (list about to leave)
+      
+      const totalScrollDistance = (startTrigger - endTrigger) + listHeight
+      const currentPosition = startTrigger - rect.top
+      
+      let progress = currentPosition / totalScrollDistance
+      progress = Math.max(0, Math.min(1, progress))
+      
+      setLocalScrollProgress(progress)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll() // Initial call
+    
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Calculate which feature is currently active based on scroll progress
+  // Instant snap - like three.js scroll animations
+  const getActiveFeatureIndex = (): number => {
+    const totalFeatures = features.length
+    // Map scroll progress (0-1) directly to feature index (0-6)
+    // No multiplier - features cycle exactly through the section scroll
+    const activeIndex = Math.floor(localScrollProgress * totalFeatures)
+    return Math.min(activeIndex, totalFeatures - 1)
+  }
+  
+  const activeFeatureIndex = getActiveFeatureIndex()
+  
+  // Check if a feature is the active one (instant, no interpolation)
+  // First feature is active when progress is 0 (section just entered)
+  const isFeatureActive = (index: number): boolean => {
+    // Special case: when progress is exactly 0, first feature should be active
+    if (localScrollProgress === 0 && index === 0) return false // Not started yet
+    if (localScrollProgress > 0 && index === activeFeatureIndex) return true
+    return false
+  }
 
   return (
     <section 
@@ -62,178 +141,109 @@ export default function FeaturesSection({ scrollProgress, ninthScrollProgress = 
         }}
       >
         {/* Features List */}
-        <div className="space-y-6">
-          {features.map((feature, index) => (
-            <div key={index} className="flex items-center gap-4">
-              {/* Chevron arrow on the left side */}
-              {feature.hasChevron && (
-                <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center">
-                  {feature.hasChevron === 'up' && (
-                    <svg 
-                      className="w-5 h-5 text-white" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                  )}
-                  {feature.hasChevron === 'down' && (
-                    <svg 
-                      className="w-5 h-5 text-white" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  )}
-                </div>
-              )}
-              {!feature.hasChevron && <div className="flex-shrink-0 w-6 h-6" />}
-
-              {/* Feature Button */}
-              <button
-                ref={index === 0 ? firstButtonRef : null}
-                className={`inline-flex rounded-lg transition-all duration-500 ease-out text-left group items-start ${
-                  index === 0 && ninthScrollProgress > 0 ? 'flex-col' : 'items-center'
-                } gap-4 px-4`}
-                style={{
-                  backgroundColor: '#1E1E20',
-                  borderRadius: '40px',
-                  paddingTop: '12px',
-                  paddingBottom: index === 0 ? `${12 + ninthScrollProgress * 20}px` : '12px',
-                  width: index === 0 && buttonWidth ? `${buttonWidth}px` : 'fit-content',
-                  transition: 'padding-bottom 0.5s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.2s ease-out',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2a2a2a'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1E1E20'
-                }}
-              >
-                {index === 0 ? (
-                  // Option 1: Title fades out, description fades in
-                  <div className="relative w-full" style={{ minHeight: ninthScrollProgress > 0 ? 'auto' : '44px' }}>
-                    {/* Plus icon in circle - stays visible */}
-                    <div 
-                      className="flex-shrink-0 rounded-full flex items-center justify-center absolute"
-                      style={{
-                        width: '21px',
-                        height: '21px',
-                        border: '2.5px solid #FFFFFF',
-                        opacity: 1,
-                        left: 0,
-                        top: '12px',
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path 
-                          d="M7 3V11M3 7H11" 
-                          stroke="white" 
-                          strokeWidth="1.5" 
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </div>
-                    
-                    {/* Title text - fades out */}
-                    <div
-                      className="flex items-center"
-                      style={{
-                        opacity: 1 - ninthScrollProgress,
-                        paddingLeft: '37px', // Align with icon (21px + 16px gap)
-                        paddingTop: '12px',
-                        paddingBottom: '12px',
-                        position: ninthScrollProgress > 0 ? 'absolute' : 'relative',
-                        width: '100%',
-                        transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                        pointerEvents: 'none',
-                      }}
-                    >
-                      <span 
-                        className="text-white"
-                        style={{
-                          fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
-                          fontWeight: 600,
-                          fontSize: '20px',
-                          lineHeight: '20px',
-                          letterSpacing: '0px',
-                        }}
+        <div ref={featuresListRef} className="space-y-4">
+          {features.map((feature, index) => {
+            const isActive = isFeatureActive(index)
+            
+            return (
+              <div key={index} className="flex items-start gap-3">
+                {/* Chevron arrow on the left side */}
+                {feature.hasChevron && (
+                  <div className="flex-shrink-0 w-5 h-5 flex items-center justify-center mt-2.5">
+                    {feature.hasChevron === 'up' && (
+                      <svg 
+                        className="w-4 h-4 text-white" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
                       >
-                        {feature.name}
-                      </span>
-                    </div>
-
-                    {/* Description text - fades in */}
-                    <div
-                      style={{
-                        opacity: ninthScrollProgress,
-                        paddingLeft: '37px', // Align with icon (21px + 16px gap)
-                        paddingTop: '12px',
-                        paddingBottom: '12px',
-                        transition: 'opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                      }}
-                    >
-                      <p
-                        className="text-white"
-                        style={{
-                          fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
-                          fontWeight: 400,
-                          fontSize: '16px',
-                          lineHeight: '20px',
-                          letterSpacing: '0px',
-                          margin: 0,
-                          whiteSpace: 'normal',
-                          wordWrap: 'break-word',
-                        }}
-                      >
-                        Understands daily movement patterns to identify changes without constant attention
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  // Other options: Normal display
-                  <div className="flex items-center gap-4">
-                    {/* Plus icon in circle */}
-                    <div 
-                      className="flex-shrink-0 rounded-full flex items-center justify-center"
-                      style={{
-                        width: '21px',
-                        height: '21px',
-                        border: '2.5px solid #FFFFFF',
-                        opacity: 1,
-                      }}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                        <path 
-                          d="M7 3V11M3 7H11" 
-                          stroke="white" 
-                          strokeWidth="1.5" 
-                          strokeLinecap="round"
-                        />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                       </svg>
-                    </div>
-                    
-                    {/* Feature text */}
-                    <span 
-                      className="text-white"
-                      style={{
-                        fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
-                        fontWeight: 600,
-                        fontSize: '20px',
-                        lineHeight: '20px',
-                        letterSpacing: '0px',
-                      }}
-                    >
-                      {feature.name}
-                    </span>
+                    )}
+                    {feature.hasChevron === 'down' && (
+                      <svg 
+                        className="w-4 h-4 text-white" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
                   </div>
                 )}
-              </button>
-            </div>
-          ))}
+                {!feature.hasChevron && <div className="flex-shrink-0 w-5 h-5" />}
+
+                {/* Feature Button - INSTANT state change, no transitions */}
+                <div
+                  className="inline-flex flex-col text-left"
+                  style={{
+                    backgroundColor: '#1E1E20',
+                    borderRadius: '24px',
+                    padding: isActive ? '12px 16px' : '10px 16px',
+                    minWidth: isActive ? '420px' : 'fit-content',
+                    maxWidth: '450px',
+                  }}
+                >
+                  {/* Content container with plus icon */}
+                  <div className="flex items-start gap-3">
+                    {/* Plus icon in circle */}
+                    <div 
+                      className="flex-shrink-0 rounded-full flex items-center justify-center mt-0.5"
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        border: '2px solid #FFFFFF',
+                      }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 14 14" fill="none">
+                        <path 
+                          d="M7 3V11M3 7H11" 
+                          stroke="white" 
+                          strokeWidth="1.5" 
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    </div>
+                    
+                    {/* Text content - INSTANT switch between title and description */}
+                    <div className="flex-1">
+                      {isActive ? (
+                        /* Description - shown instantly when active */
+                        <p
+                          className="text-white"
+                          style={{
+                            fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                            fontWeight: 400,
+                            fontSize: '14px',
+                            lineHeight: '20px',
+                            letterSpacing: '0px',
+                            margin: 0,
+                          }}
+                        >
+                          {feature.description}
+                        </p>
+                      ) : (
+                        /* Feature title - shown when not active */
+                        <span 
+                          className="text-white"
+                          style={{
+                            fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                            fontWeight: 500,
+                            fontSize: '14px',
+                            lineHeight: '20px',
+                            letterSpacing: '0px',
+                          }}
+                        >
+                          {feature.name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </section>
