@@ -17,6 +17,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
   const [sixthScrollProgress, setSixthScrollProgress] = useState(0)
   const [seventhScrollProgress, setSeventhScrollProgress] = useState(0)
   const [eighthScrollProgress, setEighthScrollProgress] = useState(0)
+  const [ninthScrollProgress, setNinthScrollProgress] = useState(0)
   const sectionRef = useRef<HTMLElement>(null)
   const scrollAtCenterRef = useRef<number | null>(null)
 
@@ -178,7 +179,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
         const sixthScrollRange = 800
         const seventhAnimationStart = sixthAnimationStart + sixthScrollRange + (windowHeight * 0.10)
         const seventhScrollRange = 800
-        const eighthAnimationStart = seventhAnimationStart + seventhScrollRange + (windowHeight * 0.10) // Animation 7 end + 10% delay
+        const eighthAnimationStart = seventhAnimationStart + seventhScrollRange + (windowHeight * 0.01) // Animation 8 starts at 30% of animation 7 (earlier)
         const eighthScrollRange = 800 // pixels for full animation 8
         
         if (scrollY >= eighthAnimationStart) {
@@ -188,8 +189,34 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
       
       setEighthScrollProgress(eighthProgress)
       
+      // Animation 9: Starts when animation 8 completes + 10% delay
+      let ninthProgress = 0
+      if (scrollAtCenterRef.current !== null) {
+        const thirdScrollDelay = windowHeight * 0.10
+        const thirdAnimationStart = scrollAtCenterRef.current + thirdScrollDelay
+        const thirdScrollRange = 800
+        const fourthAnimationStart = thirdAnimationStart + thirdScrollRange + (windowHeight * 0.10)
+        const fourthScrollRange = 800
+        const fifthAnimationStart = fourthAnimationStart + fourthScrollRange + (windowHeight * 0.10)
+        const fifthScrollRange = 800
+        const sixthAnimationStart = fifthAnimationStart + fifthScrollRange + (windowHeight * 0.10)
+        const sixthScrollRange = 800
+        const seventhAnimationStart = sixthAnimationStart + sixthScrollRange + (windowHeight * 0.10)
+        const seventhScrollRange = 800
+        const eighthAnimationStart = seventhAnimationStart + seventhScrollRange + (windowHeight * 0.10)
+        const eighthScrollRange = 800
+        const ninthAnimationStart = eighthAnimationStart + eighthScrollRange + (windowHeight * 0.10) // Animation 8 end + 10% delay
+        const ninthScrollRange = 800 // pixels for full animation 9
+        
+        if (scrollY >= ninthAnimationStart) {
+          ninthProgress = Math.min(1, (scrollY - ninthAnimationStart) / ninthScrollRange)
+        }
+      }
+      
+      setNinthScrollProgress(ninthProgress)
+      
       // Debug log (remove in production)
-      // console.log('Scroll Y:', scrollY, 'Progress 1:', progress, 'Progress 2:', extendedProgress, 'Progress 3:', thirdProgress, 'Progress 4:', fourthProgress, 'Progress 5:', fifthProgress, 'Progress 6:', sixthProgress, 'Progress 7:', seventhProgress, 'Progress 8:', eighthProgress)
+      // console.log('Scroll Y:', scrollY, 'Progress 1:', progress, 'Progress 2:', extendedProgress, 'Progress 3:', thirdProgress, 'Progress 4:', fourthProgress, 'Progress 5:', fifthProgress, 'Progress 6:', sixthProgress, 'Progress 7:', seventhProgress, 'Progress 8:', eighthProgress, 'Progress 9:', ninthProgress)
     }
 
     // Use requestAnimationFrame for smoother updates
@@ -353,6 +380,147 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
               </g>
             </g>
           </svg>
+        </div>
+
+        {/* Device Image - comes from bottom over diamonds */}
+        <div className="absolute inset-0 flex items-center justify-center z-20">
+          {/* First Image - Adobe Express */}
+          <img
+            src="/images/Adobe Express - file(9)_upscayl_5x_high-fidelity-4x 2.png"
+            alt="Device"
+            className={`max-w-[800px] max-h-[800px] object-contain absolute pointer-events-none`}
+            style={{
+              opacity: diamondsVisible ? Math.max(0, 1 - thirdScrollProgress) : 0,
+              marginTop: '-5%',
+              willChange: 'transform, opacity',
+              transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              ...(animationComplete 
+                ? {
+                    animation: 'none',
+                    transform: `translateY(0) translateX(calc(${scrollProgress * 30}% - ${extendedScrollProgress * 75}%)) scaleX(${1 - extendedScrollProgress * 2})`
+                  }
+                : diamondsVisible 
+                  ? {
+                      animation: 'image-from-bottom 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+                    }
+                  : {}
+              )
+            }}
+          />
+          {/* Second Image - Group 101127 (appears with scroll progress 3, fades out with scroll progress 4) */}
+          <img
+            src="/images/Group 101127.png"
+            alt="Device Exploded"
+            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            style={{
+              opacity: diamondsVisible ? Math.max(0, Math.min(1, thirdScrollProgress) * (1 - fourthScrollProgress)) : 0,
+              marginTop: '-5%',
+              willChange: 'transform, opacity',
+              transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              ...(animationComplete 
+                ? {
+                    animation: 'none',
+                    transform: `translateY(0) translateX(calc(${scrollProgress * 30}% - ${extendedScrollProgress * 75}%)) scaleX(1)`
+                  }
+                : {}
+              )
+            }}
+          />
+          {/* Third Image - Group 101128 (appears with scroll progress 4, fades out with scroll progress 5) */}
+          <img
+            src="/images/Group 101128.png"
+            alt="Device Exploded View 2"
+            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            style={{
+              opacity: diamondsVisible ? Math.max(0, Math.min(1, fourthScrollProgress) * (1 - fifthScrollProgress)) : 0,
+              marginTop: '-5%',
+              willChange: 'transform, opacity',
+              transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              ...(animationComplete 
+                ? {
+                    animation: 'none',
+                    transform: `translateY(0) translateX(calc(${scrollProgress * 30}% - ${extendedScrollProgress * 75}%)) scaleX(1)`
+                  }
+                : {}
+              )
+            }}
+          />
+          {/* Fourth Image - Group 101129 (appears with scroll progress 5, fades out with scroll progress 6) */}
+          <img
+            src="/images/Group 101129.png"
+            alt="Device Exploded View 3"
+            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            style={{
+              opacity: diamondsVisible ? Math.max(0, Math.min(1, fifthScrollProgress) * (1 - sixthScrollProgress)) : 0,
+              marginTop: '-5%',
+              willChange: 'transform, opacity',
+              transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              ...(animationComplete 
+                ? {
+                    animation: 'none',
+                    transform: `translateY(0) translateX(calc(${scrollProgress * 30}% - ${extendedScrollProgress * 75}%)) scaleX(1)`
+                  }
+                : {}
+              )
+            }}
+          />
+          {/* Fifth Image - Group 101130 (appears with scroll progress 6, fades out with scroll progress 7) */}
+          <img
+            src="/images/Group 101130.png"
+            alt="Device Exploded View 4"
+            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            style={{
+              opacity: diamondsVisible ? Math.max(0, Math.min(1, sixthScrollProgress) * (1 - seventhScrollProgress)) : 0,
+              marginTop: '-5%',
+              willChange: 'transform, opacity',
+              transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              ...(animationComplete 
+                ? {
+                    animation: 'none',
+                    transform: `translateY(0) translateX(calc(${scrollProgress * 30}% - ${extendedScrollProgress * 75}%)) scaleX(1)`
+                  }
+                : {}
+              )
+            }}
+          />
+          {/* Sixth Image - Adobe Express - file 1 (appears with scroll progress 7, moves to center, fades out with scroll progress 8) */}
+          <img
+            src="/images/Adobe Express - file 1.png"
+            alt="Device Final"
+            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            style={{
+              opacity: diamondsVisible ? Math.max(0, Math.min(1, seventhScrollProgress) * (1 - eighthScrollProgress)) : 0,
+              marginTop: '-5%',
+              willChange: 'transform, opacity',
+              transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              ...(animationComplete 
+                ? {
+                    animation: 'none',
+                    transform: `translateY(0) translateX(calc((${scrollProgress * 30}% - ${extendedScrollProgress * 75}%) * (1 - ${seventhScrollProgress}))) scaleX(1)`
+                  }
+                : {}
+              )
+            }}
+          />
+          {/* Seventh Image - Adobe Express - file(9)_upscayl_5x_high-fidelity-4x 2 (1) (appears with scroll progress 8, moves to right) */}
+          <img
+            src="/images/Adobe Express - file(9)_upscayl_5x_high-fidelity-4x 2 (1).png"
+            alt="Device Final 2"
+            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            style={{
+              opacity: diamondsVisible ? Math.min(1, Math.max(0, eighthScrollProgress)) : 0,
+              marginTop: '-5%',
+              willChange: 'transform, opacity',
+              transition: 'opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              ...(animationComplete 
+                ? {
+                    animation: 'none',
+                    transform: `translateY(0) translateX(${eighthScrollProgress * 30}%) scaleX(1)`
+                  }
+                : {}
+              )
+            }}
+          />
         </div>
       </div>
       

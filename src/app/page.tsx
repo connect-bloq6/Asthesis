@@ -11,6 +11,7 @@ import ProcessingCoreSection from '@/components/ui/ProcessingCoreSection'
 import PowerReliabilitySection from '@/components/ui/PowerReliabilitySection'
 import FutureSection from '@/components/ui/FutureSection'
 import FeaturesSection from '@/components/ui/FeaturesSection'
+import ComingSoonSection from '@/components/ui/ComingSoonSection'
 import LoadingScreen from '@/components/ui/LoadingScreen'
 
 export default function Home() {
@@ -22,6 +23,7 @@ export default function Home() {
   const [sixthScrollProgress, setSixthScrollProgress] = useState(0)
   const [seventhScrollProgress, setSeventhScrollProgress] = useState(0)
   const [eighthScrollProgress, setEighthScrollProgress] = useState(0)
+  const [ninthScrollProgress, setNinthScrollProgress] = useState(0)
   const scrollAtCenterRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -158,7 +160,7 @@ export default function Home() {
         const sixthScrollRange = 800
         const seventhAnimationStart = sixthAnimationStart + sixthScrollRange + (windowHeight * 0.10)
         const seventhScrollRange = 800
-        const eighthAnimationStart = seventhAnimationStart + seventhScrollRange + (windowHeight * 0.10) // Animation 7 end + 10% delay
+        const eighthAnimationStart = seventhAnimationStart + seventhScrollRange +(windowHeight * 0.1) // Animation 8 starts at 30% of animation 7 (earlier)
         const eighthScrollRange = 800 // pixels for full animation 8
         
         if (scrollY >= eighthAnimationStart) {
@@ -167,6 +169,32 @@ export default function Home() {
       }
       
       setEighthScrollProgress(eighthProgress)
+      
+      // Track ninth scroll progress (animation 9)
+      let ninthProgress = 0
+      if (scrollAtCenterRef.current !== null) {
+        const thirdScrollDelay = windowHeight * 0.10
+        const thirdAnimationStart = scrollAtCenterRef.current + thirdScrollDelay
+        const thirdScrollRange = 800
+        const fourthAnimationStart = thirdAnimationStart + thirdScrollRange + (windowHeight * 0.10)
+        const fourthScrollRange = 800
+        const fifthAnimationStart = fourthAnimationStart + fourthScrollRange + (windowHeight * 0.10)
+        const fifthScrollRange = 800
+        const sixthAnimationStart = fifthAnimationStart + fifthScrollRange + (windowHeight * 0.10)
+        const sixthScrollRange = 800
+        const seventhAnimationStart = sixthAnimationStart + sixthScrollRange + (windowHeight * 0.10)
+        const seventhScrollRange = 800
+        const eighthAnimationStart = seventhAnimationStart + seventhScrollRange + (windowHeight * 0.10)
+        const eighthScrollRange = 800
+        const ninthAnimationStart = eighthAnimationStart + eighthScrollRange + (windowHeight * 0.10) // Animation 8 end + 10% delay
+        const ninthScrollRange = 800 // pixels for full animation 9
+        
+        if (scrollY >= ninthAnimationStart) {
+          ninthProgress = Math.min(1, (scrollY - ninthAnimationStart) / ninthScrollRange)
+        }
+      }
+      
+      setNinthScrollProgress(ninthProgress)
     }
 
     let ticking = false
@@ -193,7 +221,7 @@ export default function Home() {
         <LoadingScreen onLoadingComplete={() => setIsLoading(false)} />
       )}
 
-      <main className={`relative bg-background transition-opacity duration-700 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
+      <main style={{ overflowY: 'hidden' }} className={`relative bg-background transition-opacity duration-700 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
         {/* Navigation */}
         <Navbar />
 
@@ -222,10 +250,13 @@ export default function Home() {
         <FutureSection scrollProgress={seventhScrollProgress} />
 
         {/* Features Section - appears during scroll animation 8 */}
-        <FeaturesSection scrollProgress={eighthScrollProgress} />
+        <FeaturesSection scrollProgress={eighthScrollProgress} ninthScrollProgress={ninthScrollProgress} />
+
+        {/* Coming Soon Section */}
+        <ComingSoonSection />
 
         {/* Minimal spacer to ensure animation 4 can complete */}
-        <section className="h-[120px] bg-background">
+        <section className="h-[0px] bg-background">
           {/* Spacer for animation 4 completion (800px for fourthScrollRange) */}
         </section>
 
@@ -235,24 +266,34 @@ export default function Home() {
         </section>
 
         {/* Spacer to ensure animation 6 can complete */}
-        <section className="h-[130px] bg-background">
+        <section className="h-[0px] bg-background">
           {/* Spacer for animation 6 completion (800px for sixthScrollRange) */}
         </section>
 
         {/* Spacer to ensure animation 7 can complete */}
-        <section className="h-[800px] bg-background">
+        <section className="h-[0px] bg-background">
           {/* Spacer for animation 7 completion (800px for seventhScrollRange) */}
         </section>
 
         {/* Spacer to ensure animation 8 can complete */}
-        <section 
+        {/* <section 
           className="h-[800px]"
           style={{
             background: 'linear-gradient(180deg, #000000 0%, #242424 100%)'
           }}
         >
-          {/* Spacer for animation 8 completion (800px for eighthScrollRange) */}
-        </section>
+          {/* Spacer for animation 8 completion (800px for eighthScrollRange) 
+        </section> */}
+
+        {/* Spacer to ensure animation 9 can complete */}
+     {/*}   <section 
+          className="h-[800px]"
+          style={{
+            background: 'linear-gradient(180deg, #000000 0%, #242424 100%)'
+          }}
+        >
+          {/* Spacer for animation 9 completion (800px for ninthScrollRange) 
+        </section> */}
       </main>
     </>
   )
