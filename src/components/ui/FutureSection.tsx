@@ -31,13 +31,13 @@ export default function FutureSection({ scrollProgress }: FutureSectionProps) {
       <div className="flex flex-col items-center justify-center">
         {/* Main Headline */}
         <h1 
-          className="text-foreground text-center"
+          className="text-foreground text-center px-4"
           style={{
             marginTop: '40vh',
             fontFamily: 'var(--font-unbounded), Unbounded, system-ui, sans-serif',
             fontWeight: 800,
-            fontSize: '54px',
-            lineHeight: '63px',
+            fontSize: 'clamp(32px, 8vw, 54px)',
+            lineHeight: 'clamp(38px, 9vw, 63px)',
             letterSpacing: '0px',
             textAlign: 'center',
             color: '#1D1D1F',

@@ -10,6 +10,16 @@ interface FeaturesSectionProps {
 export default function FeaturesSection({ scrollProgress, featureScrollProgress = 0 }: FeaturesSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
   const [localScrollProgress, setLocalScrollProgress] = useState(0)
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
   
   // Start appearing as animation 8 progresses
   const sectionOpacity = scrollProgress >= 1 ? 1 : scrollProgress
@@ -127,14 +137,8 @@ export default function FeaturesSection({ scrollProgress, featureScrollProgress 
       }}
     >
       <div 
+        className="w-[calc(100%-2rem)] max-w-[1288px] md:w-[1288px] h-auto min-h-[400px] md:h-[586px] px-4 py-8 md:px-10 md:py-[70px] md:absolute md:top-[171px] md:left-[112px] relative md:left-auto md:top-auto mx-auto"
         style={{
-          width: '1288px',
-          height: '586px',
-          padding: '40px',
-          paddingTop: '70px',
-          position: 'absolute',
-          top: '171px',
-          left: '112px',
           opacity: 1,
           backgroundColor: '#000000',
           borderRadius:'40px'
@@ -176,13 +180,13 @@ export default function FeaturesSection({ scrollProgress, featureScrollProgress 
 
                 {/* Feature Button - INSTANT state change, no transitions */}
                 <div
-                  className="inline-flex flex-col text-left"
+                  className="inline-flex flex-col text-left w-full"
                   style={{
                     backgroundColor: '#1E1E20',
                     borderRadius: '24px',
                     padding: isActive ? '12px 16px' : '10px 16px',
-                    minWidth: isActive ? '420px' : 'fit-content',
-                    maxWidth: '450px',
+                    minWidth: isActive ? (isMobile ? '100%' : '420px') : 'fit-content',
+                    maxWidth: isMobile ? '100%' : '450px',
                   }}
                 >
                   {/* Content container with plus icon */}
@@ -215,8 +219,8 @@ export default function FeaturesSection({ scrollProgress, featureScrollProgress 
                           style={{
                             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                             fontWeight: 400,
-                            fontSize: '14px',
-                            lineHeight: '20px',
+                            fontSize: 'clamp(12px, 3vw, 14px)',
+                            lineHeight: 'clamp(18px, 4vw, 20px)',
                             letterSpacing: '0px',
                             margin: 0,
                           }}
@@ -230,8 +234,8 @@ export default function FeaturesSection({ scrollProgress, featureScrollProgress 
                           style={{
                             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                             fontWeight: 500,
-                            fontSize: '14px',
-                            lineHeight: '20px',
+                            fontSize: 'clamp(12px, 3vw, 14px)',
+                            lineHeight: 'clamp(18px, 4vw, 20px)',
                             letterSpacing: '0px',
                           }}
                         >

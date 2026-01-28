@@ -240,15 +240,15 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
   return (
     <section ref={sectionRef} className="relative min-h-screen flex flex-col bg-background">
       {/* Hero Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4 pt-32 pb-20">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 pt-32 pb-20 md:pt-32 md:pb-20">
         {/* Main Headline */}
         <h1 
           className="text-foreground mb-6 text-center"
           style={{
             fontFamily: 'var(--font-unbounded), Unbounded, system-ui, sans-serif',
             fontWeight: 800,
-            fontSize: '54px',
-            lineHeight: '63px',
+            fontSize: 'clamp(28px, 8vw, 54px)',
+            lineHeight: 'clamp(34px, 9vw, 63px)',
             letterSpacing: '0px',
             textAlign: 'center',
           }}
@@ -258,12 +258,12 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
         
         {/* Sub-headline */}
         <p 
-          className="text-center max-w-2xl"
+          className="text-center max-w-2xl px-4"
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 500,
-            fontSize: '14px',
-            lineHeight: '63px',
+            fontSize: 'clamp(12px, 3vw, 14px)',
+            lineHeight: 'clamp(18px, 4vw, 24px)',
             letterSpacing: '0px',
             textAlign: 'center',
             color: '#878787',
@@ -274,25 +274,25 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
       </div>
 
       {/* Geometric Pattern Container - Fixed position so diamonds stay in place */}
-      <div className="fixed bottom-0 left-0 right-0 w-full h-[60vh] min-h-[400px] pointer-events-none z-10">
+      <div className="fixed bottom-0 left-0 right-0 w-full h-[50vh] min-h-[300px] md:h-[60vh] md:min-h-[400px] pointer-events-none z-10">
         {/* Corner Plus Signs */}
-        <div className="absolute top-8 left-8 w-6 h-6 text-foreground/60 pointer-events-auto">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <div className="absolute top-4 left-4 md:top-8 md:left-8 w-4 h-4 md:w-6 md:h-6 text-foreground/60 pointer-events-auto">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="w-full h-full">
             <path d="M12 4V20M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </div>
-        <div className="absolute top-8 right-8 w-6 h-6 text-foreground/60 pointer-events-auto">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <div className="absolute top-4 right-4 md:top-8 md:right-8 w-4 h-4 md:w-6 md:h-6 text-foreground/60 pointer-events-auto">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="w-full h-full">
             <path d="M12 4V20M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </div>
-        <div className="absolute bottom-8 left-8 w-6 h-6 text-foreground/60 pointer-events-auto">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <div className="absolute bottom-4 left-4 md:bottom-8 md:left-8 w-4 h-4 md:w-6 md:h-6 text-foreground/60 pointer-events-auto">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="w-full h-full">
             <path d="M12 4V20M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </div>
-        <div className="absolute bottom-8 right-8 w-6 h-6 text-foreground/60 pointer-events-auto">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+        <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8 w-4 h-4 md:w-6 md:h-6 text-foreground/60 pointer-events-auto">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="w-full h-full">
             <path d="M12 4V20M4 12H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </div>
@@ -301,9 +301,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
         <div className="absolute inset-0 flex items-center justify-center">
           {/* Left Diamond */}
           <svg
-            className={`absolute ${diamondsVisible ? (animationComplete ? '' : 'animate-diamond-from-left') : 'opacity-0'}`}
-            width="540"
-            height="540"
+            className={`absolute ${diamondsVisible ? (animationComplete ? '' : 'animate-diamond-from-left') : 'opacity-0'} w-[280px] h-[280px] md:w-[540px] md:h-[540px]`}
             viewBox="0 0 500 500"
             style={{ 
               transform: animationComplete 
@@ -342,9 +340,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
 
           {/* Right Diamond */}
           <svg
-            className={`absolute ${diamondsVisible ? (animationComplete ? '' : 'animate-diamond-from-right') : 'opacity-0'}`}
-            width="540"
-            height="540"
+            className={`absolute ${diamondsVisible ? (animationComplete ? '' : 'animate-diamond-from-right') : 'opacity-0'} w-[280px] h-[280px] md:w-[540px] md:h-[540px]`}
             viewBox="0 0 500 500"
             style={{ 
               transform: animationComplete
@@ -388,7 +384,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
           <img
             src="/images/Adobe Express - file(9)_upscayl_5x_high-fidelity-4x 2.png"
             alt="Device"
-            className={`max-w-[800px] max-h-[800px] object-contain absolute pointer-events-none`}
+            className={`max-w-[90vw] max-h-[50vh] md:max-w-[800px] md:max-h-[800px] object-contain absolute pointer-events-none`}
             style={{
               opacity: diamondsVisible ? Math.max(0, 1 - thirdScrollProgress) : 0,
               marginTop: '-5%',
@@ -411,7 +407,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
           <img
             src="/images/Group 101127.png"
             alt="Device Exploded"
-            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            className={`max-w-[85vw] max-h-[45vh] md:max-w-[700px] md:max-h-[700px] object-contain absolute pointer-events-none`}
             style={{
               opacity: diamondsVisible ? Math.max(0, Math.min(1, thirdScrollProgress) * (1 - fourthScrollProgress)) : 0,
               marginTop: '-5%',
@@ -430,7 +426,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
           <img
             src="/images/Group 101128.png"
             alt="Device Exploded View 2"
-            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            className={`max-w-[85vw] max-h-[45vh] md:max-w-[700px] md:max-h-[700px] object-contain absolute pointer-events-none`}
             style={{
               opacity: diamondsVisible ? Math.max(0, Math.min(1, fourthScrollProgress) * (1 - fifthScrollProgress)) : 0,
               marginTop: '-5%',
@@ -449,7 +445,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
           <img
             src="/images/Group 101129.png"
             alt="Device Exploded View 3"
-            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            className={`max-w-[85vw] max-h-[45vh] md:max-w-[700px] md:max-h-[700px] object-contain absolute pointer-events-none`}
             style={{
               opacity: diamondsVisible ? Math.max(0, Math.min(1, fifthScrollProgress) * (1 - sixthScrollProgress)) : 0,
               marginTop: '-5%',
@@ -468,7 +464,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
           <img
             src="/images/Group 101130.png"
             alt="Device Exploded View 4"
-            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            className={`max-w-[85vw] max-h-[45vh] md:max-w-[700px] md:max-h-[700px] object-contain absolute pointer-events-none`}
             style={{
               opacity: diamondsVisible ? Math.max(0, Math.min(1, sixthScrollProgress) * (1 - seventhScrollProgress)) : 0,
               marginTop: '-5%',
@@ -487,7 +483,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
           <img
             src="/images/Adobe Express - file 1.png"
             alt="Device Final"
-            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            className={`max-w-[85vw] max-h-[45vh] md:max-w-[700px] md:max-h-[700px] object-contain absolute pointer-events-none`}
             style={{
               opacity: diamondsVisible ? Math.max(0, Math.min(1, seventhScrollProgress) * (1 - eighthScrollProgress)) : 0,
               marginTop: '-5%',
@@ -506,7 +502,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
           <img
             src="/images/Adobe Express - file(9)_upscayl_5x_high-fidelity-4x 2 (1).png"
             alt="Device Final 2"
-            className={`max-w-[700px] max-h-[700px] object-contain absolute pointer-events-none`}
+            className={`max-w-[85vw] max-h-[45vh] md:max-w-[700px] md:max-h-[700px] object-contain absolute pointer-events-none`}
             style={{
               opacity: diamondsVisible ? Math.min(1, Math.max(0, eighthScrollProgress)) : 0,
               marginTop: '-5%',
@@ -525,7 +521,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
       </div>
       
       {/* Spacer to maintain section height */}
-      <div className="w-full h-[60vh] min-h-[400px]" />
+      <div className="w-full h-[50vh] min-h-[300px] md:h-[60vh] md:min-h-[400px]" />
     </section>
   )
 }

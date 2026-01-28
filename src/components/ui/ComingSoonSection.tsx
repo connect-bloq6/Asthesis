@@ -16,12 +16,12 @@ export default function ComingSoonSection() {
     >
       <div className="flex flex-col items-center justify-center">
         <h2 
-          className="text-white text-center"
+          className="text-white text-center px-4"
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 800,
-            fontSize: '48px',
-            lineHeight: '56px',
+            fontSize: 'clamp(32px, 8vw, 48px)',
+            lineHeight: 'clamp(40px, 9vw, 56px)',
             letterSpacing: '0px',
             textTransform: 'uppercase',
             marginBottom: '16px',
@@ -30,12 +30,12 @@ export default function ComingSoonSection() {
           Coming Soon
         </h2>
         <p 
-          className="text-white/60 text-center max-w-2xl"
+          className="text-white/60 text-center max-w-2xl px-4"
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 400,
-            fontSize: '18px',
-            lineHeight: '24px',
+            fontSize: 'clamp(14px, 3vw, 18px)',
+            lineHeight: 'clamp(20px, 4vw, 24px)',
             letterSpacing: '0px',
           }}
         >

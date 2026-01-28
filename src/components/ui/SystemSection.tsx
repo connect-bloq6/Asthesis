@@ -55,15 +55,15 @@ export default function SystemSection() {
         transition: 'opacity 0.1s ease-out, transform 0.1s ease-out'
       }}
     >
-      <div className="max-w-4xl" style={{ marginTop: '-7vh' }}>
+      <div className="max-w-4xl w-full px-4 md:px-0" style={{ marginTop: '-7vh' }}>
         {/* SYSTEM Label */}
         <div 
           className="mb-4"
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 800,
-            fontSize: '24px',
-            lineHeight: '20px',
+            fontSize: 'clamp(18px, 4vw, 24px)',
+            lineHeight: 'clamp(20px, 4vw, 20px)',
             letterSpacing: '0px',
             textTransform: 'uppercase',
             color: '#999999',
@@ -79,8 +79,8 @@ export default function SystemSection() {
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 800,
-            fontSize: '32px',
-            lineHeight: '25px',
+            fontSize: 'clamp(24px, 6vw, 32px)',
+            lineHeight: 'clamp(28px, 7vw, 38px)',
             letterSpacing: '0px',
             textTransform: 'uppercase',
             color: '#1D1D1F',
@@ -96,8 +96,8 @@ export default function SystemSection() {
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 400,
-            fontSize: '16px',
-            lineHeight: '18px',
+            fontSize: 'clamp(14px, 3vw, 16px)',
+            lineHeight: 'clamp(20px, 4vw, 24px)',
             letterSpacing: '0px',
             color: '#6F6F6F',
             textAlign: 'left'
@@ -120,8 +120,8 @@ export default function SystemSection() {
               style={{
                 fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                 fontWeight: 400,
-                fontSize: '16px',
-                lineHeight: '18px',
+                fontSize: 'clamp(14px, 3vw, 16px)',
+                lineHeight: 'clamp(20px, 4vw, 24px)',
                 letterSpacing: '0px',
                 color: '#757575'
               }}

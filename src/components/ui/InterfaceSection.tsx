@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useState, useEffect } from 'react'
 
 interface InterfaceSectionProps {
   scrollProgress: number
@@ -8,6 +8,16 @@ interface InterfaceSectionProps {
 
 export default function InterfaceSection({ scrollProgress }: InterfaceSectionProps) {
   const sectionRef = useRef<HTMLElement>(null)
+  const [isMobile, setIsMobile] = useState(false)
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
   
   // Only start appearing after animation 3 has progressed 50%
   // This ensures it syncs with the animation completion and doesn't appear too early
@@ -30,11 +40,11 @@ export default function InterfaceSection({ scrollProgress }: InterfaceSectionPro
       }}
     >
       <div 
-        className="max-w-2xl" 
+        className="max-w-2xl w-full px-4 md:px-0" 
         style={{ 
           marginTop: '3vh',
           position: 'relative',
-          left: `calc(50% + ${adjustedProgress * 25}%)`,
+          left: isMobile ? '50%' : `calc(50% + ${adjustedProgress * 25}%)`,
           transform: 'translateX(-50%)',
           transition: 'left 0.1s ease-out'
         }}
@@ -45,8 +55,8 @@ export default function InterfaceSection({ scrollProgress }: InterfaceSectionPro
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 800,
-            fontSize: '24px',
-            lineHeight: '20px',
+            fontSize: 'clamp(18px, 4vw, 24px)',
+            lineHeight: 'clamp(20px, 4vw, 20px)',
             letterSpacing: '0px',
             textTransform: 'uppercase',
             color: '#999999',
@@ -62,8 +72,8 @@ export default function InterfaceSection({ scrollProgress }: InterfaceSectionPro
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 800,
-            fontSize: '32px',
-            lineHeight: '25px',
+            fontSize: 'clamp(24px, 6vw, 32px)',
+            lineHeight: 'clamp(28px, 7vw, 38px)',
             letterSpacing: '0px',
             textTransform: 'uppercase',
             color: '#1D1D1F',
@@ -79,8 +89,8 @@ export default function InterfaceSection({ scrollProgress }: InterfaceSectionPro
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 400,
-            fontSize: '16px',
-            lineHeight: '18px',
+            fontSize: 'clamp(14px, 3vw, 16px)',
+            lineHeight: 'clamp(20px, 4vw, 24px)',
             letterSpacing: '0px',
             color: '#6F6F6F',
             textAlign: 'left'

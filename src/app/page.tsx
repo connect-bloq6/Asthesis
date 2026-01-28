@@ -224,7 +224,7 @@ export default function Home() {
         <LoadingScreen onLoadingComplete={() => setIsLoading(false)} />
       )}
 
-      <main style={{ overflowY: 'hidden' }} className={`relative bg-background transition-opacity duration-700 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
+      <main style={{ overflowY: 'auto', overflowX: 'hidden' }} className={`relative bg-background transition-opacity duration-700 ${isLoading ? 'opacity-0' : 'opacity-100'}`}>
         {/* Navigation */}
         <Navbar />
 
