@@ -67,19 +67,19 @@ export default function FAQPage() {
   const rightColumnItems = filteredItems.slice(3, 5)
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden" style={{ backgroundColor: '#FFFFFF' }}>
+    <main className="relative min-h-screen overflow-x-hidden bg-white">
       <Navbar />
 
-      {/* FAQ content – no card; same page background as About, content directly on page */}
-      <div className="max-w-[1440px] mx-auto px-5 sm:px-6 md:px-12 lg:px-16 pt-20 sm:pt-24 md:pt-28 pb-12 sm:pb-16 md:pb-24">
-        {/* Heading – mobile / iPad / desktop */}
+      {/* FAQ content – mobile / iPad / desktop */}
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-8 lg:px-16 pt-28 sm:pt-32 md:pt-36 pb-10 sm:pb-14 md:pb-20 lg:pb-24">
+        {/* Heading */}
         <h1
-          className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-[#101828] mb-2 sm:mb-3"
+          className="text-lg sm:text-xl md:text-2xl lg:text-4xl font-semibold text-[#101828] mb-2 sm:mb-3"
           style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
         >
           Frequently Asked Questions
         </h1>
-        <p className="text-[#4A5565] text-sm sm:text-base mb-5 sm:mb-6 md:mb-8" style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
+        <p className="text-[#4A5565] text-sm sm:text-base mb-4 sm:mb-5 md:mb-8" style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
           Can&apos;t find what you&apos;re looking for? Check out our{' '}
           <Link href="/resources/docs" className="font-medium underline hover:opacity-80" style={{ color: '#4A5565' }}>
             full documentation
@@ -87,14 +87,17 @@ export default function FAQPage() {
           .
         </p>
 
-        {/* Tabs + Search – mobile: stacked full-width; iPad: row; desktop: same */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 mb-6 sm:mb-8 md:mb-10">
-          <div className="flex flex-wrap gap-2">
+        {/* Tabs – mobile: horizontal scroll (no wrap); iPad+: row with search; never wrap tabs */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 mb-5 sm:mb-6 md:mb-8 lg:mb-10">
+          <div
+            className="flex flex-nowrap gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0 md:overflow-visible md:flex-1 md:min-w-0 scrollbar-hide"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
+          >
             {FAQ_TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                className={`shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'bg-[#374151] text-white'
                     : 'bg-[#F3F4F6] text-[#374151] hover:bg-[#E5E7EB]'
@@ -105,7 +108,7 @@ export default function FAQPage() {
               </button>
             ))}
           </div>
-          <div className="relative w-full md:w-auto md:min-w-[200px]">
+          <div className="relative w-full md:w-auto md:min-w-[200px] shrink-0">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9CA3AF] pointer-events-none">
               <svg width="16" height="16" className="sm:w-[18px] sm:h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="8" />
@@ -123,17 +126,17 @@ export default function FAQPage() {
           </div>
         </div>
 
-        {/* FAQ grid – each item has #F9FAFB 50% background */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 md:gap-x-10 lg:gap-x-12 gap-y-6 sm:gap-y-8">
+        {/* FAQ grid – 1 col mobile; 2 cols iPad+; each item #F9FAFB 50% */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 md:gap-x-8 lg:gap-x-12 gap-y-4 sm:gap-y-6 md:gap-y-6 lg:gap-y-8">
           {/* Left column */}
-          <div className="space-y-6 sm:space-y-8">
+          <div className="space-y-4 sm:space-y-6 md:space-y-6 lg:space-y-8">
             {leftColumnItems.map((item) => (
-              <div key={item.id} className="flex gap-3 sm:gap-4 rounded-lg p-4 sm:p-5" style={{ backgroundColor: 'rgba(249, 250, 251, 0.5)' }}>
+              <div key={item.id} className="flex gap-3 sm:gap-4 rounded-xl p-4 sm:p-5 md:p-5" style={{ backgroundColor: 'rgba(249, 250, 251, 0.5)' }}>
                 <div className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#F3F4F6] flex items-center justify-center">
                   <Image src={item.icon} alt="" width={ICON_SIZE} height={ICON_SIZE} className="object-contain w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div className="min-w-0">
-                  <h2 className="font-semibold text-[#101828] text-sm sm:text-base md:text-lg mb-1.5 sm:mb-2" style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-semibold text-[#101828] text-sm sm:text-base md:text-lg mb-1.5 sm:mb-2 leading-snug" style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
                     {item.question}
                   </h2>
                   <p className="text-[#4A5565] text-xs sm:text-sm md:text-base leading-relaxed" style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
@@ -144,14 +147,14 @@ export default function FAQPage() {
             ))}
           </div>
           {/* Right column */}
-          <div className="space-y-6 sm:space-y-8">
+          <div className="space-y-4 sm:space-y-6 md:space-y-6 lg:space-y-8">
             {rightColumnItems.map((item) => (
-              <div key={item.id} className="flex gap-3 sm:gap-4 rounded-lg p-4 sm:p-5" style={{ backgroundColor: 'rgba(249, 250, 251, 0.5)' }}>
+              <div key={item.id} className="flex gap-3 sm:gap-4 rounded-xl p-4 sm:p-5 md:p-5" style={{ backgroundColor: 'rgba(249, 250, 251, 0.5)' }}>
                 <div className="shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-[#F3F4F6] flex items-center justify-center">
                   <Image src={item.icon} alt="" width={ICON_SIZE} height={ICON_SIZE} className="object-contain w-5 h-5 sm:w-6 sm:h-6" />
                 </div>
-                <div className="min-w-0">
-                  <h2 className="font-semibold text-[#101828] text-sm sm:text-base md:text-lg mb-1.5 sm:mb-2" style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-semibold text-[#101828] text-sm sm:text-base md:text-lg mb-1.5 sm:mb-2 leading-snug" style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
                     {item.question}
                   </h2>
                   <p className="text-[#4A5565] text-xs sm:text-sm md:text-base leading-relaxed" style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}>
