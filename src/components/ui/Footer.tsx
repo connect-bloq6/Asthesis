@@ -38,7 +38,7 @@ const footerLinks = {
     title: 'RESOURCES',
     links: [
       { label: 'Documentation', href: '/resources/docs' },
-      { label: 'FAQs', href: '/resources/faqs' },
+      { label: 'FAQs', href: '/faq' },
       { label: 'Support', href: '/resources/support' },
       { label: 'Setup Guide', href: '/resources/setup' },
       { label: 'Contact Support', href: '/resources/contact' },
@@ -77,7 +77,7 @@ const listSpacing = 'space-y-2'
 
 export default function Footer() {
   return (
-    <footer className="relative pt-8 sm:pt-10 md:pt-12 pb-0" style={{ backgroundColor: FOOTER_BG }}>
+    <footer className="relative border-t border-[#E5E7EB] pt-8 sm:pt-10 md:pt-12 pb-0" style={{ backgroundColor: FOOTER_BG }}>
       <div className="max-w-[1440px] mx-auto px-5 sm:px-6 md:px-12 lg:px-16">
         {/* Link columns – 2 col mobile, 3 col tablet, 6 col desktop */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5 sm:gap-6 lg:gap-5 mb-8 sm:mb-10 md:mb-12">

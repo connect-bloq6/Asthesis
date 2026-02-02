@@ -52,7 +52,7 @@ export default function AboutSection7() {
           </p>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-5">
             <Link
-              href="/technology"
+              href="/faq"
               className="inline-flex items-center justify-center gap-2 rounded-full bg-[#101828] text-white font-medium text-[14px] leading-none hover:opacity-90 transition-opacity h-[50px] px-6 w-full sm:w-auto min-w-0"
             >
               Explore the Technology

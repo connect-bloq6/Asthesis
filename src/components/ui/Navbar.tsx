@@ -24,7 +24,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6 md:px-12 lg:px-16 bg-background/95 backdrop-blur-sm">
+      <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6 md:px-12 lg:px-16 bg-background border-b border-[#E5E7EB]">
         <div className="flex items-center justify-between max-w-[1440px] mx-auto">
           {/* Logo */}
           <Link href="/" className="text-xl md:text-2xl font-semibold text-foreground" onClick={closeMenu}>
@@ -46,7 +46,7 @@ export default function Navbar() {
           </ul>
 
           {/* Hamburger/Plus Button */}
-          <button 
+          <button
             className="w-12 h-12 rounded-lg bg-[#E5E5E5] flex items-center justify-center hover:bg-[#D1D1D1] transition-colors md:hidden"
             aria-label="Menu"
             onClick={toggleMenu}
@@ -60,31 +60,19 @@ export default function Navbar() {
               className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-45' : ''}`}
             >
               {isMenuOpen ? (
-                // X icon when menu is open
                 <>
-                  <path 
-                    d="M4 4L12 12M12 4L4 12" 
-                    stroke="#1D1D1F" 
-                    strokeWidth="2" 
-                    strokeLinecap="round"
-                  />
+                  <path d="M4 4L12 12M12 4L4 12" stroke="#1D1D1F" strokeWidth="2" strokeLinecap="round" />
                 </>
               ) : (
-                // Plus icon when menu is closed
                 <>
-                  <path 
-                    d="M8 1V15M1 8H15" 
-                    stroke="#1D1D1F" 
-                    strokeWidth="2" 
-                    strokeLinecap="round"
-                  />
+                  <path d="M8 1V15M1 8H15" stroke="#1D1D1F" strokeWidth="2" strokeLinecap="round" />
                 </>
               )}
             </svg>
           </button>
 
           {/* Plus Button for Desktop - Hidden on mobile */}
-          <button 
+          <button
             className="w-12 h-12 rounded-lg bg-[#E5E5E5] flex items-center justify-center hover:bg-[#D1D1D1] transition-colors hidden md:flex"
             aria-label="Menu"
           >
@@ -117,7 +105,7 @@ export default function Navbar() {
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
         
         {/* Menu Panel */}
-        <div 
+        <div
           className={`absolute top-0 right-0 h-full w-[280px] bg-background shadow-xl transition-transform duration-300 ease-out ${
             isMenuOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
