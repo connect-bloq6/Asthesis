@@ -1,62 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-
-// Decorative X icon component
-function CrossIcon({ className }: { className?: string }) {
-  return (
-    <svg 
-      className={className}
-      width="14" 
-      height="14" 
-      viewBox="0 0 14 14" 
-      fill="none" 
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <path 
-        d="M1 1L13 13M13 1L1 13" 
-        stroke="#1D1D1F" 
-        strokeWidth="1" 
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-// Social Icons
-function LinkedInIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <rect x="2" y="9" width="4" height="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="4" cy="4" r="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M4 4l11.733 16h4.267l-11.733-16zM4 20l6.4-8M20 4l-6.4 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
-
-function YouTubeIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
+import Image from 'next/image'
 
 const footerLinks = {
   product: {
     title: 'PRODUCT',
     links: [
       { label: 'Overview', href: '/product/overview' },
-      { label: 'Technology', href: '/product/technology' },
+      { label: 'Technology', href: '/technology' },
       { label: 'Features', href: '/product/features' },
       { label: 'Design', href: '/product/design' },
       { label: 'Materials & Components', href: '/product/materials' },
@@ -104,59 +56,39 @@ const footerLinks = {
   },
 }
 
+const SOCIAL_ICON_SIZE = 24
+
+const socialLinks = [
+  { label: 'LinkedIn', href: 'https://linkedin.com', icon: '/images/linkdin.png' },
+  { label: 'Twitter', href: 'https://x.com', icon: '/images/twitter.png' },
+  { label: 'YouTube', href: 'https://youtube.com', icon: '/images/youtube.png' },
+]
+
+/** Footer: white background, dark gray text, centered copyright, dark bar at bottom */
+const FOOTER_BG = '#FFFFFF'
+const FOOTER_TEXT = '#374151'
+const FOOTER_TEXT_MUTED = '#4B5563'
+const FOOTER_DIVIDER = '#E5E7EB'
+const FOOTER_BAR = '#101828'
+
+const columnTitleClass = 'text-[10px] font-medium uppercase tracking-wider mb-3'
+const linkClass = 'text-[11px] font-normal transition-colors hover:opacity-80'
+const listSpacing = 'space-y-2'
+
 export default function Footer() {
   return (
-    <footer className="relative bg-background pt-12 md:pt-20">
-      {/* Decorative Cross Icons */}
-      <CrossIcon className="absolute top-8 left-8 md:left-16 opacity-60" />
-      <CrossIcon className="absolute top-8 right-8 md:right-16 opacity-60" />
-
-      <div className="container mx-auto px-4 sm:px-8 md:px-16 lg:px-24">
-        {/* Video Banner (Minimized) */}
-        <div className="relative w-full aspect-[3/1] md:aspect-[4/1] rounded-2xl md:rounded-3xl overflow-hidden mb-16 md:mb-20">
-          {/* Video Element - Same video as previous section */}
-          <video
-            className="w-full h-full object-cover"
-            autoPlay
-            loop
-            muted
-            playsInline
-            poster="/videos/poster.jpg"
-          >
-            <source src="/videos/asthesis-showcase.mp4" type="video/mp4" />
-          </video>
-
-          {/* Fallback Background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-amber-950/30 to-black -z-10" />
-          
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-black/40" />
-
-          {/* Cursive Asthesis Text */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <h2 
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl text-white/90 font-light italic"
-              style={{ 
-                fontFamily: 'Georgia, "Times New Roman", serif',
-                letterSpacing: '0.05em'
-              }}
-            >
-              Asthesis
-            </h2>
-          </div>
-        </div>
-
-        {/* Footer Links Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-6 mb-12 md:mb-16">
-          {/* Product */}
+    <footer className="relative pt-8 sm:pt-10 md:pt-12 pb-0" style={{ backgroundColor: FOOTER_BG }}>
+      <div className="max-w-[1440px] mx-auto px-5 sm:px-6 md:px-12 lg:px-16">
+        {/* Link columns – 2 col mobile, 3 col tablet, 6 col desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5 sm:gap-6 lg:gap-5 mb-8 sm:mb-10 md:mb-12">
           <div>
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
+            <h3 className={columnTitleClass} style={{ color: FOOTER_TEXT }}>
               {footerLinks.product.title}
             </h3>
-            <ul className="space-y-3">
+            <ul className={listSpacing}>
               {footerLinks.product.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-foreground/60 hover:text-foreground transition-colors">
+                  <Link href={link.href} className={linkClass} style={{ color: FOOTER_TEXT_MUTED }}>
                     {link.label}
                   </Link>
                 </li>
@@ -164,15 +96,14 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* System */}
           <div>
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
+            <h3 className={columnTitleClass} style={{ color: FOOTER_TEXT }}>
               {footerLinks.system.title}
             </h3>
-            <ul className="space-y-3">
+            <ul className={listSpacing}>
               {footerLinks.system.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-foreground/60 hover:text-foreground transition-colors">
+                  <Link href={link.href} className={linkClass} style={{ color: FOOTER_TEXT_MUTED }}>
                     {link.label}
                   </Link>
                 </li>
@@ -180,15 +111,14 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* About */}
           <div>
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
+            <h3 className={columnTitleClass} style={{ color: FOOTER_TEXT }}>
               {footerLinks.about.title}
             </h3>
-            <ul className="space-y-3">
+            <ul className={listSpacing}>
               {footerLinks.about.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-foreground/60 hover:text-foreground transition-colors">
+                  <Link href={link.href} className={linkClass} style={{ color: FOOTER_TEXT_MUTED }}>
                     {link.label}
                   </Link>
                 </li>
@@ -196,15 +126,14 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Resources */}
           <div>
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
+            <h3 className={columnTitleClass} style={{ color: FOOTER_TEXT }}>
               {footerLinks.resources.title}
             </h3>
-            <ul className="space-y-3">
+            <ul className={listSpacing}>
               {footerLinks.resources.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-foreground/60 hover:text-foreground transition-colors">
+                  <Link href={link.href} className={linkClass} style={{ color: FOOTER_TEXT_MUTED }}>
                     {link.label}
                   </Link>
                 </li>
@@ -212,15 +141,14 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Legal */}
           <div>
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
+            <h3 className={columnTitleClass} style={{ color: FOOTER_TEXT }}>
               {footerLinks.legal.title}
             </h3>
-            <ul className="space-y-3">
+            <ul className={listSpacing}>
               {footerLinks.legal.links.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-foreground/60 hover:text-foreground transition-colors">
+                  <Link href={link.href} className={linkClass} style={{ color: FOOTER_TEXT_MUTED }}>
                     {link.label}
                   </Link>
                 </li>
@@ -228,87 +156,83 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact */}
+          {/* Contact column with REQUEST A DEMO button */}
           <div>
-            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-4">
+            <h3 className={columnTitleClass} style={{ color: FOOTER_TEXT }}>
               CONTACT
             </h3>
-            <ul className="space-y-3">
+            <ul className={listSpacing}>
               <li>
-                <Link href="/contact" className="text-sm text-foreground/60 hover:text-foreground transition-colors">
+                <Link href="/contact" className={linkClass} style={{ color: FOOTER_TEXT_MUTED }}>
                   Contact Us
                 </Link>
               </li>
               <li>
-                <Link href="/demo" className="text-sm text-foreground/60 hover:text-foreground transition-colors">
+                <Link href="/contact#demo" className={linkClass} style={{ color: FOOTER_TEXT_MUTED }}>
                   Request a Demo
                 </Link>
               </li>
               <li>
-                <Link href="/partnerships" className="text-sm text-foreground/60 hover:text-foreground transition-colors">
+                <Link href="/contact#partnerships" className={linkClass} style={{ color: FOOTER_TEXT_MUTED }}>
                   Partnerships
                 </Link>
               </li>
-              <li className="pt-2">
-                <span className="text-xs text-foreground/40">Support Email</span>
-                <a href="mailto:support@asthesis.com" className="block text-sm text-foreground/60 hover:text-foreground transition-colors">
+              <li className="pt-1">
+                <span className="text-[10px] font-normal opacity-80" style={{ color: FOOTER_TEXT_MUTED }}>Support Email</span>
+                <a href="mailto:support@asthesis.com" className={`block ${linkClass}`} style={{ color: FOOTER_TEXT_MUTED }}>
                   support@asthesis.com
                 </a>
               </li>
               <li>
-                <span className="text-xs text-foreground/40">Business Email</span>
-                <a href="mailto:contact@asthesis.com" className="block text-sm text-foreground/60 hover:text-foreground transition-colors">
+                <span className="text-[10px] font-normal opacity-80" style={{ color: FOOTER_TEXT_MUTED }}>Business Email</span>
+                <a href="mailto:contact@asthesis.com" className={`block ${linkClass}`} style={{ color: FOOTER_TEXT_MUTED }}>
                   contact@asthesis.com
                 </a>
               </li>
             </ul>
+            <Link
+              href="/contact#demo"
+              className="inline-flex items-center justify-center mt-3 rounded-full font-medium text-[11px] uppercase tracking-wide hover:opacity-90 transition-opacity min-w-[120px] h-[44px] px-5"
+              style={{ borderWidth: 1.07, borderColor: FOOTER_TEXT, color: FOOTER_TEXT, backgroundColor: FOOTER_BG }}
+            >
+              REQUEST A DEMO
+            </Link>
           </div>
         </div>
 
-        {/* Social Links & CTA Row */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 py-8 border-t border-foreground/10">
-          {/* Social Icons */}
-          <div className="flex items-center gap-6">
-            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-foreground/60 hover:text-foreground transition-colors">
-              <LinkedInIcon className="w-5 h-5" />
+        {/* Social icons – centered, small */}
+        <div className="flex items-center justify-center gap-5 py-6 border-t" style={{ borderColor: FOOTER_DIVIDER }}>
+          {socialLinks.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="opacity-80 hover:opacity-100 transition-opacity"
+              aria-label={item.label}
+            >
+              <Image
+                src={item.icon}
+                alt=""
+                width={SOCIAL_ICON_SIZE}
+                height={SOCIAL_ICON_SIZE}
+                className="object-contain w-5 h-5"
+              />
             </a>
-            <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="text-foreground/60 hover:text-foreground transition-colors">
-              <XIcon className="w-5 h-5" />
-            </a>
-            <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="text-foreground/60 hover:text-foreground transition-colors">
-              <YouTubeIcon className="w-5 h-5" />
-            </a>
-          </div>
-
-          {/* Request a Demo Button */}
-          <Link 
-            href="/demo"
-            className="px-6 py-2.5 border border-foreground/20 rounded-full text-sm font-medium text-foreground hover:bg-foreground hover:text-background transition-colors"
-          >
-            REQUEST A DEMO
-          </Link>
+          ))}
         </div>
 
-        {/* Bottom Copyright Section */}
-        <div className="relative py-8 border-t border-foreground/10">
-          {/* Cross icons at bottom */}
-          <CrossIcon className="absolute bottom-4 left-0 opacity-60" />
-          <CrossIcon className="absolute bottom-4 right-0 opacity-60" />
-
-          <div className="text-center space-y-2">
-            <p className="text-sm text-foreground/60">
-              © 2026 Asthesis
-            </p>
-            <p className="text-sm text-foreground/50">
-              Designed for dignity. Built for trust.
-            </p>
-            <p className="text-xs text-foreground/40 max-w-2xl mx-auto mt-4">
-              Asthesis is a healthcare support system designed to assist independent living. It is not a replacement for medical professionals.
-            </p>
-          </div>
+        {/* Bottom – small, light, centered (clean look) */}
+        <div className="pt-6 pb-8 text-center space-y-1 border-t" style={{ borderColor: FOOTER_DIVIDER, borderTopWidth: '0.87px' }}>
+          <p className="text-[11px] font-normal" style={{ color: FOOTER_TEXT }}>© 2026 Asthesis</p>
+          <p className="text-[11px] font-normal" style={{ color: FOOTER_TEXT_MUTED }}>Designed for dignity. Built for trust.</p>
+          <p className="text-[10px] font-normal max-w-2xl mx-auto mt-3 opacity-90 leading-snug" style={{ color: FOOTER_TEXT_MUTED }}>
+            Asthesis is a healthcare support system designed to assist independent living. It is not a replacement for medical professionals.
+          </p>
         </div>
       </div>
+      {/* Dark gray bar at very bottom */}
+      <div className="w-full h-3 md:h-4" style={{ backgroundColor: FOOTER_BAR }} aria-hidden />
     </footer>
   )
 }
-
