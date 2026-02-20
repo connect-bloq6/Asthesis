@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "video-to-frames": "bash scripts/video-to-frames.sh"
   },
   "dependencies": {
     "@figma/rest-api-spec": "^0.36.0",

@@ -381,7 +381,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
         {/* Device Image - comes from bottom over diamonds */}
         <div className="absolute inset-0 flex items-center justify-center z-20">
           {/* First Image - Adobe Express */}
-          <img
+          {/* <img
             src="/images/Adobe Express - file(9)_upscayl_5x_high-fidelity-4x 2.png"
             alt="Device"
             className={`max-w-[90vw] max-h-[50vh] md:max-w-[800px] md:max-h-[800px] object-contain absolute pointer-events-none`}
@@ -402,7 +402,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
                   : {}
               )
             }}
-          />
+          /> */}
           {/* Second Image - Group 101127 (appears with scroll progress 3, fades out with scroll progress 4) */}
           <img
             src="/images/Group 101127.png"

@@ -46,3 +46,4 @@ export function parseFigmaUrl(url: string): {
   return { fileId, nodeId, apiNodeId }
 }
 
+
