@@ -53,9 +53,12 @@ const CARE_VERTICAL_OFFSET_VH = 4
 const INSIDE_FROM_BOTTOM_VH = 95 // inside: right bottom to right center over full Part 4 (like design, care)
 const INSIDE_VERTICAL_OFFSET_VH = 2
 // Frame-rate independent smoothing: delta-time so 60Hz/90Hz/120Hz feel the same; no frame skips on fast scroll.
-// Lower cap = smoother on mobile (never more than ~1 frame per display frame at 60fps).
-const FRAME_CATCHUP_MAX_PER_SEC = 55
+const FRAME_CATCHUP_MAX_PER_SEC = 58 // desktop: ~1 frame per frame at 60fps
+const FRAME_CATCHUP_MAX_PER_SEC_MOBILE = 28 // mobile: stricter so sequence never skips (smooth scroll)
+const TARGET_SMOOTHING_MAX_PER_SEC = 55 // max "target" movement per second (smoothed target follows scroll)
+const TARGET_SMOOTHING_MAX_PER_SEC_MOBILE = 32 // mobile: target itself moves smoothly, no jump
 const SMOOTHING_TIME_CONSTANT = 0.06 // seconds for progress/transition to catch up (exponential smoothing)
+const SMOOTHING_TIME_CONSTANT_MOBILE = 0.1 // mobile: slightly gentler so less jitter
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -123,6 +126,7 @@ export default function LandingPage() {
   const smoothedPart4Ref = useRef(0)
   const part4TargetRef = useRef(0)
   const sequenceFrameTargetRef = useRef(0)
+  const sequenceFrameSmoothedTargetRef = useRef(0) // float; moves toward raw target with cap (no jump on mobile)
   const sequenceFrameCurrentRef = useRef(0) // float for smooth interpolation
   const part2FrameCurrentRef = useRef(DAVINICI_FRAME_COUNT - 1) // float; Part 2 reverse starts at last frame
   const part3FrameCurrentRef = useRef(0)
@@ -130,6 +134,7 @@ export default function LandingPage() {
   const lastTickTimeRef = useRef<number>(0)
   const scrollWhenInsideAtCenterRef = useRef<number | null>(null)
   const wasInPart2LastFrameRef = useRef(false)
+  const isMobileRef = useRef(false)
 
   useEffect(() => {
     const m = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)')
@@ -138,6 +143,19 @@ export default function LandingPage() {
     const h = () => setIsDesktopViewport(m.matches)
     m.addEventListener('change', h)
     return () => m.removeEventListener('change', h)
+  }, [])
+
+  // Mobile: touch or narrow viewport — use stricter frame caps for smooth scroll (no skip).
+  useEffect(() => {
+    const update = () => {
+      if (typeof window === 'undefined') return
+      const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+      const narrow = window.innerWidth < 1024
+      isMobileRef.current = touch || narrow
+    }
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
   }, [])
 
   useEffect(() => {
@@ -216,6 +234,7 @@ export default function LandingPage() {
       wasInPart2LastFrameRef.current = false
       part2TargetRef.current = 0
       sequenceFrameTargetRef.current = 0
+      sequenceFrameSmoothedTargetRef.current = 0
       sequenceFrameCurrentRef.current = 0
     }
 
@@ -462,8 +481,10 @@ export default function LandingPage() {
       updateTargetsFromScroll()
       const dtSec = Math.min(0.1, (now - lastTickTimeRef.current) / 1000)
       lastTickTimeRef.current = now
-      const smoothFactor = 1 - Math.exp(-dtSec / SMOOTHING_TIME_CONSTANT)
-      const maxFrameDelta = FRAME_CATCHUP_MAX_PER_SEC * dtSec
+      const isMobile = isMobileRef.current
+      const smoothFactor = 1 - Math.exp(-dtSec / (isMobile ? SMOOTHING_TIME_CONSTANT_MOBILE : SMOOTHING_TIME_CONSTANT))
+      const maxFrameDelta = (isMobile ? FRAME_CATCHUP_MAX_PER_SEC_MOBILE : FRAME_CATCHUP_MAX_PER_SEC) * dtSec
+      const maxTargetDelta = (isMobile ? TARGET_SMOOTHING_MAX_PER_SEC_MOBILE : TARGET_SMOOTHING_MAX_PER_SEC) * dtSec
 
       if (part2TargetRef.current > 0) {
         // Part 2: smooth progress with time-based lerp; cap frame delta so reverse sequence plays smoothly
@@ -485,8 +506,13 @@ export default function LandingPage() {
         setSequenceFrameIndex(Math.round(nextPart2Frame))
         sequenceFrameCurrentRef.current = nextPart2Frame
       } else {
-        // Part 1: cap frame delta so we never jump; sequence follows scroll smoothly on any refresh rate
-        const targetFrame = sequenceFrameTargetRef.current
+        // Part 1: smoothed target (no jump) then cap frame delta — smooth on desktop and mobile
+        const rawTarget = sequenceFrameTargetRef.current
+        const smoothedTarget = sequenceFrameSmoothedTargetRef.current
+        let targetDelta = rawTarget - smoothedTarget
+        targetDelta = Math.max(-maxTargetDelta, Math.min(maxTargetDelta, targetDelta))
+        sequenceFrameSmoothedTargetRef.current = smoothedTarget + targetDelta
+        const targetFrame = sequenceFrameSmoothedTargetRef.current
         const currentFrame = sequenceFrameCurrentRef.current
         let delta = targetFrame - currentFrame
         delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, delta))
@@ -550,6 +576,7 @@ export default function LandingPage() {
         style={{
           overflowX: 'hidden',
           overflowY: showChampagneGradient && !gradientTransitionComplete ? 'hidden' : 'auto',
+          WebkitOverflowScrolling: 'touch',
           border: 'none',
           outline: 'none',
         }}
