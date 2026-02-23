@@ -53,7 +53,8 @@ const CARE_VERTICAL_OFFSET_VH = 4
 const INSIDE_FROM_BOTTOM_VH = 95 // inside: right bottom to right center over full Part 4 (like design, care)
 const INSIDE_VERTICAL_OFFSET_VH = 2
 // Frame-rate independent smoothing: delta-time so 60Hz/90Hz/120Hz feel the same; no frame skips on fast scroll.
-const FRAME_CATCHUP_MAX_PER_SEC = 100 // max frame index change per second (sequence "plays through" smoothly)
+// Lower cap = smoother on mobile (never more than ~1 frame per display frame at 60fps).
+const FRAME_CATCHUP_MAX_PER_SEC = 55
 const SMOOTHING_TIME_CONSTANT = 0.06 // seconds for progress/transition to catch up (exponential smoothing)
 
 function daviniciFramePath(index: number): string {
@@ -128,6 +129,7 @@ export default function LandingPage() {
   const part4FrameCurrentRef = useRef(0)
   const lastTickTimeRef = useRef<number>(0)
   const scrollWhenInsideAtCenterRef = useRef<number | null>(null)
+  const wasInPart2LastFrameRef = useRef(false)
 
   useEffect(() => {
     const m = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)')
@@ -181,12 +183,117 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [gradientTransitionComplete])
 
+  // Update only target refs from current scroll position (no setState). Call from RAF every frame so mobile gets smooth targets despite throttled scroll events.
+  const updateTargetsFromScroll = useCallback(() => {
+    const main = mainRef.current
+    const scrollTop = main?.scrollTop ?? 0
+    const windowScrollY = typeof window !== 'undefined' ? window.scrollY ?? document.documentElement.scrollTop : 0
+    const effectiveScroll = Math.max(scrollTop, windowScrollY)
+    const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+    const sequenceStart = vh
+    const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
+    const part2Start = sequenceStart + part1Height
+    const part2Height = (PART2_SCROLL_VH / 100) * vh
+    const part3StartPx = sequenceStart + part1Height + part2Height
+    const part3HeightPx = (PART3_SCROLL_VH / 100) * vh
+    const part4StartPx = part3StartPx + part3HeightPx
+    const part4HeightPx = (PART4_SCROLL_VH / 100) * vh
+
+    if (effectiveScroll >= part2Start) {
+      const p2 = Math.min(1, (effectiveScroll - part2Start) / part2Height)
+      part2TargetRef.current = p2
+      if (!wasInPart2LastFrameRef.current) {
+        part2FrameCurrentRef.current = sequenceFrameCurrentRef.current
+        wasInPart2LastFrameRef.current = true
+      }
+    } else if (effectiveScroll >= sequenceStart) {
+      wasInPart2LastFrameRef.current = false
+      part2TargetRef.current = 0
+      const progress = Math.min(1, (effectiveScroll - sequenceStart) / part1Height)
+      const frameIndex = Math.min(DAVINICI_FRAME_COUNT - 1, Math.floor(progress * DAVINICI_FRAME_COUNT))
+      sequenceFrameTargetRef.current = frameIndex
+    } else {
+      wasInPart2LastFrameRef.current = false
+      part2TargetRef.current = 0
+      sequenceFrameTargetRef.current = 0
+      sequenceFrameCurrentRef.current = 0
+    }
+
+    const frameSectionContentVh = 100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH
+    const scrollOutStartPx = vh + (frameSectionContentVh / 100) * vh
+    const scrollOutHeightPx = (FRAME_SCROLL_OUT_VH / 100) * vh
+    if (effectiveScroll >= scrollOutStartPx) {
+      if (scrollWhenInsideAtCenterRef.current === null) scrollWhenInsideAtCenterRef.current = scrollOutStartPx
+    } else {
+      scrollWhenInsideAtCenterRef.current = null
+    }
+
+    const videoStickyEl = videoStickyWrapperRef.current
+    const careSection = careSectionRef.current
+    if (videoStickyEl && careSection) {
+      const rect = videoStickyEl.getBoundingClientRect()
+      const sectionRect = careSection.getBoundingClientRect()
+      const spacerHeightPx = (VIDEO_STICKY_SCROLL_VH / 100) * vh
+      const currentVideoStickyMode = videoStickyModeRef.current
+      if (sectionRect.bottom <= 0) {
+        videoStickyModeRef.current = 'after'
+        videoStickyStartScrollRef.current = null
+        videoTransitionTargetRef.current = 0
+      } else if (currentVideoStickyMode === 'stuck') {
+        const stickStart = videoStickyStartScrollRef.current
+        if (stickStart !== null && effectiveScroll < stickStart) {
+          videoStickyModeRef.current = 'before'
+          videoStickyStartScrollRef.current = null
+          videoPlaceholderHeightRef.current = 0
+          videoTransitionTargetRef.current = 0
+        } else if (stickStart !== null) {
+          const scrollIntoSticky = effectiveScroll - stickStart
+          videoTransitionTargetRef.current = Math.max(0, Math.min(1, scrollIntoSticky / spacerHeightPx))
+        }
+      } else if (rect.top <= VIDEO_STICK_TOP_THRESHOLD_PX) {
+        if (videoStickyModeRef.current !== 'stuck') {
+          videoStickyModeRef.current = 'stuck'
+          videoStickyStartScrollRef.current = effectiveScroll
+          videoPlaceholderHeightRef.current = rect.height
+        }
+        const stickStart = videoStickyStartScrollRef.current
+        if (stickStart !== null) {
+          const scrollIntoSticky = effectiveScroll - stickStart
+          videoTransitionTargetRef.current = Math.max(0, Math.min(1, scrollIntoSticky / spacerHeightPx))
+        }
+      } else {
+        videoStickyModeRef.current = 'before'
+        videoStickyStartScrollRef.current = null
+        videoPlaceholderHeightRef.current = 0
+        videoTransitionTargetRef.current = 0
+      }
+    }
+
+    if (effectiveScroll >= part4StartPx) {
+      part3TargetRef.current = 1
+      part4TargetRef.current = Math.min(1, (effectiveScroll - part4StartPx) / part4HeightPx)
+    } else if (effectiveScroll >= part3StartPx) {
+      part3TargetRef.current = Math.min(1, (effectiveScroll - part3StartPx) / part3HeightPx)
+      part4TargetRef.current = 0
+      smoothedPart4Ref.current = 0
+      part4FrameCurrentRef.current = 0
+    } else {
+      part3TargetRef.current = 0
+      smoothedPart3Ref.current = 0
+      part3FrameCurrentRef.current = 0
+      part4TargetRef.current = 0
+      smoothedPart4Ref.current = 0
+      part4FrameCurrentRef.current = 0
+    }
+  }, [])
+
   // Corner crosses: rotate when hero section is scrolled past (left +45°, right -45°)
   // Use both window and main scroll so it works whether the document or main is the scroll container
   useEffect(() => {
     if (!gradientTransitionComplete) return
 
     const checkScroll = () => {
+      updateTargetsFromScroll()
       const main = mainRef.current
       const scrollTop = main?.scrollTop ?? 0
       const windowScrollY = typeof window !== 'undefined' ? window.scrollY ?? document.documentElement.scrollTop : 0
@@ -205,7 +312,6 @@ export default function LandingPage() {
         const p2 = Math.min(1, (effectiveScroll - part2Start) / part2Height)
         setPart2Progress(p2)
         part2TargetRef.current = p2
-        part2FrameCurrentRef.current = sequenceFrameCurrentRef.current // sync so reverse sequence starts from current frame
         setSequenceProgress(1)
       } else if (effectiveScroll >= sequenceStart) {
         setPart2Progress(0)
@@ -347,15 +453,15 @@ export default function LandingPage() {
   }, [gradientTransitionComplete])
 
   // Frame-rate independent smooth animation: follow scroll target without jumping.
-  // Uses delta-time and max frame-delta so the sequence always "completes" smoothly (no skipped frames on fast scroll).
+  // Read scroll position inside RAF every frame so mobile (throttled scroll events) still gets smooth targets.
   useEffect(() => {
     if (!gradientTransitionComplete) return
     lastTickTimeRef.current = performance.now()
     let rafId = 0
     const tick = (now: number) => {
+      updateTargetsFromScroll()
       const dtSec = Math.min(0.1, (now - lastTickTimeRef.current) / 1000)
       lastTickTimeRef.current = now
-      // Time-based lerp factor (frame-rate independent): 1 - exp(-dt/tau)
       const smoothFactor = 1 - Math.exp(-dtSec / SMOOTHING_TIME_CONSTANT)
       const maxFrameDelta = FRAME_CATCHUP_MAX_PER_SEC * dtSec
 
@@ -430,7 +536,7 @@ export default function LandingPage() {
     }
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [gradientTransitionComplete]);
+  }, [gradientTransitionComplete, updateTargetsFromScroll]);
 
   return (
     <>
