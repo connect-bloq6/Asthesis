@@ -7,11 +7,17 @@ const navItems = [
   { label: 'Homepage', href: '/' },
   { label: 'Technology', href: '/technology' },
   { label: 'About Us', href: '/about' },
+  { label: 'Impact', href: '/impact' },
   { label: 'FAQ', href: '/faq' },
   { label: 'Contact Us', href: '/contact' },
 ]
 
-export default function Navbar() {
+type NavbarProps = {
+  /** Use white background (e.g. Impact, FAQ, About) instead of transparent */
+  solid?: boolean
+}
+
+export default function Navbar({ solid = false }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const toggleMenu = () => {
@@ -24,7 +30,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6 md:px-12 lg:px-16 bg-transparent">
+      <nav className={`fixed top-0 left-0 right-0 z-50 px-8 py-6 md:px-12 lg:px-16 ${solid ? 'bg-white border-b border-[#E5E7EB]' : 'bg-transparent'}`}>
         <div className="flex items-center justify-between max-w-[1440px] mx-auto">
           {/* Logo */}
           <Link href="/" className="text-xl md:text-2xl font-semibold text-foreground" onClick={closeMenu}>
