@@ -52,9 +52,9 @@ const CARE_SCROLL_UP_VH = 95
 const CARE_VERTICAL_OFFSET_VH = 4
 const INSIDE_FROM_BOTTOM_VH = 95 // inside: right bottom to right center over full Part 4 (like design, care)
 const INSIDE_VERTICAL_OFFSET_VH = 2
-const PART1_SMOOTH_LERP = 0.14 // lerp Part 1 frame index toward scroll target (smoother, less jitter)
-const PART2_SMOOTH_LERP = 0.15 // 0–1: higher = snappier, lower = smoother Part 2 animation
-const PART3_SMOOTH_LERP = 0.09 // lower = smoother Part 3 (less frame jitter)
+// Frame-rate independent smoothing: delta-time so 60Hz/90Hz/120Hz feel the same; no frame skips on fast scroll.
+const FRAME_CATCHUP_MAX_PER_SEC = 100 // max frame index change per second (sequence "plays through" smoothly)
+const SMOOTHING_TIME_CONSTANT = 0.06 // seconds for progress/transition to catch up (exponential smoothing)
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -122,7 +122,11 @@ export default function LandingPage() {
   const smoothedPart4Ref = useRef(0)
   const part4TargetRef = useRef(0)
   const sequenceFrameTargetRef = useRef(0)
-  const sequenceFrameCurrentRef = useRef(0)
+  const sequenceFrameCurrentRef = useRef(0) // float for smooth interpolation
+  const part2FrameCurrentRef = useRef(DAVINICI_FRAME_COUNT - 1) // float; Part 2 reverse starts at last frame
+  const part3FrameCurrentRef = useRef(0)
+  const part4FrameCurrentRef = useRef(0)
+  const lastTickTimeRef = useRef<number>(0)
   const scrollWhenInsideAtCenterRef = useRef<number | null>(null)
 
   useEffect(() => {
@@ -201,6 +205,7 @@ export default function LandingPage() {
         const p2 = Math.min(1, (effectiveScroll - part2Start) / part2Height)
         setPart2Progress(p2)
         part2TargetRef.current = p2
+        part2FrameCurrentRef.current = sequenceFrameCurrentRef.current // sync so reverse sequence starts from current frame
         setSequenceProgress(1)
       } else if (effectiveScroll >= sequenceStart) {
         setPart2Progress(0)
@@ -322,10 +327,12 @@ export default function LandingPage() {
         smoothedPart3Ref.current = 0
         setSmoothedPart3Progress(0)
         setPart3FrameIndex(0)
+        part3FrameCurrentRef.current = 0
         part4TargetRef.current = 0
         smoothedPart4Ref.current = 0
         setSmoothedPart4Progress(0)
         setPart4FrameIndex(0)
+        part4FrameCurrentRef.current = 0
       }
     }
 
@@ -339,59 +346,86 @@ export default function LandingPage() {
     }
   }, [gradientTransitionComplete])
 
-  // Smooth Part 2 + Part 3: lerp progress and frame index so animation flows (no scroll jank)
+  // Frame-rate independent smooth animation: follow scroll target without jumping.
+  // Uses delta-time and max frame-delta so the sequence always "completes" smoothly (no skipped frames on fast scroll).
   useEffect(() => {
     if (!gradientTransitionComplete) return
+    lastTickTimeRef.current = performance.now()
     let rafId = 0
-    const tick = () => {
-      const target2 = part2TargetRef.current
-      const current2 = smoothedPart2Ref.current
-      const next2 = current2 + (target2 - current2) * PART2_SMOOTH_LERP
-      smoothedPart2Ref.current = next2
-      setSmoothedPart2Progress(next2)
-      if (target2 > 0) {
-        const frameIndex = Math.round(
+    const tick = (now: number) => {
+      const dtSec = Math.min(0.1, (now - lastTickTimeRef.current) / 1000)
+      lastTickTimeRef.current = now
+      // Time-based lerp factor (frame-rate independent): 1 - exp(-dt/tau)
+      const smoothFactor = 1 - Math.exp(-dtSec / SMOOTHING_TIME_CONSTANT)
+      const maxFrameDelta = FRAME_CATCHUP_MAX_PER_SEC * dtSec
+
+      if (part2TargetRef.current > 0) {
+        // Part 2: smooth progress with time-based lerp; cap frame delta so reverse sequence plays smoothly
+        const target2 = part2TargetRef.current
+        const current2 = smoothedPart2Ref.current
+        const next2 = current2 + (target2 - current2) * smoothFactor
+        smoothedPart2Ref.current = next2
+        setSmoothedPart2Progress(next2)
+        const targetPart2Frame =
           DAVINICI_FRAME_COUNT - 1 - next2 * (DAVINICI_FRAME_COUNT - 1 - DAVINICI_PART2_END_INDEX)
+        const part2Current = part2FrameCurrentRef.current
+        let part2Delta = targetPart2Frame - part2Current
+        part2Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part2Delta))
+        const nextPart2Frame = Math.max(
+          DAVINICI_PART2_END_INDEX,
+          Math.min(DAVINICI_FRAME_COUNT - 1, part2Current + part2Delta)
         )
-        const clampedFrame = Math.max(DAVINICI_PART2_END_INDEX, Math.min(DAVINICI_FRAME_COUNT - 1, frameIndex))
-        setSequenceFrameIndex(clampedFrame)
-        sequenceFrameCurrentRef.current = clampedFrame
+        part2FrameCurrentRef.current = nextPart2Frame
+        setSequenceFrameIndex(Math.round(nextPart2Frame))
+        sequenceFrameCurrentRef.current = nextPart2Frame
       } else {
-        // Part 1: smooth lerp frame index toward scroll target
+        // Part 1: cap frame delta so we never jump; sequence follows scroll smoothly on any refresh rate
         const targetFrame = sequenceFrameTargetRef.current
         const currentFrame = sequenceFrameCurrentRef.current
-        const nextFrame = currentFrame + (targetFrame - currentFrame) * PART1_SMOOTH_LERP
+        let delta = targetFrame - currentFrame
+        delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, delta))
+        const nextFrame = currentFrame + delta
         sequenceFrameCurrentRef.current = nextFrame
         setSequenceFrameIndex(Math.round(Math.max(0, Math.min(DAVINICI_FRAME_COUNT - 1, nextFrame))))
       }
+
       const target3 = part3TargetRef.current
       const current3 = smoothedPart3Ref.current
-      const next3 = current3 + (target3 - current3) * PART3_SMOOTH_LERP
+      const next3 = current3 + (target3 - current3) * smoothFactor
       smoothedPart3Ref.current = next3
       setSmoothedPart3Progress(next3)
       if (target3 > 0) {
-        const rawFrame = next3 * SEQUENCE02_FRAME_COUNT
-        const part3Frame = Math.min(SEQUENCE02_FRAME_COUNT - 1, Math.max(0, Math.floor(rawFrame)))
-        setPart3FrameIndex(part3Frame)
+        const targetPart3Frame = next3 * (SEQUENCE02_FRAME_COUNT - 1)
+        const part3Current = part3FrameCurrentRef.current
+        let part3Delta = targetPart3Frame - part3Current
+        part3Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part3Delta))
+        const nextPart3Frame = Math.max(0, Math.min(SEQUENCE02_FRAME_COUNT - 1, part3Current + part3Delta))
+        part3FrameCurrentRef.current = nextPart3Frame
+        setPart3FrameIndex(Math.floor(nextPart3Frame))
       }
+
       const target4 = part4TargetRef.current
       const current4 = smoothedPart4Ref.current
-      const next4 = current4 + (target4 - current4) * PART4_SMOOTH_LERP
+      const next4 = current4 + (target4 - current4) * smoothFactor
       smoothedPart4Ref.current = next4
       setSmoothedPart4Progress(next4)
       if (target4 > 0) {
-        // Ease frame progress so sequence03 last frame aligns with "inside" text reaching center
         const easedProgress = Math.pow(next4, PART4_FRAME_EASING)
-        const rawFrame4 = easedProgress * SEQUENCE03_FRAME_COUNT
-        const part4Frame = Math.min(SEQUENCE03_FRAME_COUNT - 1, Math.max(0, Math.floor(rawFrame4)))
-        setPart4FrameIndex(part4Frame)
+        const targetPart4Frame = easedProgress * (SEQUENCE03_FRAME_COUNT - 1)
+        const part4Current = part4FrameCurrentRef.current
+        let part4Delta = targetPart4Frame - part4Current
+        part4Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part4Delta))
+        const nextPart4Frame = Math.max(0, Math.min(SEQUENCE03_FRAME_COUNT - 1, part4Current + part4Delta))
+        part4FrameCurrentRef.current = nextPart4Frame
+        setPart4FrameIndex(Math.floor(nextPart4Frame))
       }
-      // Video transition: lerp toward scroll-driven target (60fps smooth)
+
       const videoTarget = videoTransitionTargetRef.current
       const videoCurrent = smoothedVideoTransitionRef.current
-      const videoNext = videoCurrent + (videoTarget - videoCurrent) * VIDEO_TRANSITION_LERP
+      const videoNext = videoCurrent + (videoTarget - videoCurrent) * smoothFactor
       smoothedVideoTransitionRef.current = videoNext
       setSmoothedVideoTransitionProgress(videoNext)
+
       rafId = requestAnimationFrame(tick)
     }
     rafId = requestAnimationFrame(tick)
