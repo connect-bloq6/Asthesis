@@ -241,7 +241,7 @@ export default function ScrollVideoBackground({
         <canvas
           ref={canvasRef}
           className="block w-full h-full"
-          style={{ width: '100%', height: '100%', objectFit: objectFit as string }}
+          style={{ width: '100%', height: '100%', objectFit }}
           aria-hidden
         />
         {!imagesLoaded && (
