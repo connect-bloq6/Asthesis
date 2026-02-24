@@ -66,6 +66,7 @@ const MAX_FRAME_DELTA_PER_TICK_MOBILE = 1.15
 const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
+const ALPHA_COMMIT_THRESHOLD = 0.03
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -117,6 +118,9 @@ export default function LandingPage() {
   const [heroCrossed, setHeroCrossed] = useState(false)
   const [polygonOpacity, setPolygonOpacity] = useState(0)
   const [sequenceFrameIndex, setSequenceFrameIndex] = useState(0)
+  const [seqBaseIndex, setSeqBaseIndex] = useState(0)
+  const [seqNextIndex, setSeqNextIndex] = useState(0)
+  const [seqAlpha, setSeqAlpha] = useState(0)
   const [sequenceProgress, setSequenceProgress] = useState(0)
   const [part2Progress, setPart2Progress] = useState(0)
   const [smoothedPart2Progress, setSmoothedPart2Progress] = useState(0)
@@ -126,9 +130,15 @@ export default function LandingPage() {
   const [videoStickyMode, setVideoStickyMode] = useState<'before' | 'stuck' | 'after'>('before')
   const [part3Progress, setPart3Progress] = useState(0)
   const [part3FrameIndex, setPart3FrameIndex] = useState(0)
+  const [p3BaseIndex, setP3BaseIndex] = useState(0)
+  const [p3NextIndex, setP3NextIndex] = useState(0)
+  const [p3Alpha, setP3Alpha] = useState(0)
   const [smoothedPart3Progress, setSmoothedPart3Progress] = useState(0)
   const [inPart3, setInPart3] = useState(false)
   const [part4FrameIndex, setPart4FrameIndex] = useState(0)
+  const [p4BaseIndex, setP4BaseIndex] = useState(0)
+  const [p4NextIndex, setP4NextIndex] = useState(0)
+  const [p4Alpha, setP4Alpha] = useState(0)
   const [smoothedPart4Progress, setSmoothedPart4Progress] = useState(0)
   const [inPart4, setInPart4] = useState(false)
   const [isDesktopViewport, setIsDesktopViewport] = useState(true) // lg breakpoint: frame uses full scale on desktop only
@@ -172,6 +182,16 @@ export default function LandingPage() {
   const lastSmoothedPart3StateRef = useRef(0)
   const lastSmoothedPart4StateRef = useRef(0)
   const lastSmoothedVideoStateRef = useRef(0)
+  const lastSeqBaseRef = useRef(0)
+  const lastSeqNextRef = useRef(0)
+  const lastSeqAlphaRef = useRef(0)
+  const lastP3BaseRef = useRef(0)
+  const lastP3NextRef = useRef(0)
+  const lastP3AlphaRef = useRef(0)
+  const lastP4BaseRef = useRef(0)
+  const lastP4NextRef = useRef(0)
+  const lastP4AlphaRef = useRef(0)
+  const lastCrossfadeStateTimeRef = useRef(0)
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -584,10 +604,33 @@ export default function LandingPage() {
         )
         part2FrameCurrentRef.current = nextPart2Frame
         sequenceFrameCurrentRef.current = nextPart2Frame
-        const seqInt = nearestLoadedReverse(loadedSeqRef.current, nextPart2Frame, DAVINICI_PART2_END_INDEX, DAVINICI_FRAME_COUNT - 1)
-        if (seqInt !== lastSeqFrameRef.current) {
-          lastSeqFrameRef.current = seqInt
-          setSequenceFrameIndex(seqInt)
+        const loadedSeq = loadedSeqRef.current
+        let base = clamp(Math.ceil(nextPart2Frame), DAVINICI_PART2_END_INDEX, DAVINICI_FRAME_COUNT - 1)
+        let alpha = base - nextPart2Frame
+        let next = clamp(base - 1, DAVINICI_PART2_END_INDEX, DAVINICI_FRAME_COUNT - 1)
+        if (!loadedSeq.has(base)) {
+          base = nearestLoadedReverse(loadedSeq, nextPart2Frame, DAVINICI_PART2_END_INDEX, DAVINICI_FRAME_COUNT - 1)
+          alpha = 0
+          next = base
+        } else if (alpha > 0 && !loadedSeq.has(next)) {
+          alpha = 0
+          next = base
+        }
+        alpha = clamp(alpha, 0, 1)
+        const seqCommit =
+          base !== lastSeqBaseRef.current ||
+          next !== lastSeqNextRef.current ||
+          Math.abs(alpha - lastSeqAlphaRef.current) >= ALPHA_COMMIT_THRESHOLD ||
+          now - lastCrossfadeStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
+        if (seqCommit) {
+          lastSeqBaseRef.current = base
+          lastSeqNextRef.current = next
+          lastSeqAlphaRef.current = alpha
+          lastCrossfadeStateTimeRef.current = now
+          setSeqBaseIndex(base)
+          setSeqNextIndex(next)
+          setSeqAlpha(alpha)
+          setSequenceFrameIndex(base)
         }
       } else {
         // Part 1: smoothed target (no jump) then cap frame delta — smooth on desktop and mobile
@@ -602,11 +645,34 @@ export default function LandingPage() {
         delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, delta))
         const nextFrame = currentFrame + delta
         sequenceFrameCurrentRef.current = nextFrame
-        const rawSeqInt = clamp(Math.round(nextFrame), 0, DAVINICI_FRAME_COUNT - 1)
-        const seqInt = nearestLoadedForward(loadedSeqRef.current, rawSeqInt, DAVINICI_FRAME_COUNT - 1)
-        if (seqInt !== lastSeqFrameRef.current) {
-          lastSeqFrameRef.current = seqInt
-          setSequenceFrameIndex(seqInt)
+        const float = nextFrame
+        const loadedSeq = loadedSeqRef.current
+        let base = clamp(Math.floor(float), 0, DAVINICI_FRAME_COUNT - 1)
+        let frac = float - base
+        let next = clamp(base + 1, 0, DAVINICI_FRAME_COUNT - 1)
+        if (!loadedSeq.has(base)) {
+          base = nearestLoadedForward(loadedSeq, base, DAVINICI_FRAME_COUNT - 1)
+          frac = 0
+          next = base
+        } else if (frac > 0 && !loadedSeq.has(next)) {
+          frac = 0
+          next = base
+        }
+        const alpha = clamp(frac, 0, 1)
+        const seqCommit =
+          base !== lastSeqBaseRef.current ||
+          next !== lastSeqNextRef.current ||
+          Math.abs(alpha - lastSeqAlphaRef.current) >= ALPHA_COMMIT_THRESHOLD ||
+          now - lastCrossfadeStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
+        if (seqCommit) {
+          lastSeqBaseRef.current = base
+          lastSeqNextRef.current = next
+          lastSeqAlphaRef.current = alpha
+          lastCrossfadeStateTimeRef.current = now
+          setSeqBaseIndex(base)
+          setSeqNextIndex(next)
+          setSeqAlpha(alpha)
+          setSequenceFrameIndex(base)
         }
       }
 
@@ -626,16 +692,44 @@ export default function LandingPage() {
         part3Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part3Delta))
         const nextPart3Frame = Math.max(0, Math.min(SEQUENCE02_FRAME_COUNT - 1, part3Current + part3Delta))
         part3FrameCurrentRef.current = nextPart3Frame
-        const rawP3Int = clamp(Math.round(nextPart3Frame), 0, SEQUENCE02_FRAME_COUNT - 1)
-        const p3Int = nearestLoadedForward(loadedP3Ref.current, rawP3Int, SEQUENCE02_FRAME_COUNT - 1)
-        if (p3Int !== lastP3FrameRef.current) {
-          lastP3FrameRef.current = p3Int
-          setPart3FrameIndex(p3Int)
+        const float = nextPart3Frame
+        const loadedP3 = loadedP3Ref.current
+        let p3Base = clamp(Math.floor(float), 0, SEQUENCE02_FRAME_COUNT - 1)
+        let p3Frac = float - p3Base
+        let p3Next = clamp(p3Base + 1, 0, SEQUENCE02_FRAME_COUNT - 1)
+        if (!loadedP3.has(p3Base)) {
+          p3Base = nearestLoadedForward(loadedP3, p3Base, SEQUENCE02_FRAME_COUNT - 1)
+          p3Frac = 0
+          p3Next = p3Base
+        } else if (p3Frac > 0 && !loadedP3.has(p3Next)) {
+          p3Frac = 0
+          p3Next = p3Base
+        }
+        const p3AlphaVal = clamp(p3Frac, 0, 1)
+        const p3Commit =
+          p3Base !== lastP3BaseRef.current ||
+          p3Next !== lastP3NextRef.current ||
+          Math.abs(p3AlphaVal - lastP3AlphaRef.current) >= ALPHA_COMMIT_THRESHOLD ||
+          now - lastCrossfadeStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
+        if (p3Commit) {
+          lastP3BaseRef.current = p3Base
+          lastP3NextRef.current = p3Next
+          lastP3AlphaRef.current = p3AlphaVal
+          lastCrossfadeStateTimeRef.current = now
+          setP3BaseIndex(p3Base)
+          setP3NextIndex(p3Next)
+          setP3Alpha(p3AlphaVal)
+          setPart3FrameIndex(p3Base)
         }
       } else {
         part3FrameCurrentRef.current = 0
-        if (lastP3FrameRef.current !== 0) {
-          lastP3FrameRef.current = 0
+        if (lastP3BaseRef.current !== 0 || lastP3NextRef.current !== 0 || lastP3AlphaRef.current !== 0) {
+          lastP3BaseRef.current = 0
+          lastP3NextRef.current = 0
+          lastP3AlphaRef.current = 0
+          setP3BaseIndex(0)
+          setP3NextIndex(0)
+          setP3Alpha(0)
           setPart3FrameIndex(0)
         }
       }
@@ -657,16 +751,44 @@ export default function LandingPage() {
         part4Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part4Delta))
         const nextPart4Frame = Math.max(0, Math.min(SEQUENCE03_FRAME_COUNT - 1, part4Current + part4Delta))
         part4FrameCurrentRef.current = nextPart4Frame
-        const rawP4Int = clamp(Math.round(nextPart4Frame), 0, SEQUENCE03_FRAME_COUNT - 1)
-        const p4Int = nearestLoadedForward(loadedP4Ref.current, rawP4Int, SEQUENCE03_FRAME_COUNT - 1)
-        if (p4Int !== lastP4FrameRef.current) {
-          lastP4FrameRef.current = p4Int
-          setPart4FrameIndex(p4Int)
+        const float = nextPart4Frame
+        const loadedP4 = loadedP4Ref.current
+        let p4Base = clamp(Math.floor(float), 0, SEQUENCE03_FRAME_COUNT - 1)
+        let p4Frac = float - p4Base
+        let p4Next = clamp(p4Base + 1, 0, SEQUENCE03_FRAME_COUNT - 1)
+        if (!loadedP4.has(p4Base)) {
+          p4Base = nearestLoadedForward(loadedP4, p4Base, SEQUENCE03_FRAME_COUNT - 1)
+          p4Frac = 0
+          p4Next = p4Base
+        } else if (p4Frac > 0 && !loadedP4.has(p4Next)) {
+          p4Frac = 0
+          p4Next = p4Base
+        }
+        const p4AlphaVal = clamp(p4Frac, 0, 1)
+        const p4Commit =
+          p4Base !== lastP4BaseRef.current ||
+          p4Next !== lastP4NextRef.current ||
+          Math.abs(p4AlphaVal - lastP4AlphaRef.current) >= ALPHA_COMMIT_THRESHOLD ||
+          now - lastCrossfadeStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
+        if (p4Commit) {
+          lastP4BaseRef.current = p4Base
+          lastP4NextRef.current = p4Next
+          lastP4AlphaRef.current = p4AlphaVal
+          lastCrossfadeStateTimeRef.current = now
+          setP4BaseIndex(p4Base)
+          setP4NextIndex(p4Next)
+          setP4Alpha(p4AlphaVal)
+          setPart4FrameIndex(p4Base)
         }
       } else {
         part4FrameCurrentRef.current = 0
-        if (lastP4FrameRef.current !== 0) {
-          lastP4FrameRef.current = 0
+        if (lastP4BaseRef.current !== 0 || lastP4NextRef.current !== 0 || lastP4AlphaRef.current !== 0) {
+          lastP4BaseRef.current = 0
+          lastP4NextRef.current = 0
+          lastP4AlphaRef.current = 0
+          setP4BaseIndex(0)
+          setP4NextIndex(0)
+          setP4Alpha(0)
           setPart4FrameIndex(0)
         }
       }
@@ -864,24 +986,41 @@ export default function LandingPage() {
                   ))}
                 </svg>
               </div>
-              {/* Frame image: Part 1/2 davinici; Part 3 sequence02 (scale down); Part 4 sequence03 — mobile: fit to viewport width (contain); desktop (lg): full bleed unchanged */}
-              <div className="relative z-10 w-full min-w-0 max-w-[100vw] h-[72vh] max-h-[78dvh] overflow-hidden border-0 border-none sm:h-[76vh] sm:max-h-[80dvh] md:w-[98vw] md:max-w-[1200px] md:h-[92vh] md:max-h-[800px] lg:w-full lg:h-full lg:max-w-none lg:max-h-none lg:min-w-full">
-                <img
-                  src={
-                    inPart4
-                      ? sequence03FramePath(part4FrameIndex)
-                      : inPart3
-                        ? sequence02FramePath(part3FrameIndex)
-                        : daviniciFramePath(sequenceFrameIndex)
-                  }
-                  alt=""
-                  className="block w-full min-w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
-                  style={{
+              {/* Frame image: Part 1/2 davinici; Part 3 sequence02; Part 4 sequence03 — two-image crossfade for glide */}
+              <div className="relative z-10 w-full min-w-0 max-w-[100vw] h-[72vh] max-h-[78dvh] overflow-hidden border-0 border-none sm:h-[76vh] sm:max-h-[80dvh] md:w-[98vw] md:max-w-[1200px] md:h-[92vh] md:max-h-[800px] lg:w-full lg:h-full lg:max-w-none lg:max-h-none lg:min-w-full pointer-events-none">
+                {(() => {
+                  const basePath = inPart4
+                    ? sequence03FramePath(p4BaseIndex)
+                    : inPart3
+                      ? sequence02FramePath(p3BaseIndex)
+                      : daviniciFramePath(seqBaseIndex)
+                  const nextPath = inPart4
+                    ? sequence03FramePath(p4NextIndex)
+                    : inPart3
+                      ? sequence02FramePath(p3NextIndex)
+                      : daviniciFramePath(seqNextIndex)
+                  const alpha = inPart4 ? p4Alpha : inPart3 ? p3Alpha : seqAlpha
+                  const sharedStyle: React.CSSProperties = {
                     ...frameImgStyle,
-                    transform:
-                      `translateZ(0) scale(${FRAME_CROP_SCALE})`,
-                  }}
-                />
+                    transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`,
+                  }
+                  return (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={basePath}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
+                        style={{ ...sharedStyle, opacity: 1 }}
+                      />
+                      <img
+                        src={nextPath}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
+                        style={{ ...sharedStyle, opacity: alpha, willChange: 'opacity' }}
+                      />
+                    </div>
+                  )
+                })()}
               </div>
               {/* System text: fixed at left center; comes up with frame 1, then scrolls up as sequence runs */}
               <div
