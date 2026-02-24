@@ -67,11 +67,14 @@ const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
-/** Part 1: 0 → end. Part 2: end → mid (reverse). */
-const SEQ_VIDEO_MID = 0.5
-const SEQ_SCRUB_FRAME_DUR = 1 / 60
-const SEQ_SCRUB_TAU_MOBILE = 0.065
-const SEQ_SCRUB_TAU_DESKTOP = 0.045
+/** Part 1 only: rate-follow, no seeking. Part 2 handled later. */
+const SEQ_RATE_KP_DESKTOP = 1.15
+const SEQ_RATE_KP_MOBILE = 1.35
+const SEQ_RATE_MAX_DESKTOP = 2.5
+const SEQ_RATE_MAX_MOBILE = 2.0
+const SEQ_RATE_MIN = 0.1
+const SEQ_CORRECTION_THRESHOLD_S = 0.2
+const SEQ_CORRECTION_COOLDOWN_MS = 250
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -200,12 +203,9 @@ export default function LandingPage() {
   const seqVideoRef = useRef<HTMLVideoElement>(null)
   const seqReadyRef = useRef(false)
   const seqDurationRef = useRef(0)
-  const seqTargetTimeRef = useRef(0)
-  const seqSmoothTimeRef = useRef(0)
-  const seqSeekingRef = useRef(false)
-  const seqLastPresentedRef = useRef(-1)
-  const seqLastNowRef = useRef(0)
-  const seqUseRvfCRef = useRef(false)
+  const lastNowRef = useRef(0)
+  const lastCorrectionAtRef = useRef(0)
+  const playingRef = useRef(false)
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -314,6 +314,29 @@ export default function LandingPage() {
     )
     observer.observe(video)
     return () => observer.disconnect()
+  }, [gradientTransitionComplete])
+
+  // Part 1 seq video: prime decoder on metadata load (important for mobile)
+  useEffect(() => {
+    if (!gradientTransitionComplete) return
+    const v = seqVideoRef.current
+    if (!v) return
+    const onMeta = async () => {
+      seqDurationRef.current = v.duration || 0
+      seqReadyRef.current = true
+      try {
+        await v.play()
+        v.pause()
+        playingRef.current = false
+      } catch {
+        // autoplay blocked
+      }
+      v.currentTime = 0
+      v.playbackRate = 1
+    }
+    v.addEventListener('loadedmetadata', onMeta)
+    if (v.readyState >= 1) onMeta()
+    return () => v.removeEventListener('loadedmetadata', onMeta)
   }, [gradientTransitionComplete])
 
   // Update only target refs from current scroll position (no setState). Single scroll source (window) + stable vh for deterministic mobile behavior.
@@ -611,47 +634,42 @@ export default function LandingPage() {
         // Part 1: no frame state; video scrub drives Part1/2 display
       }
 
-      // Part1/2 video: Part 1 = 0→end (forward); Part 2 = end→mid (reverse)
-      if (seqReadyRef.current && seqDurationRef.current > 0) {
-        const duration = seqDurationRef.current
-        const midTime = duration * SEQ_VIDEO_MID
-        const p2 = part2TargetRef.current
-        if (p2 > 0) {
-          seqTargetTimeRef.current = duration - p2 * (duration - midTime)
-        } else {
-          const p1 = sequenceFrameTargetRef.current / (DAVINICI_FRAME_COUNT - 1)
-          seqTargetTimeRef.current = clamp(p1, 0, 1) * duration
-        }
-      }
-
-      // Part1/2 scrub engine: smooth, snap to 60fps, cap delta, seek with rVFC
+      // Part 1 only: rate-follow (playbackRate), no per-frame seeking. Part 2 = pause and hold at end.
       const video = seqVideoRef.current
-      if (seqReadyRef.current && video) {
-        const dtSec = Math.min(0.05, (now - seqLastNowRef.current) / 1000)
-        seqLastNowRef.current = now
-        const tau = isMobile ? SEQ_SCRUB_TAU_MOBILE : SEQ_SCRUB_TAU_DESKTOP
-        const a = 1 - Math.exp(-dtSec / tau)
-        seqSmoothTimeRef.current += (seqTargetTimeRef.current - seqSmoothTimeRef.current) * a
-        const frameDur = SEQ_SCRUB_FRAME_DUR
-        const maxTime = seqDurationRef.current
-        let snapped = Math.round(seqSmoothTimeRef.current / frameDur) * frameDur
-        snapped = clamp(snapped, 0, maxTime)
-        const maxDelta = isMobile ? 1.2 * frameDur : 2.0 * frameDur
+      if (seqReadyRef.current && video && seqDurationRef.current > 0) {
+        const scrollY = getScrollY()
+        const vh = stableVhRef.current
+        const sequenceStart = vh
+        const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
+        const part2Start = sequenceStart + part1Height
+        const duration = seqDurationRef.current
+        const inPart1 = scrollY >= sequenceStart && scrollY < part2Start
+        const p1 = clamp((scrollY - sequenceStart) / part1Height, 0, 1)
+        const desiredTime = p1 * duration
         const currentTime = video.currentTime
-        const delta = clamp(snapped - currentTime, -maxDelta, maxDelta)
-        const next = currentTime + delta
-        if (!seqSeekingRef.current && Math.abs(next - seqLastPresentedRef.current) >= frameDur * 0.5) {
-          seqSeekingRef.current = true
-          video.currentTime = next
-          const onPresented = () => {
-            seqLastPresentedRef.current = video.currentTime
-            seqSeekingRef.current = false
+        const error = desiredTime - currentTime
+
+        if (inPart1) {
+          if (!playingRef.current) {
+            video.play().catch(() => {})
+            playingRef.current = true
           }
-          if (seqUseRvfCRef.current && typeof (video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback === 'function') {
-            ;(video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => number }).requestVideoFrameCallback(onPresented)
-          } else {
-            setTimeout(onPresented, 34)
+          const Kp = isMobile ? SEQ_RATE_KP_MOBILE : SEQ_RATE_KP_DESKTOP
+          const maxRate = isMobile ? SEQ_RATE_MAX_MOBILE : SEQ_RATE_MAX_DESKTOP
+          let rate = 1 + error * Kp
+          rate = clamp(rate, SEQ_RATE_MIN, maxRate)
+          video.playbackRate = rate
+          if (Math.abs(error) > SEQ_CORRECTION_THRESHOLD_S && now - lastCorrectionAtRef.current >= SEQ_CORRECTION_COOLDOWN_MS) {
+            video.currentTime = desiredTime
+            lastCorrectionAtRef.current = now
           }
+        } else {
+          if (!video.paused) {
+            video.pause()
+            playingRef.current = false
+          }
+          if (scrollY < sequenceStart) video.currentTime = 0
+          else if (scrollY >= part2Start) video.currentTime = duration
         }
       }
 
@@ -1004,24 +1022,14 @@ export default function LandingPage() {
                     muted
                     playsInline
                     preload="auto"
+                    loop={false}
                     className="block w-full min-w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
                     style={{
                       ...frameImgStyle,
                       transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`,
                       willChange: 'transform',
+                      contain: 'layout paint',
                       backfaceVisibility: 'hidden',
-                    }}
-                    onLoadedMetadata={(e) => {
-                      const v = e.currentTarget
-                      seqDurationRef.current = v.duration
-                      seqReadyRef.current = true
-                      seqUseRvfCRef.current =
-                        typeof (v as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback === 'function'
-                      v.playbackRate = 1
-                      v.play()
-                        .then(() => v.pause())
-                        .catch(() => {})
-                      v.currentTime = 0
                     }}
                   />
                 )}
