@@ -11,7 +11,7 @@ export default function ImpactSection6() {
       className="relative w-full bg-white"
       aria-label="Principle behind Asthesis"
     >
-      <div className="max-w-[900px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 py-12 sm:py-20 md:py-24 lg:py-28 text-center">
+      <div className="max-w-[900px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 pt-5 sm:pt-10 md:pt-12 lg:pt-16 pb-10 sm:pb-16 md:pb-20 lg:pb-24 text-center">
         {/* Quote – two lines; "able" and "to ask" in reddish-brown */}
         <blockquote
           className="font-medium text-[#424242] mb-5 sm:mb-8 text-left sm:text-center"

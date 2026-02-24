@@ -51,10 +51,10 @@ export default function ProductSection4() {
       className="relative w-full bg-white"
       aria-label="Features available"
     >
-      <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 lg:pt-24 xl:pt-28">
+      <div className="max-w-[1280px] mx-auto w-full px-3 sm:px-4 lg:px-4 xl:px-6 pt-16 sm:pt-20 lg:pt-24 xl:pt-28">
         {/* Intro: heading, description, button */}
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between lg:gap-10 mb-10 sm:mb-12">
-          <div className="max-w-[720px]">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:gap-10 mb-10 sm:mb-12">
+          <div className="min-w-0 lg:flex-1 lg:min-w-[720px] lg:pr-8">
             <h2
               className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#0A0A0A] uppercase tracking-tight mb-4 sm:mb-5"
               style={{
@@ -76,11 +76,11 @@ export default function ProductSection4() {
           <div className="mt-6 lg:mt-0 lg:flex-shrink-0">
             <Link
               href="#explore"
-              className="inline-flex items-center gap-3 w-fit px-6 py-3.5 sm:px-7 sm:py-4 rounded-full bg-[#F6EFE0] border border-[#E5D9C8] hover:bg-[#EBDCC8] transition-colors text-[#1D1D1F] text-[15px] font-medium"
+              className="inline-flex items-center gap-2 w-fit px-4 py-2.5 sm:px-5 sm:py-2.5 rounded-full bg-[#F6EFE0] border border-[#E5D9C8] hover:bg-[#EBDCC8] transition-colors text-[#1D1D1F] text-[14px] sm:text-[15px] font-medium"
               style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
             >
               Explore the Device
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden className="flex-shrink-0">
                 <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </Link>
@@ -90,12 +90,12 @@ export default function ProductSection4() {
         {/* Horizontal separator */}
         <div className="border-b border-[#E5E7EB] w-full mb-12 sm:mb-16" />
 
-        {/* 3 feature cards at once, with left/right nav icons (Figma 31×31 circle, #636363 arrow) */}
-        <div className="relative flex items-center gap-3 sm:gap-4 md:gap-6 pb-16 sm:pb-20 lg:pb-24 xl:pb-28">
-          {/* Left icon – Figma: 31×31 circle, dark grey arrow */}
+        {/* 3 feature cards at once, with left/right nav icons (Figma: outline circle 31×31, arrow #636363) */}
+        <div className="relative flex items-center gap-4 sm:gap-6 lg:gap-8 pb-16 sm:pb-20 lg:pb-24 xl:pb-28">
+          {/* Left icon – outline circle, dark grey arrow #636363 */}
           <button
             type="button"
-            className="flex-shrink-0 w-[31px] h-[31px] sm:w-10 sm:h-10 rounded-full bg-[#E5E7EB] hover:bg-[#D1D5DB] flex items-center justify-center transition-colors"
+            className="flex-shrink-0 w-[31px] h-[31px] rounded-full border-2 border-[#636363] bg-transparent hover:bg-[#636363]/10 flex items-center justify-center transition-colors"
             aria-label="Previous"
           >
             <NavArrowLeft />
@@ -135,10 +135,10 @@ export default function ProductSection4() {
             ))}
           </div>
 
-          {/* Right icon – same Figma style */}
+          {/* Right icon – outline circle, dark grey arrow #636363 */}
           <button
             type="button"
-            className="flex-shrink-0 w-[31px] h-[31px] sm:w-10 sm:h-10 rounded-full bg-[#E5E7EB] hover:bg-[#D1D5DB] flex items-center justify-center transition-colors"
+            className="flex-shrink-0 w-[31px] h-[31px] rounded-full border-2 border-[#636363] bg-transparent hover:bg-[#636363]/10 flex items-center justify-center transition-colors"
             aria-label="Next"
           >
             <NavArrowRight />

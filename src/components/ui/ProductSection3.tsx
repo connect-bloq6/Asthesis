@@ -21,7 +21,7 @@ export default function ProductSection3() {
           Intelligence That Listens Before You Ask
         </h2>
         <p
-          className="text-base sm:text-lg text-[#4A5565] leading-relaxed max-w-[640px]"
+          className="text-base sm:text-lg text-[#4A5565] leading-relaxed max-w-[660px]"
           style={{
             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
             fontWeight: 400,

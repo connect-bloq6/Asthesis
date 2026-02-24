@@ -14,7 +14,7 @@ export default function ImpactSection8() {
       aria-label="Our vision"
     >
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-10 xl:px-12 py-10 sm:py-12 md:py-16 lg:py-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-5 xl:gap-6 lg:items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-3 xl:gap-4 lg:items-start">
           {/* Left column – device card: image and card bottom aligned (no gap) */}
           <div className="order-2 lg:order-1 flex justify-center lg:justify-start w-full">
             <div className="w-full max-w-[340px] sm:max-w-[380px] lg:max-w-[420px] rounded-xl sm:rounded-2xl bg-[#F3F4F6] flex flex-col justify-end pt-4 sm:pt-6 px-4 sm:px-6 pb-0 min-h-[200px] sm:min-h-[240px] lg:min-h-[260px]">
@@ -31,17 +31,17 @@ export default function ImpactSection8() {
             </div>
           </div>
 
-          {/* Right column – OUR VISION, heading, description (3 lines); shifted a little left on desktop */}
-          <div className="order-1 lg:order-2 min-w-0 lg:-ml-4 xl:-ml-6">
+          {/* Right column – OUR VISION, heading, description (3 lines); closer to image, shifted left */}
+          <div className="order-1 lg:order-2 min-w-0 lg:-ml-[3%] xl:-ml-[4%] lg:pl-0">
             <p
               className="uppercase tracking-[0.08em] mb-2 sm:mb-4"
               style={{
-                fontFamily: 'Inter, var(--font-inter), system-ui, sans-serif',
+                fontFamily: 'var(--font-inter), Inter',
                 fontWeight: 500,
                 fontSize: '12px',
                 lineHeight: '20px',
                 letterSpacing: '0.1em',
-                color: '#6B7280',
+                color: '#6E6E73',
               }}
             >
               OUR VISION
@@ -56,9 +56,9 @@ export default function ImpactSection8() {
               <span className="block">A future where independence <span style={{ color: '#B94A3A' }}>coexist</span></span>
               <span className="block mt-1">and safety</span>
             </h2>
-            {/* Description: exactly 3 lines – same technique as THE GAP / THE REALITY */}
+            {/* Description: exactly 3 lines – min-width so it stays 3 lines */}
             <div
-              className="w-full max-w-full text-[#4A5565] text-sm sm:text-base md:text-lg"
+              className="w-full max-w-full lg:min-w-[420px] text-[#4A5565] text-sm sm:text-base md:text-lg"
               style={{
                 fontFamily: 'Inter, var(--font-inter), system-ui, sans-serif',
                 fontWeight: 400,

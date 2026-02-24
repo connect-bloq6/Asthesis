@@ -11,19 +11,19 @@ export default function ImpactSection3() {
       className="relative w-full bg-white"
       aria-label="The reality"
     >
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 py-10 sm:py-16 md:py-20 lg:py-24">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 pt-2 sm:pt-5 md:pt-7 lg:pt-10 pb-10 sm:pb-16 md:pb-20 lg:pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-10 lg:gap-16 lg:items-start">
           {/* Left column – THE REALITY label then two-line heading */}
           <div>
             <p
               className="uppercase tracking-[0.08em] mb-3 sm:mb-4"
               style={{
-                fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                fontFamily: 'var(--font-inter), Inter',
                 fontWeight: 500,
                 fontSize: '12px',
                 lineHeight: '20px',
                 letterSpacing: '0.1em',
-                color: '#6B7280',
+                color: '#6E6E73',
               }}
             >
               THE REALITY

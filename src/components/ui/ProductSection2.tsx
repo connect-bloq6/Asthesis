@@ -30,10 +30,10 @@ export default function ProductSection2() {
       className="relative w-full bg-black overflow-hidden"
       aria-label="Designed for homes, not hospitals"
     >
-      <div className="max-w-[1200px] mx-auto w-full px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 lg:pt-24 xl:pt-28 pb-12 sm:pb-16 lg:pb-0">
-        <div className="grid grid-cols-1 lg:grid-cols-2 lg:gap-10 xl:gap-16 lg:items-start overflow-visible min-h-[420px]">
-          {/* Left column – heading (with spacing), paragraph, then features in the middle */}
-          <div className="order-2 lg:order-1 flex flex-col lg:min-h-[420px]">
+      <div className="max-w-[1200px] mx-auto w-full pl-2 pr-4 sm:pl-3 sm:pr-6 lg:pl-4 lg:pr-8 xl:pl-4 xl:pr-8 pt-16 sm:pt-20 lg:pt-24 xl:pt-28 pb-12 sm:pb-16 lg:pb-0">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(780px,1.2fr)_minmax(280px,0.8fr)] lg:gap-10 xl:gap-12 lg:items-start overflow-visible min-h-[420px]">
+          {/* Left column – min 780px so description stays in 2 lines at full width; shift ~2% left */}
+          <div className="order-2 lg:order-1 flex flex-col lg:min-h-[420px] lg:min-w-0 lg:-ml-[2%]">
             {/* Heading – one line */}
             <h2
               className="text-3xl sm:text-4xl md:text-[2.75rem] lg:text-[3rem] xl:text-[3.25rem] font-bold text-white leading-tight tracking-tight pt-0 lg:whitespace-nowrap"
@@ -44,9 +44,9 @@ export default function ProductSection2() {
             >
               Designed for Homes, Not Hospitals
             </h2>
-            {/* Description – two lines, no awkward word breaks */}
+            {/* Description – two lines: wider block so text wraps to 2 lines */}
             <p
-              className="text-white/90 text-base sm:text-lg leading-relaxed mt-6 sm:mt-8 w-full max-w-[560px] min-w-0"
+              className="text-white/90 text-base sm:text-lg leading-snug mt-6 sm:mt-8 w-full min-w-0"
               style={{
                 fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                 fontWeight: 400,

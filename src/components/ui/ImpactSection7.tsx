@@ -22,17 +22,17 @@ export default function ImpactSection7() {
     >
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-10 xl:px-12 py-10 sm:py-16 md:py-20 lg:py-24">
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-8 sm:gap-10 lg:gap-10 xl:gap-12 lg:items-center">
-          {/* Left column – more width so "but by" stays on line 1 */}
-          <div className="order-2 lg:order-1 min-w-0">
+          {/* Left column – more width so "but by" stays on line 1; shift ~1% right */}
+          <div className="order-2 lg:order-1 min-w-0 ml-[1%]">
             <p
               className="uppercase tracking-[0.08em] mb-3 sm:mb-4"
               style={{
-                fontFamily: 'Inter, var(--font-inter), system-ui, sans-serif',
+                fontFamily: 'var(--font-inter), Inter',
                 fontWeight: 500,
                 fontSize: '12px',
                 lineHeight: '20px',
                 letterSpacing: '0.1em',
-                color: '#6B7280',
+                color: '#6E6E73',
               }}
             >
               OUR MISSION

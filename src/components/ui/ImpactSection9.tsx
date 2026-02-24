@@ -77,7 +77,7 @@ export default function ImpactSection9() {
       </div>
       {/* men.png – responsive; full width in container */}
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 pb-10 sm:pb-16 md:pb-24">
-        <div className="relative w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl max-w-[1232px] aspect-[4/3] sm:aspect-[1232/600] min-h-[180px] sm:min-h-[220px] md:min-h-[260px] lg:min-h-[280px] mx-auto">
+        <div className="relative w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl max-w-[1232px] aspect-[4/3] sm:aspect-[1232/600] min-h-[200px] sm:min-h-[280px] max-h-[420px] sm:max-h-[480px] lg:max-h-[520px] mx-auto">
           <Image
             src="/images/men.png"
             alt=""
