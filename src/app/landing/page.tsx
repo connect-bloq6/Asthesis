@@ -67,14 +67,10 @@ const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
-/** Part 1 only: rate-follow, no seeking. Part 2 handled later. */
-const SEQ_RATE_KP_DESKTOP = 1.15
-const SEQ_RATE_KP_MOBILE = 1.35
-const SEQ_RATE_MAX_DESKTOP = 2.5
-const SEQ_RATE_MAX_MOBILE = 2.0
-const SEQ_RATE_MIN = 0.1
-const SEQ_CORRECTION_THRESHOLD_S = 0.2
-const SEQ_CORRECTION_COOLDOWN_MS = 250
+/** Part 1: scroll-locked seek (30Hz max, 60fps snap). No playback when scroll stops. */
+const SCROLL_IDLE_MS = 90
+const SEQ_SEEK_INTERVAL_MS = 33
+const SEQ_FRAME_DUR = 1 / 60
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -203,9 +199,12 @@ export default function LandingPage() {
   const seqVideoRef = useRef<HTMLVideoElement>(null)
   const seqReadyRef = useRef(false)
   const seqDurationRef = useRef(0)
-  const lastNowRef = useRef(0)
-  const lastCorrectionAtRef = useRef(0)
-  const playingRef = useRef(false)
+  const seqUseRvfCRef = useRef(false)
+  const scrollActiveRef = useRef(false)
+  const lastScrollYRef = useRef(0)
+  const lastScrollAtRef = useRef(0)
+  const lastSeekAtRef = useRef(0)
+  const pendingSeekRef = useRef<number | null>(null)
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -324,10 +323,11 @@ export default function LandingPage() {
     const onMeta = async () => {
       seqDurationRef.current = v.duration || 0
       seqReadyRef.current = true
+      seqUseRvfCRef.current =
+        typeof (v as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback === 'function'
       try {
         await v.play()
         v.pause()
-        playingRef.current = false
       } catch {
         // autoplay blocked
       }
@@ -634,42 +634,55 @@ export default function LandingPage() {
         // Part 1: no frame state; video scrub drives Part1/2 display
       }
 
-      // Part 1 only: rate-follow (playbackRate), no per-frame seeking. Part 2 = pause and hold at end.
+      // Scroll-active detection (for Part 1 scroll-locked seek)
+      const y = getScrollY()
+      if (Math.abs(y - lastScrollYRef.current) > 0.5) {
+        scrollActiveRef.current = true
+        lastScrollAtRef.current = now
+        lastScrollYRef.current = y
+      } else if (now - lastScrollAtRef.current > SCROLL_IDLE_MS) {
+        scrollActiveRef.current = false
+      }
+
+      // Part 1: scroll-locked hybrid — seek at 30Hz while scrolling, pause + lock when stopped
       const video = seqVideoRef.current
       if (seqReadyRef.current && video && seqDurationRef.current > 0) {
-        const scrollY = getScrollY()
         const vh = stableVhRef.current
         const sequenceStart = vh
         const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
         const part2Start = sequenceStart + part1Height
         const duration = seqDurationRef.current
-        const inPart1 = scrollY >= sequenceStart && scrollY < part2Start
-        const p1 = clamp((scrollY - sequenceStart) / part1Height, 0, 1)
-        const desiredTime = p1 * duration
-        const currentTime = video.currentTime
-        const error = desiredTime - currentTime
+        const inPart1 = y >= sequenceStart && y < part2Start
+        const frameDur = SEQ_FRAME_DUR
+
+        video.pause()
 
         if (inPart1) {
-          if (!playingRef.current) {
-            video.play().catch(() => {})
-            playingRef.current = true
-          }
-          const Kp = isMobile ? SEQ_RATE_KP_MOBILE : SEQ_RATE_KP_DESKTOP
-          const maxRate = isMobile ? SEQ_RATE_MAX_MOBILE : SEQ_RATE_MAX_DESKTOP
-          let rate = 1 + error * Kp
-          rate = clamp(rate, SEQ_RATE_MIN, maxRate)
-          video.playbackRate = rate
-          if (Math.abs(error) > SEQ_CORRECTION_THRESHOLD_S && now - lastCorrectionAtRef.current >= SEQ_CORRECTION_COOLDOWN_MS) {
-            video.currentTime = desiredTime
-            lastCorrectionAtRef.current = now
+          const p1 = clamp((y - sequenceStart) / part1Height, 0, 1)
+          let desiredTime = p1 * duration
+          desiredTime = clamp(Math.round(desiredTime / frameDur) * frameDur, 0, Math.max(0, duration - frameDur))
+
+          if (scrollActiveRef.current) {
+            const canSeek = !seqUseRvfCRef.current ? now - lastSeekAtRef.current >= SEQ_SEEK_INTERVAL_MS : pendingSeekRef.current === null && now - lastSeekAtRef.current >= SEQ_SEEK_INTERVAL_MS
+            if (canSeek) {
+              video.currentTime = desiredTime
+              lastSeekAtRef.current = now
+              if (seqUseRvfCRef.current) {
+                pendingSeekRef.current = desiredTime
+                const rvfc = (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => number }).requestVideoFrameCallback
+                rvfc.call(video, () => {
+                  pendingSeekRef.current = null
+                })
+              }
+            }
+          } else {
+            if (Math.abs(video.currentTime - desiredTime) > frameDur * 0.5) {
+              video.currentTime = desiredTime
+            }
           }
         } else {
-          if (!video.paused) {
-            video.pause()
-            playingRef.current = false
-          }
-          if (scrollY < sequenceStart) video.currentTime = 0
-          else if (scrollY >= part2Start) video.currentTime = duration
+          if (y < sequenceStart) video.currentTime = 0
+          else if (y >= part2Start) video.currentTime = duration
         }
       }
 
