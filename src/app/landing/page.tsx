@@ -80,9 +80,32 @@ const frameSrc = (part: 1 | 2 | 3 | 4, i: number) => {
 }
 const SMOOTH_TAU_DESKTOP = 0.12
 const SMOOTH_TAU_MOBILE = 0.15
-const WINDOW = 70
-const EVICT_PAD = 120
-const MAX_CONCURRENT_DECODES = 6
+const TRAVEL_JUMP_THRESHOLD = 0.08
+const TRAVEL_MAX_SPEED_MOBILE = 0.9
+const TRAVEL_MAX_SPEED_DESKTOP = 2.5
+const TRAVEL_STOP_EPS = 0.004
+const TAU_NORMAL_DESKTOP = 0.06
+const TAU_NORMAL_MOBILE = 0.085
+const MAX_CACHE_DESKTOP = 220
+const MAX_CACHE_MOBILE = 90
+const MAX_CONCURRENT_DECODES_DESKTOP = 6
+const MAX_CONCURRENT_DECODES_MOBILE = 3
+
+function touchLRU(map: Map<number, HTMLImageElement>, key: number): void {
+  if (map.has(key)) {
+    const v = map.get(key)!
+    map.delete(key)
+    map.set(key, v)
+  }
+}
+
+function enforceLRU(map: Map<number, HTMLImageElement>, maxSize: number): void {
+  while (map.size > maxSize) {
+    const firstKey = map.keys().next().value
+    if (firstKey === undefined) break
+    map.delete(firstKey)
+  }
+}
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -175,22 +198,24 @@ export default function LandingPage() {
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const dprRef = useRef(1)
   const canvasRectRef = useRef({ w: 0, h: 0 })
-  const frames1Ref = useRef<(HTMLImageElement | undefined)[]>([])
-  const frames2Ref = useRef<(HTMLImageElement | undefined)[]>([])
-  const frames3Ref = useRef<(HTMLImageElement | undefined)[]>([])
-  const frames4Ref = useRef<(HTMLImageElement | undefined)[]>([])
-  const loaded1Ref = useRef<boolean[]>([])
-  const loaded2Ref = useRef<boolean[]>([])
-  const loaded3Ref = useRef<boolean[]>([])
-  const loaded4Ref = useRef<boolean[]>([])
+  const cache1Ref = useRef(new Map<number, HTMLImageElement>())
+  const cache2Ref = useRef(new Map<number, HTMLImageElement>())
+  const cache3Ref = useRef(new Map<number, HTMLImageElement>())
+  const cache4Ref = useRef(new Map<number, HTMLImageElement>())
   const loading1Ref = useRef(new Set<number>())
   const loading2Ref = useRef(new Set<number>())
   const loading3Ref = useRef(new Set<number>())
   const loading4Ref = useRef(new Set<number>())
   const lastDrawnIdxRef = useRef<{ 1: number; 2: number; 3: number; 4: number }>({ 1: 0, 2: 0, 3: 0, 4: 0 })
   const lastDrawnPartRef = useRef<1 | 2 | 3 | 4>(1)
+  const lastScrollYRef = useRef(0)
   const decodeQueueRef = useRef<number[]>([])
   const activeDecodesRef = useRef(0)
+  const displayPartRef = useRef<1 | 2 | 3 | 4>(1)
+  const displayProgRef = useRef(0)
+  const targetPartRef = useRef<1 | 2 | 3 | 4>(1)
+  const targetProgRef = useRef(0)
+  const travelActiveRef = useRef(false)
   const smoothPartRef = useRef<1 | 2 | 3 | 4>(1)
   const smoothProgRef = useRef(0)
   const lastTickRef = useRef(0)
@@ -298,21 +323,20 @@ export default function LandingPage() {
     canvasRectRef.current = { w: rect.width, h: rect.height }
   }, [])
 
-  const getFramesRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? frames1Ref : part === 2 ? frames2Ref : part === 3 ? frames3Ref : frames4Ref), [])
-  const getLoadedRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? loaded1Ref : part === 2 ? loaded2Ref : part === 3 ? loaded3Ref : loaded4Ref), [])
+  const getCacheRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? cache1Ref : part === 2 ? cache2Ref : part === 3 ? cache3Ref : cache4Ref), [])
   const getLoadingRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? loading1Ref : part === 2 ? loading2Ref : part === 3 ? loading3Ref : loading4Ref), [])
   const getTotal = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? PART1_TOTAL : part === 2 ? PART2_TOTAL : part === 3 ? PART3_TOTAL : PART4_TOTAL), [])
 
   const pumpQueue = useCallback(() => {
+    const maxConcurrent = isMobileRef.current ? MAX_CONCURRENT_DECODES_MOBILE : MAX_CONCURRENT_DECODES_DESKTOP
     const queue = decodeQueueRef.current
-    while (activeDecodesRef.current < MAX_CONCURRENT_DECODES && queue.length > 0) {
+    while (activeDecodesRef.current < maxConcurrent && queue.length > 0) {
       const encoded = queue.shift()!
       const part = (encoded >> 16) as 1 | 2 | 3 | 4
       const i = encoded & 0xffff
-      const frames = getFramesRef(part).current
-      const loaded = getLoadedRef(part).current
+      const cache = getCacheRef(part).current
       const loading = getLoadingRef(part).current
-      if (loaded[i]) continue
+      if (cache.has(i)) continue
       loading.add(i)
       activeDecodesRef.current += 1
       const img = new Image()
@@ -320,8 +344,10 @@ export default function LandingPage() {
       const decode = img.decode ? () => img.decode() : () => Promise.resolve()
       decode()
         .then(() => {
-          frames[i] = img
-          loaded[i] = true
+          cache.set(i, img)
+          touchLRU(cache, i)
+          const maxCache = isMobileRef.current ? MAX_CACHE_MOBILE : MAX_CACHE_DESKTOP
+          enforceLRU(cache, maxCache)
           loading.delete(i)
         })
         .catch(() => {
@@ -332,55 +358,52 @@ export default function LandingPage() {
           pumpQueue()
         })
     }
-  }, [getFramesRef, getLoadedRef, getLoadingRef])
+  }, [getCacheRef, getLoadingRef])
 
   const enqueueLoad = useCallback(
     (part: 1 | 2 | 3 | 4, i: number) => {
       const total = getTotal(part)
       if (i < 0 || i >= total) return
-      const loaded = getLoadedRef(part).current
+      const cache = getCacheRef(part).current
       const loading = getLoadingRef(part).current
-      if (loaded[i] || loading.has(i)) return
+      if (cache.has(i) || loading.has(i)) return
       decodeQueueRef.current.push((part << 16) | i)
       pumpQueue()
     },
-    [getLoadedRef, getLoadingRef, getTotal, pumpQueue]
+    [getCacheRef, getLoadingRef, getTotal, pumpQueue]
   )
 
   const ensureWindow = useCallback(
-    (part: 1 | 2 | 3 | 4, center: number) => {
+    (part: 1 | 2 | 3 | 4, center: number, directionOverride?: number) => {
       const total = getTotal(part)
-      const frames = getFramesRef(part).current
-      const loaded = getLoadedRef(part).current
+      const cache = getCacheRef(part).current
       const loading = getLoadingRef(part).current
-      if (frames.length !== total) {
-        frames.length = total
-        loaded.length = total
+      const direction =
+        directionOverride !== undefined ? directionOverride : getScrollY() - lastScrollYRef.current
+      let start: number
+      let end: number
+      if (direction > 0) {
+        start = center - 20
+        end = center + 70
+      } else {
+        start = center - 70
+        end = center + 20
       }
-      const half = Math.floor(WINDOW / 2)
-      const start = Math.max(0, center - half)
-      const end = Math.min(total - 1, center + half)
-      for (let i = start; i <= end; i++) enqueueLoad(part, i)
-      const keepIdx = lastDrawnIdxRef.current[part]
-      for (let i = 0; i < total; i++) {
-        if (i === keepIdx) continue
-        if (i < start - EVICT_PAD || i > end + EVICT_PAD) {
-          frames[i] = undefined
-          loaded[i] = false
-          loading.delete(i)
-        }
+      start = Math.max(0, start)
+      end = Math.min(total - 1, end)
+      for (let i = start; i <= end; i++) {
+        if (!cache.has(i) && !loading.has(i)) enqueueLoad(part, i)
       }
     },
-    [getFramesRef, getLoadedRef, getLoadingRef, getTotal, enqueueLoad]
+    [getCacheRef, getLoadingRef, getTotal, enqueueLoad, getScrollY]
   )
 
   const drawPart = useCallback(
     (part: 1 | 2 | 3 | 4, progress01: number) => {
-      const isImageValid = (img: HTMLImageElement | undefined) =>
-        img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0
+      const isImageValid = (img: HTMLImageElement) =>
+        img.complete && img.naturalWidth > 0 && img.naturalHeight > 0
       const total = getTotal(part)
-      const frames = getFramesRef(part).current
-      const loaded = getLoadedRef(part).current
+      const cache = getCacheRef(part).current
       const ctx = ctxRef.current
       if (!ctx) return
       const p = clamp(progress01, 0, 1)
@@ -388,12 +411,12 @@ export default function LandingPage() {
       const i0 = Math.floor(idxFloat)
       const i1 = Math.min(i0 + 1, total - 1)
       const t = clamp(idxFloat - i0, 0, 1)
-      ensureWindow(part, i0)
-      const img0 = frames[i0]
-      if (!loaded[i0] || !img0 || !isImageValid(img0)) {
+      const img0 = cache.get(i0)
+      if (!img0 || !isImageValid(img0)) {
         const lastIdx = lastDrawnIdxRef.current[part]
-        const lastImg = frames[lastIdx]
+        const lastImg = cache.get(lastIdx)
         if (lastImg && isImageValid(lastImg)) {
+          touchLRU(cache, lastIdx)
           const { w, h } = canvasRectRef.current
           ctx.clearRect(0, 0, w, h)
           ctx.globalAlpha = 1
@@ -405,34 +428,18 @@ export default function LandingPage() {
       ctx.clearRect(0, 0, w, h)
       ctx.globalAlpha = 1
       ctx.drawImage(img0, 0, 0, w, h)
-      const img1 = frames[i1]
+      const img1 = cache.get(i1)
       if (img1 && isImageValid(img1) && i1 !== i0 && t > 0) {
         ctx.globalAlpha = t
         ctx.drawImage(img1, 0, 0, w, h)
       }
       ctx.globalAlpha = 1
+      touchLRU(cache, i0)
       lastDrawnIdxRef.current[part] = i0
       lastDrawnPartRef.current = part
     },
-    [getFramesRef, getLoadedRef, getTotal, ensureWindow]
+    [getCacheRef, getTotal]
   )
-
-  useEffect(() => {
-    if (!gradientTransitionComplete || typeof window === 'undefined') return
-    const totals = [PART1_TOTAL, PART2_TOTAL, PART3_TOTAL, PART4_TOTAL]
-    const frameRefs = [frames1Ref, frames2Ref, frames3Ref, frames4Ref]
-    const loadedRefs = [loaded1Ref, loaded2Ref, loaded3Ref, loaded4Ref]
-    for (let p = 0; p < 4; p++) {
-      const total = totals[p]
-      const frames = frameRefs[p].current
-      const loaded = loadedRefs[p].current
-      if (frames.length !== total) {
-        frames.length = total
-        loaded.length = total
-        for (let i = 0; i < total; i++) loaded[i] = false
-      }
-    }
-  }, [gradientTransitionComplete])
 
   useEffect(() => {
     if (!gradientTransitionComplete) return
@@ -748,23 +755,50 @@ export default function LandingPage() {
 
       const dt = Math.min((now - lastTickRef.current) / 1000, 0.05)
       lastTickRef.current = now
-      if (part !== smoothPartRef.current) {
-        smoothPartRef.current = part
-        smoothProgRef.current = raw
+
+      targetPartRef.current = part
+      targetProgRef.current = raw
+
+      if (targetPartRef.current !== displayPartRef.current) {
+        displayPartRef.current = targetPartRef.current
+        displayProgRef.current = clamp(displayProgRef.current, 0, 1)
+        travelActiveRef.current =
+          Math.abs(targetProgRef.current - displayProgRef.current) > TRAVEL_JUMP_THRESHOLD
       } else {
-        const tau = isMobileRef.current ? SMOOTH_TAU_MOBILE : SMOOTH_TAU_DESKTOP
+        const delta = Math.abs(targetProgRef.current - displayProgRef.current)
+        if (delta > TRAVEL_JUMP_THRESHOLD) travelActiveRef.current = true
+      }
+
+      if (travelActiveRef.current) {
+        const maxSpeed = isMobileRef.current ? TRAVEL_MAX_SPEED_MOBILE : TRAVEL_MAX_SPEED_DESKTOP
+        const dir = Math.sign(targetProgRef.current - displayProgRef.current)
+        displayProgRef.current += dir * maxSpeed * dt
+        if (Math.abs(targetProgRef.current - displayProgRef.current) <= TRAVEL_STOP_EPS) {
+          displayProgRef.current = targetProgRef.current
+          travelActiveRef.current = false
+        }
+        displayProgRef.current = clamp(displayProgRef.current, 0, 1)
+      } else {
+        const tau = isMobileRef.current ? TAU_NORMAL_MOBILE : TAU_NORMAL_DESKTOP
         const alpha = 1 - Math.exp(-dt / tau)
-        smoothProgRef.current += (raw - smoothProgRef.current) * alpha
+        displayProgRef.current += (targetProgRef.current - displayProgRef.current) * alpha
       }
-      if (DEBUG_FRAME) console.log({ part, raw, smooth: smoothProgRef.current })
+
+      if (DEBUG_FRAME) console.log({ part, raw, display: displayProgRef.current, travel: travelActiveRef.current })
       if (ctxRef.current && canvasRectRef.current.w > 0) {
-        const part = smoothPartRef.current
-        const total = part === 1 ? PART1_TOTAL : part === 2 ? PART2_TOTAL : part === 3 ? PART3_TOTAL : PART4_TOTAL
-        const idxFloat = smoothProgRef.current * (total - 1)
-        const i0 = Math.floor(idxFloat)
-        ensureWindow(part, i0)
-        drawPart(part, smoothProgRef.current)
+        const drawPartNum = displayPartRef.current
+        const drawProg = displayProgRef.current
+        const total =
+          drawPartNum === 1 ? PART1_TOTAL : drawPartNum === 2 ? PART2_TOTAL : drawPartNum === 3 ? PART3_TOTAL : PART4_TOTAL
+        const centerIndex = Math.floor(drawProg * (total - 1))
+        const direction =
+          travelActiveRef.current
+            ? Math.sign(targetProgRef.current - displayProgRef.current)
+            : undefined
+        ensureWindow(drawPartNum, centerIndex, direction)
+        drawPart(drawPartNum, drawProg)
       }
+      lastScrollYRef.current = y
 
       const target3 = part3TargetRef.current
       const current3 = smoothedPart3Ref.current
