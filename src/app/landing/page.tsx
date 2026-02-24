@@ -67,12 +67,14 @@ const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
-/** Part 1: scroll-locked seek (30Hz max, 60fps snap). Smooth p1 for mobile. */
+/** Part 1: scroll-locked seek (30Hz max, 60fps snap). Smooth p1; travel mode on large jump. */
 const SCROLL_IDLE_MS = 90
 const SEQ_SEEK_INTERVAL_MS = 33
 const SEQ_FRAME_DUR = 1 / 60
 const PART1_TAU_DESKTOP = 0.06
-const PART1_TAU_MOBILE = 0.085
+const PART1_TAU_MOBILE = 0.09
+const LARGE_JUMP_THRESHOLD = 0.12
+const MAX_PROGRESS_SPEED = 1.4
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -209,6 +211,8 @@ export default function LandingPage() {
   const pendingSeekRef = useRef<number | null>(null)
   const part1SmoothProgressRef = useRef(0)
   const lastRafTimeRef = useRef(0)
+  const travelModeRef = useRef(false)
+  const travelTargetRef = useRef(0)
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -663,11 +667,30 @@ export default function LandingPage() {
 
         if (inPart1) {
           const rawP1 = clamp((y - sequenceStart) / part1Height, 0, 1)
+          const diff = Math.abs(rawP1 - part1SmoothProgressRef.current)
+          if (diff > LARGE_JUMP_THRESHOLD && !travelModeRef.current) {
+            travelModeRef.current = true
+            travelTargetRef.current = rawP1
+          }
+
           const dt = Math.min((now - lastRafTimeRef.current) / 1000, 0.05)
           lastRafTimeRef.current = now
-          const tau = isMobileRef.current ? PART1_TAU_MOBILE : PART1_TAU_DESKTOP
-          const alpha = 1 - Math.exp(-dt / tau)
-          part1SmoothProgressRef.current += (rawP1 - part1SmoothProgressRef.current) * alpha
+
+          if (travelModeRef.current) {
+            const dir = Math.sign(travelTargetRef.current - part1SmoothProgressRef.current)
+            part1SmoothProgressRef.current += dir * MAX_PROGRESS_SPEED * dt
+            part1SmoothProgressRef.current = clamp(part1SmoothProgressRef.current, 0, 1)
+            if (dir > 0 && part1SmoothProgressRef.current > travelTargetRef.current) part1SmoothProgressRef.current = travelTargetRef.current
+            if (dir < 0 && part1SmoothProgressRef.current < travelTargetRef.current) part1SmoothProgressRef.current = travelTargetRef.current
+            if (Math.abs(travelTargetRef.current - part1SmoothProgressRef.current) < 0.01) {
+              part1SmoothProgressRef.current = travelTargetRef.current
+              travelModeRef.current = false
+            }
+          } else {
+            const tau = isMobileRef.current ? PART1_TAU_MOBILE : PART1_TAU_DESKTOP
+            const alpha = 1 - Math.exp(-dt / tau)
+            part1SmoothProgressRef.current += (rawP1 - part1SmoothProgressRef.current) * alpha
+          }
           const p1 = part1SmoothProgressRef.current
 
           let desiredTime = p1 * duration
@@ -692,6 +715,7 @@ export default function LandingPage() {
             }
           }
         } else {
+          travelModeRef.current = false
           if (y < sequenceStart) {
             part1SmoothProgressRef.current = 0
             video.currentTime = 0
