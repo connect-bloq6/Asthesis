@@ -67,10 +67,9 @@ const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
-/** Part 1: scroll-locked seek (30Hz max, 60fps snap). Smooth p1; travel mode on large jump. */
-const SCROLL_IDLE_MS = 90
-const SEQ_SEEK_INTERVAL_MS = 33
-const SEQ_FRAME_DUR = 1 / 60
+/** Part 1: canvas frame renderer with sub-frame blending. Smooth p1; travel mode on large jump. */
+const SHOT1_TOTAL_FRAMES = 300
+const shot1FrameSrc = (i: number) => `/shot1_frames/frame_${String(i + 1).padStart(4, '0')}.png`
 const PART1_TAU_DESKTOP = 0.06
 const PART1_TAU_MOBILE = 0.09
 const LARGE_JUMP_THRESHOLD = 0.12
@@ -200,15 +199,10 @@ export default function LandingPage() {
   const lastP4NextRef = useRef(0)
   const lastP4AlphaRef = useRef(0)
   const lastCrossfadeStateTimeRef = useRef(0)
-  const seqVideoRef = useRef<HTMLVideoElement>(null)
-  const seqReadyRef = useRef(false)
-  const seqDurationRef = useRef(0)
-  const seqUseRvfCRef = useRef(false)
-  const scrollActiveRef = useRef(false)
-  const lastScrollYRef = useRef(0)
-  const lastScrollAtRef = useRef(0)
-  const lastSeekAtRef = useRef(0)
-  const pendingSeekRef = useRef<number | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const framesRef = useRef<HTMLImageElement[]>([])
+  const loadedRef = useRef<boolean[]>([])
+  const loadedCountRef = useRef(0)
   const part1SmoothProgressRef = useRef(0)
   const lastRafTimeRef = useRef(0)
   const travelModeRef = useRef(false)
@@ -323,29 +317,89 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [gradientTransitionComplete])
 
-  // Part 1 seq video: prime decoder on metadata load (important for mobile)
+  // Part 1 canvas: preload first 30 frames, then rest via requestIdleCallback
   useEffect(() => {
-    if (!gradientTransitionComplete) return
-    const v = seqVideoRef.current
-    if (!v) return
-    const onMeta = async () => {
-      seqDurationRef.current = v.duration || 0
-      seqReadyRef.current = true
-      seqUseRvfCRef.current =
-        typeof (v as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback === 'function'
-      try {
-        await v.play()
-        v.pause()
-      } catch {
-        // autoplay blocked
+    if (!gradientTransitionComplete || typeof window === 'undefined') return
+    const total = SHOT1_TOTAL_FRAMES
+    const frames = framesRef.current
+    const loaded = loadedRef.current
+    if (frames.length !== total) {
+      frames.length = total
+      loaded.length = total
+      for (let i = 0; i < total; i++) {
+        frames[i] = new Image()
+        loaded[i] = false
       }
-      v.currentTime = 0
-      v.playbackRate = 1
     }
-    v.addEventListener('loadedmetadata', onMeta)
-    if (v.readyState >= 1) onMeta()
-    return () => v.removeEventListener('loadedmetadata', onMeta)
+    const loadOne = (i: number) => {
+      const img = frames[i]
+      if (!img || loaded[i]) return
+      img.src = shot1FrameSrc(i)
+      const decode = img.decode ? () => img.decode() : () => Promise.resolve()
+      decode()
+        .then(() => {
+          loaded[i] = true
+          loadedCountRef.current = loaded.filter(Boolean).length
+        })
+        .catch(() => {
+          loaded[i] = true
+          loadedCountRef.current = loaded.filter(Boolean).length
+        })
+    }
+    for (let i = 0; i < Math.min(30, total); i++) loadOne(i)
+    const scheduleRest = () => {
+      const idc = window.requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1))
+      for (let i = 30; i < total; i++) {
+        const idx = i
+        idc(() => loadOne(idx), { timeout: 2000 })
+      }
+    }
+    scheduleRest()
   }, [gradientTransitionComplete])
+
+  const drawPart1Frames = useCallback((progress01: number) => {
+    const canvas = canvasRef.current
+    const frames = framesRef.current
+    const loaded = loadedRef.current
+    if (!canvas || !frames.length || !loaded[0]) return
+    const rect = canvas.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    canvas.width = rect.width * dpr
+    canvas.height = rect.height * dpr
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const w = rect.width
+    const h = rect.height
+    const total = SHOT1_TOTAL_FRAMES
+    const idxFloat = progress01 * (total - 1)
+    const i0 = Math.floor(idxFloat)
+    const i1 = Math.min(i0 + 1, total - 1)
+    const t = idxFloat - i0
+    if (!loaded[i0]) return
+    const img0 = frames[i0]
+    if (!img0?.complete) return
+    ctx.clearRect(0, 0, w, h)
+    const drawImg = (img: HTMLImageElement, alpha: number) => {
+      const iw = img.naturalWidth || img.width
+      const ih = img.naturalHeight || img.height
+      if (!iw || !ih) return
+      const scale = Math.min(w / iw, h / ih) * FRAME_CROP_SCALE
+      const drawW = iw * scale
+      const drawH = ih * scale
+      const x = (w - drawW) / 2
+      const y = (h - drawH) / 2
+      ctx.globalAlpha = alpha
+      ctx.drawImage(img, 0, 0, iw, ih, x, y, drawW, drawH)
+    }
+    drawImg(img0, 1)
+    if (t > 0 && loaded[i1]) {
+      const img1 = frames[i1]
+      if (img1?.complete) drawImg(img1, t)
+    }
+    ctx.globalAlpha = 1
+  }, [])
 
   // Update only target refs from current scroll position (no setState). Single scroll source (window) + stable vh for deterministic mobile behavior.
   const updateTargetsFromScroll = useCallback(() => {
@@ -642,88 +696,45 @@ export default function LandingPage() {
         // Part 1: no frame state; video scrub drives Part1/2 display
       }
 
-      // Scroll-active detection (for Part 1 scroll-locked seek)
       const y = getScrollY()
-      if (Math.abs(y - lastScrollYRef.current) > 0.5) {
-        scrollActiveRef.current = true
-        lastScrollAtRef.current = now
-        lastScrollYRef.current = y
-      } else if (now - lastScrollAtRef.current > SCROLL_IDLE_MS) {
-        scrollActiveRef.current = false
-      }
+      const vh = stableVhRef.current
+      const sequenceStart = vh
+      const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
+      const part2Start = sequenceStart + part1Height
+      const inPart1 = y >= sequenceStart && y < part2Start
 
-      // Part 1: scroll-locked hybrid — smooth p1 then seek at 30Hz; pause + lock when stopped
-      const video = seqVideoRef.current
-      if (seqReadyRef.current && video && seqDurationRef.current > 0) {
-        const vh = stableVhRef.current
-        const sequenceStart = vh
-        const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
-        const part2Start = sequenceStart + part1Height
-        const duration = seqDurationRef.current
-        const inPart1 = y >= sequenceStart && y < part2Start
-        const frameDur = SEQ_FRAME_DUR
-
-        video.pause()
-
-        if (inPart1) {
-          const rawP1 = clamp((y - sequenceStart) / part1Height, 0, 1)
-          const diff = Math.abs(rawP1 - part1SmoothProgressRef.current)
-          if (diff > LARGE_JUMP_THRESHOLD && !travelModeRef.current) {
-            travelModeRef.current = true
-            travelTargetRef.current = rawP1
-          }
-
-          const dt = Math.min((now - lastRafTimeRef.current) / 1000, 0.05)
-          lastRafTimeRef.current = now
-
-          if (travelModeRef.current) {
-            const dir = Math.sign(travelTargetRef.current - part1SmoothProgressRef.current)
-            part1SmoothProgressRef.current += dir * MAX_PROGRESS_SPEED * dt
-            part1SmoothProgressRef.current = clamp(part1SmoothProgressRef.current, 0, 1)
-            if (dir > 0 && part1SmoothProgressRef.current > travelTargetRef.current) part1SmoothProgressRef.current = travelTargetRef.current
-            if (dir < 0 && part1SmoothProgressRef.current < travelTargetRef.current) part1SmoothProgressRef.current = travelTargetRef.current
-            if (Math.abs(travelTargetRef.current - part1SmoothProgressRef.current) < 0.01) {
-              part1SmoothProgressRef.current = travelTargetRef.current
-              travelModeRef.current = false
-            }
-          } else {
-            const tau = isMobileRef.current ? PART1_TAU_MOBILE : PART1_TAU_DESKTOP
-            const alpha = 1 - Math.exp(-dt / tau)
-            part1SmoothProgressRef.current += (rawP1 - part1SmoothProgressRef.current) * alpha
-          }
-          const p1 = part1SmoothProgressRef.current
-
-          let desiredTime = p1 * duration
-          desiredTime = clamp(Math.round(desiredTime / frameDur) * frameDur, 0, Math.max(0, duration - frameDur))
-
-          if (scrollActiveRef.current) {
-            const canSeek = !seqUseRvfCRef.current ? now - lastSeekAtRef.current >= SEQ_SEEK_INTERVAL_MS : pendingSeekRef.current === null && now - lastSeekAtRef.current >= SEQ_SEEK_INTERVAL_MS
-            if (canSeek) {
-              video.currentTime = desiredTime
-              lastSeekAtRef.current = now
-              if (seqUseRvfCRef.current) {
-                pendingSeekRef.current = desiredTime
-                const rvfc = (video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => number }).requestVideoFrameCallback
-                rvfc.call(video, () => {
-                  pendingSeekRef.current = null
-                })
-              }
-            }
-          } else {
-            if (Math.abs(video.currentTime - desiredTime) > frameDur * 0.5) {
-              video.currentTime = desiredTime
-            }
+      if (inPart1) {
+        const rawP1 = clamp((y - sequenceStart) / part1Height, 0, 1)
+        const diff = Math.abs(rawP1 - part1SmoothProgressRef.current)
+        if (diff > LARGE_JUMP_THRESHOLD && !travelModeRef.current) {
+          travelModeRef.current = true
+          travelTargetRef.current = rawP1
+        }
+        const dt = Math.min((now - lastRafTimeRef.current) / 1000, 0.05)
+        lastRafTimeRef.current = now
+        if (travelModeRef.current) {
+          const dir = Math.sign(travelTargetRef.current - part1SmoothProgressRef.current)
+          part1SmoothProgressRef.current += dir * MAX_PROGRESS_SPEED * dt
+          part1SmoothProgressRef.current = clamp(part1SmoothProgressRef.current, 0, 1)
+          if (dir > 0 && part1SmoothProgressRef.current > travelTargetRef.current) part1SmoothProgressRef.current = travelTargetRef.current
+          if (dir < 0 && part1SmoothProgressRef.current < travelTargetRef.current) part1SmoothProgressRef.current = travelTargetRef.current
+          if (Math.abs(travelTargetRef.current - part1SmoothProgressRef.current) < 0.01) {
+            part1SmoothProgressRef.current = travelTargetRef.current
+            travelModeRef.current = false
           }
         } else {
-          travelModeRef.current = false
-          if (y < sequenceStart) {
-            part1SmoothProgressRef.current = 0
-            video.currentTime = 0
-          } else if (y >= part2Start) {
-            part1SmoothProgressRef.current = 1
-            video.currentTime = duration
-          }
+          const tau = isMobileRef.current ? PART1_TAU_MOBILE : PART1_TAU_DESKTOP
+          const alpha = 1 - Math.exp(-dt / tau)
+          part1SmoothProgressRef.current += (rawP1 - part1SmoothProgressRef.current) * alpha
         }
+      } else {
+        travelModeRef.current = false
+        if (y < sequenceStart) part1SmoothProgressRef.current = 0
+        else if (y >= part2Start) part1SmoothProgressRef.current = 1
+      }
+
+      if (canvasRef.current && loadedRef.current[0]) {
+        drawPart1Frames(part1SmoothProgressRef.current)
       }
 
       const target3 = part3TargetRef.current
@@ -857,7 +868,7 @@ export default function LandingPage() {
     }
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [gradientTransitionComplete, updateTargetsFromScroll]);
+  }, [gradientTransitionComplete, updateTargetsFromScroll, drawPart1Frames])
 
   return (
     <>
@@ -1036,7 +1047,7 @@ export default function LandingPage() {
                   ))}
                 </svg>
               </div>
-              {/* Part 1/2: scrub video; Part 3: sequence02 two-image; Part 4: sequence03 two-image */}
+              {/* Part 1/2: canvas frame renderer; Part 3: sequence02 two-image; Part 4: sequence03 two-image */}
               <div className="relative z-10 w-full min-w-0 max-w-[100vw] h-[72vh] max-h-[78dvh] overflow-hidden border-0 border-none sm:h-[76vh] sm:max-h-[80dvh] md:w-[98vw] md:max-w-[1200px] md:h-[92vh] md:max-h-[800px] lg:w-full lg:h-full lg:max-w-none lg:max-h-none lg:min-w-full pointer-events-none">
                 {inPart4 ? (
                   <div className="relative w-full h-full">
@@ -1069,20 +1080,16 @@ export default function LandingPage() {
                     />
                   </div>
                 ) : (
-                  <video
-                    ref={seqVideoRef}
-                    src="/videos/shot1_60fps_alpha.webm"
-                    muted
-                    playsInline
-                    preload="auto"
-                    loop={false}
-                    className="block w-full min-w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
+                  <canvas
+                    ref={canvasRef}
+                    className="block w-full min-w-full h-full border-0 border-none outline-none"
                     style={{
                       ...frameImgStyle,
                       transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`,
                       willChange: 'transform',
                       contain: 'layout paint',
                       backfaceVisibility: 'hidden',
+                      background: 'transparent',
                     }}
                   />
                 )}
