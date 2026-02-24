@@ -5,6 +5,8 @@ import Navbar from '@/components/ui/Navbar'
 import Footer from '@/components/ui/Footer'
 import LoadingScreen from '@/components/ui/LoadingScreen'
 
+const DEBUG_FRAME = false
+
 const GRADIENT_START_TIME = 3.2 // seconds into the 5s video (start a bit early)
 const GRADIENT_DURATION_MS = 2800 // match landing-gradient-fade animation
 
@@ -67,13 +69,20 @@ const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
-/** Part 1: canvas frame renderer with sub-frame blending. Smooth p1; travel mode on large jump. */
-const SHOT1_TOTAL_FRAMES = 300
-const shot1FrameSrc = (i: number) => `/shot1_frames/frame_${String(i + 1).padStart(4, '0')}.png`
-const PART1_TAU_DESKTOP = 0.06
-const PART1_TAU_MOBILE = 0.09
-const LARGE_JUMP_THRESHOLD = 0.12
-const MAX_PROGRESS_SPEED = 1.4
+/** Part 1–4: single canvas with blended WebP frames (shot1–shot4_webp). */
+const PART1_TOTAL = 300
+const PART2_TOTAL = 300
+const PART3_TOTAL = 300
+const PART4_TOTAL = 300
+const frameSrc = (part: 1 | 2 | 3 | 4, i: number) => {
+  const folder = part === 1 ? 'shot1_webp' : part === 2 ? 'shot2_webp' : part === 3 ? 'shot3_webp' : 'shot4_webp'
+  return `/${folder}/frame_${String(i + 1).padStart(4, '0')}.webp`
+}
+const SMOOTH_TAU_DESKTOP = 0.12
+const SMOOTH_TAU_MOBILE = 0.15
+const WINDOW = 70
+const EVICT_PAD = 120
+const MAX_CONCURRENT_DECODES = 6
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -124,10 +133,6 @@ export default function LandingPage() {
   const [gradientTransitionComplete, setGradientTransitionComplete] = useState(false)
   const [heroCrossed, setHeroCrossed] = useState(false)
   const [polygonOpacity, setPolygonOpacity] = useState(0)
-  const [sequenceFrameIndex, setSequenceFrameIndex] = useState(0)
-  const [seqBaseIndex, setSeqBaseIndex] = useState(0)
-  const [seqNextIndex, setSeqNextIndex] = useState(0)
-  const [seqAlpha, setSeqAlpha] = useState(0)
   const [sequenceProgress, setSequenceProgress] = useState(0)
   const [part2Progress, setPart2Progress] = useState(0)
   const [smoothedPart2Progress, setSmoothedPart2Progress] = useState(0)
@@ -136,18 +141,8 @@ export default function LandingPage() {
   const [smoothedVideoTransitionProgress, setSmoothedVideoTransitionProgress] = useState(0)
   const [videoStickyMode, setVideoStickyMode] = useState<'before' | 'stuck' | 'after'>('before')
   const [part3Progress, setPart3Progress] = useState(0)
-  const [part3FrameIndex, setPart3FrameIndex] = useState(0)
-  const [p3BaseIndex, setP3BaseIndex] = useState(0)
-  const [p3NextIndex, setP3NextIndex] = useState(0)
-  const [p3Alpha, setP3Alpha] = useState(0)
   const [smoothedPart3Progress, setSmoothedPart3Progress] = useState(0)
-  const [inPart3, setInPart3] = useState(false)
-  const [part4FrameIndex, setPart4FrameIndex] = useState(0)
-  const [p4BaseIndex, setP4BaseIndex] = useState(0)
-  const [p4NextIndex, setP4NextIndex] = useState(0)
-  const [p4Alpha, setP4Alpha] = useState(0)
   const [smoothedPart4Progress, setSmoothedPart4Progress] = useState(0)
-  const [inPart4, setInPart4] = useState(false)
   const [isDesktopViewport, setIsDesktopViewport] = useState(true) // lg breakpoint: frame uses full scale on desktop only
   const videoRef = useRef<HTMLVideoElement>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -167,46 +162,38 @@ export default function LandingPage() {
   const part3TargetRef = useRef(0)
   const smoothedPart4Ref = useRef(0)
   const part4TargetRef = useRef(0)
-  const sequenceFrameTargetRef = useRef(0)
-  const sequenceFrameSmoothedTargetRef = useRef(0) // float; moves toward raw target with cap (no jump on mobile)
-  const sequenceFrameCurrentRef = useRef(0) // float for smooth interpolation
-  const part2FrameCurrentRef = useRef(DAVINICI_FRAME_COUNT - 1) // float; Part 2 reverse starts at last frame
-  const part3FrameCurrentRef = useRef(0)
-  const part4FrameCurrentRef = useRef(0)
   const lastTickTimeRef = useRef<number>(0)
   const scrollWhenInsideAtCenterRef = useRef<number | null>(null)
-  const wasInPart2LastFrameRef = useRef(false)
   const isMobileRef = useRef(false)
   const stableVhRef = useRef(800)
-  const lastSeqFrameRef = useRef(-1)
-  const lastP3FrameRef = useRef(-1)
-  const lastP4FrameRef = useRef(-1)
-  const loadedSeqRef = useRef<Set<number>>(new Set([0]))
-  const loadedP3Ref = useRef<Set<number>>(new Set([0]))
-  const loadedP4Ref = useRef<Set<number>>(new Set([0]))
   const lastSmoothedProgressStateTimeRef = useRef(0)
   const lastSmoothedPart2StateRef = useRef(0)
   const lastSmoothedPart3StateRef = useRef(0)
   const lastSmoothedPart4StateRef = useRef(0)
   const lastSmoothedVideoStateRef = useRef(0)
-  const lastSeqBaseRef = useRef(0)
-  const lastSeqNextRef = useRef(0)
-  const lastSeqAlphaRef = useRef(0)
-  const lastP3BaseRef = useRef(0)
-  const lastP3NextRef = useRef(0)
-  const lastP3AlphaRef = useRef(0)
-  const lastP4BaseRef = useRef(0)
-  const lastP4NextRef = useRef(0)
-  const lastP4AlphaRef = useRef(0)
-  const lastCrossfadeStateTimeRef = useRef(0)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const framesRef = useRef<HTMLImageElement[]>([])
-  const loadedRef = useRef<boolean[]>([])
-  const loadedCountRef = useRef(0)
-  const part1SmoothProgressRef = useRef(0)
-  const lastRafTimeRef = useRef(0)
-  const travelModeRef = useRef(false)
-  const travelTargetRef = useRef(0)
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
+  const dprRef = useRef(1)
+  const canvasRectRef = useRef({ w: 0, h: 0 })
+  const frames1Ref = useRef<(HTMLImageElement | undefined)[]>([])
+  const frames2Ref = useRef<(HTMLImageElement | undefined)[]>([])
+  const frames3Ref = useRef<(HTMLImageElement | undefined)[]>([])
+  const frames4Ref = useRef<(HTMLImageElement | undefined)[]>([])
+  const loaded1Ref = useRef<boolean[]>([])
+  const loaded2Ref = useRef<boolean[]>([])
+  const loaded3Ref = useRef<boolean[]>([])
+  const loaded4Ref = useRef<boolean[]>([])
+  const loading1Ref = useRef(new Set<number>())
+  const loading2Ref = useRef(new Set<number>())
+  const loading3Ref = useRef(new Set<number>())
+  const loading4Ref = useRef(new Set<number>())
+  const lastDrawnIdxRef = useRef<{ 1: number; 2: number; 3: number; 4: number }>({ 1: 0, 2: 0, 3: 0, 4: 0 })
+  const lastDrawnPartRef = useRef<1 | 2 | 3 | 4>(1)
+  const decodeQueueRef = useRef<number[]>([])
+  const activeDecodesRef = useRef(0)
+  const smoothPartRef = useRef<1 | 2 | 3 | 4>(1)
+  const smoothProgRef = useRef(0)
+  const lastTickRef = useRef(0)
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -249,30 +236,6 @@ export default function LandingPage() {
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
-
-  // Preload and decode frame images so we only advance to loaded frames (avoids out-of-order display).
-  useEffect(() => {
-    if (!gradientTransitionComplete || typeof window === 'undefined') return
-    const loadSequence = async (
-      count: number,
-      pathFn: (i: number) => string,
-      loadedSet: Set<number>
-    ) => {
-      for (let i = 0; i < count; i++) {
-        const img = new Image()
-        img.src = pathFn(i)
-        try {
-          if (img.decode) await img.decode()
-          loadedSet.add(i)
-        } catch {
-          loadedSet.add(i)
-        }
-      }
-    }
-    loadSequence(DAVINICI_FRAME_COUNT, daviniciFramePath, loadedSeqRef.current)
-    loadSequence(SEQUENCE02_FRAME_COUNT, sequence02FramePath, loadedP3Ref.current)
-    loadSequence(SEQUENCE03_FRAME_COUNT, sequence03FramePath, loadedP4Ref.current)
-  }, [gradientTransitionComplete])
 
   useEffect(() => {
     if (!isLoading && videoRef.current) {
@@ -317,89 +280,173 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [gradientTransitionComplete])
 
-  // Part 1 canvas: preload first 30 frames, then rest via requestIdleCallback
-  useEffect(() => {
-    if (!gradientTransitionComplete || typeof window === 'undefined') return
-    const total = SHOT1_TOTAL_FRAMES
-    const frames = framesRef.current
-    const loaded = loadedRef.current
-    if (frames.length !== total) {
-      frames.length = total
-      loaded.length = total
-      for (let i = 0; i < total; i++) {
-        frames[i] = new Image()
-        loaded[i] = false
-      }
-    }
-    const loadOne = (i: number) => {
-      const img = frames[i]
-      if (!img || loaded[i]) return
-      img.src = shot1FrameSrc(i)
-      const decode = img.decode ? () => img.decode() : () => Promise.resolve()
-      decode()
-        .then(() => {
-          loaded[i] = true
-          loadedCountRef.current = loaded.filter(Boolean).length
-        })
-        .catch(() => {
-          loaded[i] = true
-          loadedCountRef.current = loaded.filter(Boolean).length
-        })
-    }
-    for (let i = 0; i < Math.min(30, total); i++) loadOne(i)
-    const scheduleRest = () => {
-      const idc = window.requestIdleCallback || ((cb: () => void) => setTimeout(cb, 1))
-      for (let i = 30; i < total; i++) {
-        const idx = i
-        idc(() => loadOne(idx), { timeout: 2000 })
-      }
-    }
-    scheduleRest()
-  }, [gradientTransitionComplete])
-
-  const drawPart1Frames = useCallback((progress01: number) => {
+  const syncCanvasSize = useCallback(() => {
     const canvas = canvasRef.current
-    const frames = framesRef.current
-    const loaded = loadedRef.current
-    if (!canvas || !frames.length || !loaded[0]) return
-    const rect = canvas.getBoundingClientRect()
+    if (!canvas?.parentElement) return
+    const rect = canvas.parentElement.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    const rawDpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+    const dpr = isMobileRef.current ? Math.min(rawDpr, 1.5) : Math.min(rawDpr, 2)
+    dprRef.current = dpr
+    canvas.style.width = `${rect.width}px`
+    canvas.style.height = `${rect.height}px`
     canvas.width = rect.width * dpr
     canvas.height = rect.height * dpr
     const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    const w = rect.width
-    const h = rect.height
-    const total = SHOT1_TOTAL_FRAMES
-    const idxFloat = progress01 * (total - 1)
-    const i0 = Math.floor(idxFloat)
-    const i1 = Math.min(i0 + 1, total - 1)
-    const t = idxFloat - i0
-    if (!loaded[i0]) return
-    const img0 = frames[i0]
-    if (!img0?.complete) return
-    ctx.clearRect(0, 0, w, h)
-    const drawImg = (img: HTMLImageElement, alpha: number) => {
-      const iw = img.naturalWidth || img.width
-      const ih = img.naturalHeight || img.height
-      if (!iw || !ih) return
-      const scale = Math.min(w / iw, h / ih) * FRAME_CROP_SCALE
-      const drawW = iw * scale
-      const drawH = ih * scale
-      const x = (w - drawW) / 2
-      const y = (h - drawH) / 2
-      ctx.globalAlpha = alpha
-      ctx.drawImage(img, 0, 0, iw, ih, x, y, drawW, drawH)
-    }
-    drawImg(img0, 1)
-    if (t > 0 && loaded[i1]) {
-      const img1 = frames[i1]
-      if (img1?.complete) drawImg(img1, t)
-    }
-    ctx.globalAlpha = 1
+    ctxRef.current = ctx
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    canvasRectRef.current = { w: rect.width, h: rect.height }
   }, [])
+
+  const getFramesRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? frames1Ref : part === 2 ? frames2Ref : part === 3 ? frames3Ref : frames4Ref), [])
+  const getLoadedRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? loaded1Ref : part === 2 ? loaded2Ref : part === 3 ? loaded3Ref : loaded4Ref), [])
+  const getLoadingRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? loading1Ref : part === 2 ? loading2Ref : part === 3 ? loading3Ref : loading4Ref), [])
+  const getTotal = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? PART1_TOTAL : part === 2 ? PART2_TOTAL : part === 3 ? PART3_TOTAL : PART4_TOTAL), [])
+
+  const pumpQueue = useCallback(() => {
+    const queue = decodeQueueRef.current
+    while (activeDecodesRef.current < MAX_CONCURRENT_DECODES && queue.length > 0) {
+      const encoded = queue.shift()!
+      const part = (encoded >> 16) as 1 | 2 | 3 | 4
+      const i = encoded & 0xffff
+      const frames = getFramesRef(part).current
+      const loaded = getLoadedRef(part).current
+      const loading = getLoadingRef(part).current
+      if (loaded[i]) continue
+      loading.add(i)
+      activeDecodesRef.current += 1
+      const img = new Image()
+      img.src = frameSrc(part, i)
+      const decode = img.decode ? () => img.decode() : () => Promise.resolve()
+      decode()
+        .then(() => {
+          frames[i] = img
+          loaded[i] = true
+          loading.delete(i)
+        })
+        .catch(() => {
+          loading.delete(i)
+        })
+        .finally(() => {
+          activeDecodesRef.current -= 1
+          pumpQueue()
+        })
+    }
+  }, [getFramesRef, getLoadedRef, getLoadingRef])
+
+  const enqueueLoad = useCallback(
+    (part: 1 | 2 | 3 | 4, i: number) => {
+      const total = getTotal(part)
+      if (i < 0 || i >= total) return
+      const loaded = getLoadedRef(part).current
+      const loading = getLoadingRef(part).current
+      if (loaded[i] || loading.has(i)) return
+      decodeQueueRef.current.push((part << 16) | i)
+      pumpQueue()
+    },
+    [getLoadedRef, getLoadingRef, getTotal, pumpQueue]
+  )
+
+  const ensureWindow = useCallback(
+    (part: 1 | 2 | 3 | 4, center: number) => {
+      const total = getTotal(part)
+      const frames = getFramesRef(part).current
+      const loaded = getLoadedRef(part).current
+      const loading = getLoadingRef(part).current
+      if (frames.length !== total) {
+        frames.length = total
+        loaded.length = total
+      }
+      const half = Math.floor(WINDOW / 2)
+      const start = Math.max(0, center - half)
+      const end = Math.min(total - 1, center + half)
+      for (let i = start; i <= end; i++) enqueueLoad(part, i)
+      const keepIdx = lastDrawnIdxRef.current[part]
+      for (let i = 0; i < total; i++) {
+        if (i === keepIdx) continue
+        if (i < start - EVICT_PAD || i > end + EVICT_PAD) {
+          frames[i] = undefined
+          loaded[i] = false
+          loading.delete(i)
+        }
+      }
+    },
+    [getFramesRef, getLoadedRef, getLoadingRef, getTotal, enqueueLoad]
+  )
+
+  const drawPart = useCallback(
+    (part: 1 | 2 | 3 | 4, progress01: number) => {
+      const isImageValid = (img: HTMLImageElement | undefined) =>
+        img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0
+      const total = getTotal(part)
+      const frames = getFramesRef(part).current
+      const loaded = getLoadedRef(part).current
+      const ctx = ctxRef.current
+      if (!ctx) return
+      const p = clamp(progress01, 0, 1)
+      const idxFloat = p * (total - 1)
+      const i0 = Math.floor(idxFloat)
+      const i1 = Math.min(i0 + 1, total - 1)
+      const t = clamp(idxFloat - i0, 0, 1)
+      ensureWindow(part, i0)
+      const img0 = frames[i0]
+      if (!loaded[i0] || !img0 || !isImageValid(img0)) {
+        const lastIdx = lastDrawnIdxRef.current[part]
+        const lastImg = frames[lastIdx]
+        if (lastImg && isImageValid(lastImg)) {
+          const { w, h } = canvasRectRef.current
+          ctx.clearRect(0, 0, w, h)
+          ctx.globalAlpha = 1
+          ctx.drawImage(lastImg, 0, 0, w, h)
+        }
+        return
+      }
+      const { w, h } = canvasRectRef.current
+      ctx.clearRect(0, 0, w, h)
+      ctx.globalAlpha = 1
+      ctx.drawImage(img0, 0, 0, w, h)
+      const img1 = frames[i1]
+      if (img1 && isImageValid(img1) && i1 !== i0 && t > 0) {
+        ctx.globalAlpha = t
+        ctx.drawImage(img1, 0, 0, w, h)
+      }
+      ctx.globalAlpha = 1
+      lastDrawnIdxRef.current[part] = i0
+      lastDrawnPartRef.current = part
+    },
+    [getFramesRef, getLoadedRef, getTotal, ensureWindow]
+  )
+
+  useEffect(() => {
+    if (!gradientTransitionComplete || typeof window === 'undefined') return
+    const totals = [PART1_TOTAL, PART2_TOTAL, PART3_TOTAL, PART4_TOTAL]
+    const frameRefs = [frames1Ref, frames2Ref, frames3Ref, frames4Ref]
+    const loadedRefs = [loaded1Ref, loaded2Ref, loaded3Ref, loaded4Ref]
+    for (let p = 0; p < 4; p++) {
+      const total = totals[p]
+      const frames = frameRefs[p].current
+      const loaded = loadedRefs[p].current
+      if (frames.length !== total) {
+        frames.length = total
+        loaded.length = total
+        for (let i = 0; i < total; i++) loaded[i] = false
+      }
+    }
+  }, [gradientTransitionComplete])
+
+  useEffect(() => {
+    if (!gradientTransitionComplete) return
+    syncCanvasSize()
+    const onResize = () => syncCanvasSize()
+    window.addEventListener('resize', onResize)
+    window.addEventListener('orientationchange', onResize)
+    window.visualViewport?.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('orientationchange', onResize)
+      window.visualViewport?.removeEventListener('resize', onResize)
+    }
+  }, [gradientTransitionComplete, syncCanvasSize])
 
   // Update only target refs from current scroll position (no setState). Single scroll source (window) + stable vh for deterministic mobile behavior.
   const updateTargetsFromScroll = useCallback(() => {
@@ -417,22 +464,10 @@ export default function LandingPage() {
     if (effectiveScroll >= part2Start) {
       const p2 = Math.min(1, (effectiveScroll - part2Start) / part2Height)
       part2TargetRef.current = p2
-      if (!wasInPart2LastFrameRef.current) {
-        part2FrameCurrentRef.current = sequenceFrameCurrentRef.current
-        wasInPart2LastFrameRef.current = true
-      }
     } else if (effectiveScroll >= sequenceStart) {
-      wasInPart2LastFrameRef.current = false
       part2TargetRef.current = 0
-      const progress = Math.min(1, (effectiveScroll - sequenceStart) / part1Height)
-      const frameIndex = clamp(Math.round(progress * (DAVINICI_FRAME_COUNT - 1)), 0, DAVINICI_FRAME_COUNT - 1)
-      sequenceFrameTargetRef.current = frameIndex
     } else {
-      wasInPart2LastFrameRef.current = false
       part2TargetRef.current = 0
-      sequenceFrameTargetRef.current = 0
-      sequenceFrameSmoothedTargetRef.current = 0
-      sequenceFrameCurrentRef.current = 0
     }
 
     const frameSectionContentVh = 100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH
@@ -492,14 +527,11 @@ export default function LandingPage() {
       part3TargetRef.current = Math.min(1, (effectiveScroll - part3StartPx) / part3HeightPx)
       part4TargetRef.current = 0
       smoothedPart4Ref.current = 0
-      part4FrameCurrentRef.current = 0
     } else {
       part3TargetRef.current = 0
       smoothedPart3Ref.current = 0
-      part3FrameCurrentRef.current = 0
       part4TargetRef.current = 0
       smoothedPart4Ref.current = 0
-      part4FrameCurrentRef.current = 0
     }
   }, [getScrollY])
 
@@ -529,19 +561,13 @@ export default function LandingPage() {
         part2TargetRef.current = 0
         smoothedPart2Ref.current = 0
         setSmoothedPart2Progress(0)
-        // Part 1: forward — set target; RAF will lerp displayed frame for smooth transition
         const progress = Math.min(1, (effectiveScroll - sequenceStart) / part1Height)
-        const frameIndex = clamp(Math.round(progress * (DAVINICI_FRAME_COUNT - 1)), 0, DAVINICI_FRAME_COUNT - 1)
-        sequenceFrameTargetRef.current = frameIndex
         setSequenceProgress(progress)
       } else {
         setPart2Progress(0)
         part2TargetRef.current = 0
         smoothedPart2Ref.current = 0
         setSmoothedPart2Progress(0)
-        sequenceFrameTargetRef.current = 0
-        sequenceFrameCurrentRef.current = 0
-        sequenceFrameSmoothedTargetRef.current = 0
         setSequenceProgress(0)
       }
       // Scroll-out phase: frame (and inside text) start scrolling up as soon as we reach end of Part 4 (no extra scroll), then move 1:1 with scroll
@@ -622,31 +648,23 @@ export default function LandingPage() {
       const part4StartPx = part3StartPx + part3HeightPx
       const part4HeightPx = (PART4_SCROLL_VH / 100) * vh
       if (effectiveScroll >= part4StartPx) {
-        setInPart3(true)
-        setInPart4(true)
         part3TargetRef.current = 1
         const p4 = Math.min(1, (effectiveScroll - part4StartPx) / part4HeightPx)
         part4TargetRef.current = p4
       } else if (effectiveScroll >= part3StartPx) {
-        setInPart3(true)
-        setInPart4(false)
         const p3 = Math.min(1, (effectiveScroll - part3StartPx) / part3HeightPx)
         part3TargetRef.current = p3
         part4TargetRef.current = 0
         smoothedPart4Ref.current = 0
         setSmoothedPart4Progress(0)
       } else {
-        setInPart3(false)
-        setInPart4(false)
         setPart3Progress(0)
         part3TargetRef.current = 0
         smoothedPart3Ref.current = 0
         setSmoothedPart3Progress(0)
-        part3FrameCurrentRef.current = 0
         part4TargetRef.current = 0
         smoothedPart4Ref.current = 0
         setSmoothedPart4Progress(0)
-        part4FrameCurrentRef.current = 0
       }
     }
 
@@ -659,7 +677,9 @@ export default function LandingPage() {
   // Read scroll position inside RAF every frame so mobile (throttled scroll events) still gets smooth targets.
   useEffect(() => {
     if (!gradientTransitionComplete) return
-    lastTickTimeRef.current = performance.now()
+    const now0 = performance.now()
+    lastTickTimeRef.current = now0
+    lastTickRef.current = now0
     let rafId = 0
     const tick = (now: number) => {
       updateTargetsFromScroll()
@@ -701,40 +721,49 @@ export default function LandingPage() {
       const sequenceStart = vh
       const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
       const part2Start = sequenceStart + part1Height
-      const inPart1 = y >= sequenceStart && y < part2Start
+      const part2Height = (PART2_SCROLL_VH / 100) * vh
+      const part3Start = part2Start + part2Height
+      const part3Height = (PART3_SCROLL_VH / 100) * vh
+      const part4Start = part3Start + part3Height
+      const part4Height = (PART4_SCROLL_VH / 100) * vh
 
-      if (inPart1) {
-        const rawP1 = clamp((y - sequenceStart) / part1Height, 0, 1)
-        const diff = Math.abs(rawP1 - part1SmoothProgressRef.current)
-        if (diff > LARGE_JUMP_THRESHOLD && !travelModeRef.current) {
-          travelModeRef.current = true
-          travelTargetRef.current = rawP1
-        }
-        const dt = Math.min((now - lastRafTimeRef.current) / 1000, 0.05)
-        lastRafTimeRef.current = now
-        if (travelModeRef.current) {
-          const dir = Math.sign(travelTargetRef.current - part1SmoothProgressRef.current)
-          part1SmoothProgressRef.current += dir * MAX_PROGRESS_SPEED * dt
-          part1SmoothProgressRef.current = clamp(part1SmoothProgressRef.current, 0, 1)
-          if (dir > 0 && part1SmoothProgressRef.current > travelTargetRef.current) part1SmoothProgressRef.current = travelTargetRef.current
-          if (dir < 0 && part1SmoothProgressRef.current < travelTargetRef.current) part1SmoothProgressRef.current = travelTargetRef.current
-          if (Math.abs(travelTargetRef.current - part1SmoothProgressRef.current) < 0.01) {
-            part1SmoothProgressRef.current = travelTargetRef.current
-            travelModeRef.current = false
-          }
-        } else {
-          const tau = isMobileRef.current ? PART1_TAU_MOBILE : PART1_TAU_DESKTOP
-          const alpha = 1 - Math.exp(-dt / tau)
-          part1SmoothProgressRef.current += (rawP1 - part1SmoothProgressRef.current) * alpha
-        }
+      let part: 1 | 2 | 3 | 4 = 1
+      let raw = 0
+      if (y < sequenceStart) {
+        part = 1
+        raw = 0
+      } else if (y < part2Start) {
+        part = 1
+        raw = clamp((y - sequenceStart) / part1Height, 0, 1)
+      } else if (y < part3Start) {
+        part = 2
+        raw = clamp((y - part2Start) / part2Height, 0, 1)
+      } else if (y < part4Start) {
+        part = 3
+        raw = clamp((y - part3Start) / part3Height, 0, 1)
       } else {
-        travelModeRef.current = false
-        if (y < sequenceStart) part1SmoothProgressRef.current = 0
-        else if (y >= part2Start) part1SmoothProgressRef.current = 1
+        part = 4
+        raw = clamp((y - part4Start) / part4Height, 0, 1)
       }
 
-      if (canvasRef.current && loadedRef.current[0]) {
-        drawPart1Frames(part1SmoothProgressRef.current)
+      const dt = Math.min((now - lastTickRef.current) / 1000, 0.05)
+      lastTickRef.current = now
+      if (part !== smoothPartRef.current) {
+        smoothPartRef.current = part
+        smoothProgRef.current = raw
+      } else {
+        const tau = isMobileRef.current ? SMOOTH_TAU_MOBILE : SMOOTH_TAU_DESKTOP
+        const alpha = 1 - Math.exp(-dt / tau)
+        smoothProgRef.current += (raw - smoothProgRef.current) * alpha
+      }
+      if (DEBUG_FRAME) console.log({ part, raw, smooth: smoothProgRef.current })
+      if (ctxRef.current && canvasRectRef.current.w > 0) {
+        const part = smoothPartRef.current
+        const total = part === 1 ? PART1_TOTAL : part === 2 ? PART2_TOTAL : part === 3 ? PART3_TOTAL : PART4_TOTAL
+        const idxFloat = smoothProgRef.current * (total - 1)
+        const i0 = Math.floor(idxFloat)
+        ensureWindow(part, i0)
+        drawPart(part, smoothProgRef.current)
       }
 
       const target3 = part3TargetRef.current
@@ -746,55 +775,6 @@ export default function LandingPage() {
         lastSmoothedProgressStateTimeRef.current = now
         setSmoothedPart3Progress(next3)
       }
-      if (target3 > 0) {
-        const targetPart3Frame = next3 * (SEQUENCE02_FRAME_COUNT - 1)
-        const part3Current = part3FrameCurrentRef.current
-        let part3Delta = targetPart3Frame - part3Current
-        part3Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part3Delta))
-        const nextPart3Frame = Math.max(0, Math.min(SEQUENCE02_FRAME_COUNT - 1, part3Current + part3Delta))
-        part3FrameCurrentRef.current = nextPart3Frame
-        const float = nextPart3Frame
-        const loadedP3 = loadedP3Ref.current
-        let p3Base = clamp(Math.floor(float), 0, SEQUENCE02_FRAME_COUNT - 1)
-        let p3Frac = float - p3Base
-        let p3Next = clamp(p3Base + 1, 0, SEQUENCE02_FRAME_COUNT - 1)
-        if (!loadedP3.has(p3Base)) {
-          p3Base = nearestLoadedForward(loadedP3, p3Base, SEQUENCE02_FRAME_COUNT - 1)
-          p3Frac = 0
-          p3Next = p3Base
-        } else if (p3Frac > 0 && !loadedP3.has(p3Next)) {
-          p3Frac = 0
-          p3Next = p3Base
-        }
-        const p3AlphaVal = clamp(p3Frac, 0, 1)
-        const p3Commit =
-          p3Base !== lastP3BaseRef.current ||
-          p3Next !== lastP3NextRef.current ||
-          Math.abs(p3AlphaVal - lastP3AlphaRef.current) >= ALPHA_COMMIT_THRESHOLD ||
-          now - lastCrossfadeStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
-        if (p3Commit) {
-          lastP3BaseRef.current = p3Base
-          lastP3NextRef.current = p3Next
-          lastP3AlphaRef.current = p3AlphaVal
-          lastCrossfadeStateTimeRef.current = now
-          setP3BaseIndex(p3Base)
-          setP3NextIndex(p3Next)
-          setP3Alpha(p3AlphaVal)
-          setPart3FrameIndex(p3Base)
-        }
-      } else {
-        part3FrameCurrentRef.current = 0
-        if (lastP3BaseRef.current !== 0 || lastP3NextRef.current !== 0 || lastP3AlphaRef.current !== 0) {
-          lastP3BaseRef.current = 0
-          lastP3NextRef.current = 0
-          lastP3AlphaRef.current = 0
-          setP3BaseIndex(0)
-          setP3NextIndex(0)
-          setP3Alpha(0)
-          setPart3FrameIndex(0)
-        }
-      }
-
       const target4 = part4TargetRef.current
       const current4 = smoothedPart4Ref.current
       const next4 = current4 + (target4 - current4) * smoothFactor
@@ -803,55 +783,6 @@ export default function LandingPage() {
         lastSmoothedPart4StateRef.current = next4
         lastSmoothedProgressStateTimeRef.current = now
         setSmoothedPart4Progress(next4)
-      }
-      if (target4 > 0) {
-        const easedProgress = Math.pow(next4, PART4_FRAME_EASING)
-        const targetPart4Frame = easedProgress * (SEQUENCE03_FRAME_COUNT - 1)
-        const part4Current = part4FrameCurrentRef.current
-        let part4Delta = targetPart4Frame - part4Current
-        part4Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part4Delta))
-        const nextPart4Frame = Math.max(0, Math.min(SEQUENCE03_FRAME_COUNT - 1, part4Current + part4Delta))
-        part4FrameCurrentRef.current = nextPart4Frame
-        const float = nextPart4Frame
-        const loadedP4 = loadedP4Ref.current
-        let p4Base = clamp(Math.floor(float), 0, SEQUENCE03_FRAME_COUNT - 1)
-        let p4Frac = float - p4Base
-        let p4Next = clamp(p4Base + 1, 0, SEQUENCE03_FRAME_COUNT - 1)
-        if (!loadedP4.has(p4Base)) {
-          p4Base = nearestLoadedForward(loadedP4, p4Base, SEQUENCE03_FRAME_COUNT - 1)
-          p4Frac = 0
-          p4Next = p4Base
-        } else if (p4Frac > 0 && !loadedP4.has(p4Next)) {
-          p4Frac = 0
-          p4Next = p4Base
-        }
-        const p4AlphaVal = clamp(p4Frac, 0, 1)
-        const p4Commit =
-          p4Base !== lastP4BaseRef.current ||
-          p4Next !== lastP4NextRef.current ||
-          Math.abs(p4AlphaVal - lastP4AlphaRef.current) >= ALPHA_COMMIT_THRESHOLD ||
-          now - lastCrossfadeStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
-        if (p4Commit) {
-          lastP4BaseRef.current = p4Base
-          lastP4NextRef.current = p4Next
-          lastP4AlphaRef.current = p4AlphaVal
-          lastCrossfadeStateTimeRef.current = now
-          setP4BaseIndex(p4Base)
-          setP4NextIndex(p4Next)
-          setP4Alpha(p4AlphaVal)
-          setPart4FrameIndex(p4Base)
-        }
-      } else {
-        part4FrameCurrentRef.current = 0
-        if (lastP4BaseRef.current !== 0 || lastP4NextRef.current !== 0 || lastP4AlphaRef.current !== 0) {
-          lastP4BaseRef.current = 0
-          lastP4NextRef.current = 0
-          lastP4AlphaRef.current = 0
-          setP4BaseIndex(0)
-          setP4NextIndex(0)
-          setP4Alpha(0)
-          setPart4FrameIndex(0)
-        }
       }
 
       const videoTarget = videoTransitionTargetRef.current
@@ -868,7 +799,7 @@ export default function LandingPage() {
     }
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [gradientTransitionComplete, updateTargetsFromScroll, drawPart1Frames])
+  }, [gradientTransitionComplete, updateTargetsFromScroll, drawPart, ensureWindow])
 
   return (
     <>
@@ -1047,52 +978,20 @@ export default function LandingPage() {
                   ))}
                 </svg>
               </div>
-              {/* Part 1/2: canvas frame renderer; Part 3: sequence02 two-image; Part 4: sequence03 two-image */}
+              {/* Part 1–4: single canvas with blended PNG frames */}
               <div className="relative z-10 w-full min-w-0 max-w-[100vw] h-[72vh] max-h-[78dvh] overflow-hidden border-0 border-none sm:h-[76vh] sm:max-h-[80dvh] md:w-[98vw] md:max-w-[1200px] md:h-[92vh] md:max-h-[800px] lg:w-full lg:h-full lg:max-w-none lg:max-h-none lg:min-w-full pointer-events-none">
-                {inPart4 ? (
-                  <div className="relative w-full h-full">
-                    <img
-                      src={sequence03FramePath(p4BaseIndex)}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
-                      style={{ ...frameImgStyle, transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`, opacity: 1 }}
-                    />
-                    <img
-                      src={sequence03FramePath(p4NextIndex)}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
-                      style={{ ...frameImgStyle, transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`, opacity: p4Alpha, willChange: 'opacity' }}
-                    />
-                  </div>
-                ) : inPart3 ? (
-                  <div className="relative w-full h-full">
-                    <img
-                      src={sequence02FramePath(p3BaseIndex)}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
-                      style={{ ...frameImgStyle, transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`, opacity: 1 }}
-                    />
-                    <img
-                      src={sequence02FramePath(p3NextIndex)}
-                      alt=""
-                      className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
-                      style={{ ...frameImgStyle, transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`, opacity: p3Alpha, willChange: 'opacity' }}
-                    />
-                  </div>
-                ) : (
-                  <canvas
-                    ref={canvasRef}
-                    className="block w-full min-w-full h-full border-0 border-none outline-none"
-                    style={{
-                      ...frameImgStyle,
-                      transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`,
-                      willChange: 'transform',
-                      contain: 'layout paint',
-                      backfaceVisibility: 'hidden',
-                      background: 'transparent',
-                    }}
-                  />
-                )}
+                <canvas
+                  ref={canvasRef}
+                  className="block w-full h-full border-0 border-none outline-none"
+                  style={{
+                    ...frameImgStyle,
+                    transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`,
+                    willChange: 'transform',
+                    backfaceVisibility: 'hidden',
+                    contain: 'layout paint',
+                    background: 'transparent',
+                  }}
+                />
               </div>
               {/* System text: fixed at left center; comes up with frame 1, then scrolls up as sequence runs */}
               <div
