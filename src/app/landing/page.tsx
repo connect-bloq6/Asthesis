@@ -88,6 +88,8 @@ const frameImgStyle: React.CSSProperties = {
   transformOrigin: 'center center',
 }
 
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
+
 export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showChampagneGradient, setShowChampagneGradient] = useState(false)
@@ -138,6 +140,15 @@ export default function LandingPage() {
   const scrollWhenInsideAtCenterRef = useRef<number | null>(null)
   const wasInPart2LastFrameRef = useRef(false)
   const isMobileRef = useRef(false)
+  const stableVhRef = useRef(800)
+  const lastSeqFrameRef = useRef(-1)
+  const lastP3FrameRef = useRef(-1)
+  const lastP4FrameRef = useRef(-1)
+
+  const getScrollY = useCallback(
+    () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
+    []
+  )
 
   useEffect(() => {
     const m = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)')
@@ -146,6 +157,21 @@ export default function LandingPage() {
     const h = () => setIsDesktopViewport(m.matches)
     m.addEventListener('change', h)
     return () => m.removeEventListener('change', h)
+  }, [])
+
+  // Stable viewport height (avoids mobile address bar collapse/expand shifting section boundaries).
+  useEffect(() => {
+    const updateVh = () => {
+      if (typeof window === 'undefined') return
+      stableVhRef.current = window.visualViewport?.height ?? window.innerHeight
+    }
+    updateVh()
+    window.addEventListener('resize', updateVh)
+    window.visualViewport?.addEventListener('resize', updateVh)
+    return () => {
+      window.removeEventListener('resize', updateVh)
+      window.visualViewport?.removeEventListener('resize', updateVh)
+    }
   }, [])
 
   // Mobile: touch or narrow viewport — use stricter frame caps for smooth scroll (no skip).
@@ -204,14 +230,10 @@ export default function LandingPage() {
     return () => observer.disconnect()
   }, [gradientTransitionComplete])
 
-  // Update only target refs from current scroll position (no setState). Call from RAF every frame so mobile gets smooth targets despite throttled scroll events.
+  // Update only target refs from current scroll position (no setState). Single scroll source (window) + stable vh for deterministic mobile behavior.
   const updateTargetsFromScroll = useCallback(() => {
-    const main = mainRef.current
-    const scrollTop = main?.scrollTop ?? 0
-    const windowScrollY = typeof window !== 'undefined' ? window.scrollY ?? document.documentElement.scrollTop : 0
-    const bodyScrollTop = typeof document !== 'undefined' && document.body ? document.body.scrollTop ?? 0 : 0
-    const effectiveScroll = Math.max(scrollTop, windowScrollY, bodyScrollTop)
-    const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+    const effectiveScroll = getScrollY()
+    const vh = stableVhRef.current
     const sequenceStart = vh
     const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
     const part2Start = sequenceStart + part1Height
@@ -232,7 +254,7 @@ export default function LandingPage() {
       wasInPart2LastFrameRef.current = false
       part2TargetRef.current = 0
       const progress = Math.min(1, (effectiveScroll - sequenceStart) / part1Height)
-      const frameIndex = Math.min(DAVINICI_FRAME_COUNT - 1, Math.floor(progress * DAVINICI_FRAME_COUNT))
+      const frameIndex = clamp(Math.round(progress * (DAVINICI_FRAME_COUNT - 1)), 0, DAVINICI_FRAME_COUNT - 1)
       sequenceFrameTargetRef.current = frameIndex
     } else {
       wasInPart2LastFrameRef.current = false
@@ -308,24 +330,18 @@ export default function LandingPage() {
       smoothedPart4Ref.current = 0
       part4FrameCurrentRef.current = 0
     }
-  }, [])
+  }, [getScrollY])
 
-  // Corner crosses: rotate when hero section is scrolled past (left +45°, right -45°)
-  // Use both window and main scroll so it works whether the document or main is the scroll container
+  // Corner crosses + layout state from scroll. Single scroll source (window) + stable vh.
   useEffect(() => {
     if (!gradientTransitionComplete) return
 
     const checkScroll = () => {
       updateTargetsFromScroll()
-      const main = mainRef.current
-      const scrollTop = main?.scrollTop ?? 0
-      const windowScrollY = typeof window !== 'undefined' ? window.scrollY ?? document.documentElement.scrollTop : 0
-      const bodyScrollTop = typeof document !== 'undefined' && document.body ? document.body.scrollTop ?? 0 : 0
-      const effectiveScroll = Math.max(scrollTop, windowScrollY, bodyScrollTop)
-      const threshold = typeof window !== 'undefined' ? window.innerHeight * HERO_HEIGHT_THRESHOLD : 0
+      const effectiveScroll = getScrollY()
+      const vh = stableVhRef.current
+      const threshold = vh * HERO_HEIGHT_THRESHOLD
       setHeroCrossed(effectiveScroll >= threshold)
-      // Polygon fade: 0→1 as we scroll from hero into frame 1 (one viewport); stays 1 after frame 1 is fully in view; fades out when scrolling back up
-      const vh = typeof window !== 'undefined' ? window.innerHeight : 800
       setPolygonOpacity(Math.min(1, effectiveScroll / vh))
       // Part 1: frame sequence forward (86400→86520); Part 2: reverse (86520→86455)
       const sequenceStart = vh
@@ -344,7 +360,7 @@ export default function LandingPage() {
         setSmoothedPart2Progress(0)
         // Part 1: forward — set target; RAF will lerp displayed frame for smooth transition
         const progress = Math.min(1, (effectiveScroll - sequenceStart) / part1Height)
-        const frameIndex = Math.min(DAVINICI_FRAME_COUNT - 1, Math.floor(progress * DAVINICI_FRAME_COUNT))
+        const frameIndex = clamp(Math.round(progress * (DAVINICI_FRAME_COUNT - 1)), 0, DAVINICI_FRAME_COUNT - 1)
         sequenceFrameTargetRef.current = frameIndex
         setSequenceProgress(progress)
       } else {
@@ -354,6 +370,7 @@ export default function LandingPage() {
         setSmoothedPart2Progress(0)
         sequenceFrameTargetRef.current = 0
         sequenceFrameCurrentRef.current = 0
+        lastSeqFrameRef.current = 0
         setSequenceFrameIndex(0)
         setSequenceProgress(0)
       }
@@ -448,6 +465,7 @@ export default function LandingPage() {
         part4TargetRef.current = 0
         smoothedPart4Ref.current = 0
         setSmoothedPart4Progress(0)
+        lastP4FrameRef.current = 0
         setPart4FrameIndex(0)
       } else {
         setInPart3(false)
@@ -456,11 +474,13 @@ export default function LandingPage() {
         part3TargetRef.current = 0
         smoothedPart3Ref.current = 0
         setSmoothedPart3Progress(0)
+        lastP3FrameRef.current = 0
         setPart3FrameIndex(0)
         part3FrameCurrentRef.current = 0
         part4TargetRef.current = 0
         smoothedPart4Ref.current = 0
         setSmoothedPart4Progress(0)
+        lastP4FrameRef.current = 0
         setPart4FrameIndex(0)
         part4FrameCurrentRef.current = 0
       }
@@ -468,13 +488,8 @@ export default function LandingPage() {
 
     checkScroll()
     window.addEventListener('scroll', checkScroll, { passive: true })
-    const main = mainRef.current
-    if (main) main.addEventListener('scroll', checkScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', checkScroll)
-      if (main) main.removeEventListener('scroll', checkScroll)
-    }
-  }, [gradientTransitionComplete])
+    return () => window.removeEventListener('scroll', checkScroll)
+  }, [gradientTransitionComplete, updateTargetsFromScroll, getScrollY])
 
   // Frame-rate independent smooth animation: follow scroll target without jumping.
   // Read scroll position inside RAF every frame so mobile (throttled scroll events) still gets smooth targets.
@@ -512,8 +527,12 @@ export default function LandingPage() {
           Math.min(DAVINICI_FRAME_COUNT - 1, part2Current + part2Delta)
         )
         part2FrameCurrentRef.current = nextPart2Frame
-        setSequenceFrameIndex(Math.round(nextPart2Frame))
         sequenceFrameCurrentRef.current = nextPart2Frame
+        const seqInt = clamp(Math.round(nextPart2Frame), 0, DAVINICI_FRAME_COUNT - 1)
+        if (seqInt !== lastSeqFrameRef.current) {
+          lastSeqFrameRef.current = seqInt
+          setSequenceFrameIndex(seqInt)
+        }
       } else {
         // Part 1: smoothed target (no jump) then cap frame delta — smooth on desktop and mobile
         const rawTarget = sequenceFrameTargetRef.current
@@ -527,7 +546,11 @@ export default function LandingPage() {
         delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, delta))
         const nextFrame = currentFrame + delta
         sequenceFrameCurrentRef.current = nextFrame
-        setSequenceFrameIndex(Math.round(Math.max(0, Math.min(DAVINICI_FRAME_COUNT - 1, nextFrame))))
+        const seqInt = clamp(Math.round(nextFrame), 0, DAVINICI_FRAME_COUNT - 1)
+        if (seqInt !== lastSeqFrameRef.current) {
+          lastSeqFrameRef.current = seqInt
+          setSequenceFrameIndex(seqInt)
+        }
       }
 
       const target3 = part3TargetRef.current
@@ -542,7 +565,11 @@ export default function LandingPage() {
         part3Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part3Delta))
         const nextPart3Frame = Math.max(0, Math.min(SEQUENCE02_FRAME_COUNT - 1, part3Current + part3Delta))
         part3FrameCurrentRef.current = nextPart3Frame
-        setPart3FrameIndex(Math.floor(nextPart3Frame))
+        const p3Int = clamp(Math.round(nextPart3Frame), 0, SEQUENCE02_FRAME_COUNT - 1)
+        if (p3Int !== lastP3FrameRef.current) {
+          lastP3FrameRef.current = p3Int
+          setPart3FrameIndex(p3Int)
+        }
       }
 
       const target4 = part4TargetRef.current
@@ -558,7 +585,11 @@ export default function LandingPage() {
         part4Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part4Delta))
         const nextPart4Frame = Math.max(0, Math.min(SEQUENCE03_FRAME_COUNT - 1, part4Current + part4Delta))
         part4FrameCurrentRef.current = nextPart4Frame
-        setPart4FrameIndex(Math.floor(nextPart4Frame))
+        const p4Int = clamp(Math.round(nextPart4Frame), 0, SEQUENCE03_FRAME_COUNT - 1)
+        if (p4Int !== lastP4FrameRef.current) {
+          lastP4FrameRef.current = p4Int
+          setPart4FrameIndex(p4Int)
+        }
       }
 
       const videoTarget = videoTransitionTargetRef.current
@@ -584,8 +615,7 @@ export default function LandingPage() {
         ref={mainRef}
         style={{
           overflowX: 'hidden',
-          overflowY: showChampagneGradient && !gradientTransitionComplete ? 'hidden' : 'auto',
-          WebkitOverflowScrolling: 'touch',
+          overflowY: showChampagneGradient && !gradientTransitionComplete ? 'hidden' : 'visible',
           border: 'none',
           outline: 'none',
         }}
