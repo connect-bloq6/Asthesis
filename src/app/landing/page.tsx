@@ -59,9 +59,13 @@ const TARGET_SMOOTHING_MAX_PER_SEC = 55 // max "target" movement per second (smo
 const TARGET_SMOOTHING_MAX_PER_SEC_MOBILE = 55
 const SMOOTHING_TIME_CONSTANT = 0.06 // seconds for progress/transition to catch up (exponential smoothing)
 const SMOOTHING_TIME_CONSTANT_MOBILE = 0.06
-// On mobile, RAF can be throttled (e.g. during scroll) so dtSec is large; cap per-tick deltas so we always play through the sequence instead of jumping.
-const MAX_FRAME_DELTA_PER_TICK_MOBILE = 1.15 // max frames the displayed image can advance in one tick on mobile
-const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4 // max smoothed-target movement per tick on mobile
+// Per-tick caps prevent multi-frame jumps when RAF is delayed (desktop and mobile).
+const MAX_FRAME_DELTA_PER_TICK_DESKTOP = 1.25
+const MAX_TARGET_DELTA_PER_TICK_DESKTOP = 1.5
+const MAX_FRAME_DELTA_PER_TICK_MOBILE = 1.15
+const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
+const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
+const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -89,6 +93,22 @@ const frameImgStyle: React.CSSProperties = {
 }
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
+
+function nearestLoadedForward(loaded: Set<number>, target: number, maxIndex: number): number {
+  const t = Math.round(target)
+  for (let i = Math.min(t, maxIndex); i >= 0; i--) {
+    if (loaded.has(i)) return i
+  }
+  return 0
+}
+
+function nearestLoadedReverse(loaded: Set<number>, target: number, minIndex: number, maxIndex: number): number {
+  const t = Math.round(target)
+  for (let i = Math.max(t, minIndex); i <= maxIndex; i++) {
+    if (loaded.has(i)) return i
+  }
+  return maxIndex
+}
 
 export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true)
@@ -144,6 +164,14 @@ export default function LandingPage() {
   const lastSeqFrameRef = useRef(-1)
   const lastP3FrameRef = useRef(-1)
   const lastP4FrameRef = useRef(-1)
+  const loadedSeqRef = useRef<Set<number>>(new Set([0]))
+  const loadedP3Ref = useRef<Set<number>>(new Set([0]))
+  const loadedP4Ref = useRef<Set<number>>(new Set([0]))
+  const lastSmoothedProgressStateTimeRef = useRef(0)
+  const lastSmoothedPart2StateRef = useRef(0)
+  const lastSmoothedPart3StateRef = useRef(0)
+  const lastSmoothedPart4StateRef = useRef(0)
+  const lastSmoothedVideoStateRef = useRef(0)
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -186,6 +214,30 @@ export default function LandingPage() {
     window.addEventListener('resize', update)
     return () => window.removeEventListener('resize', update)
   }, [])
+
+  // Preload and decode frame images so we only advance to loaded frames (avoids out-of-order display).
+  useEffect(() => {
+    if (!gradientTransitionComplete || typeof window === 'undefined') return
+    const loadSequence = async (
+      count: number,
+      pathFn: (i: number) => string,
+      loadedSet: Set<number>
+    ) => {
+      for (let i = 0; i < count; i++) {
+        const img = new Image()
+        img.src = pathFn(i)
+        try {
+          if (img.decode) await img.decode()
+          loadedSet.add(i)
+        } catch {
+          loadedSet.add(i)
+        }
+      }
+    }
+    loadSequence(DAVINICI_FRAME_COUNT, daviniciFramePath, loadedSeqRef.current)
+    loadSequence(SEQUENCE02_FRAME_COUNT, sequence02FramePath, loadedP3Ref.current)
+    loadSequence(SEQUENCE03_FRAME_COUNT, sequence03FramePath, loadedP4Ref.current)
+  }, [gradientTransitionComplete])
 
   useEffect(() => {
     if (!isLoading && videoRef.current) {
@@ -370,8 +422,7 @@ export default function LandingPage() {
         setSmoothedPart2Progress(0)
         sequenceFrameTargetRef.current = 0
         sequenceFrameCurrentRef.current = 0
-        lastSeqFrameRef.current = 0
-        setSequenceFrameIndex(0)
+        sequenceFrameSmoothedTargetRef.current = 0
         setSequenceProgress(0)
       }
       // Scroll-out phase: frame (and inside text) start scrolling up as soon as we reach end of Part 4 (no extra scroll), then move 1:1 with scroll
@@ -465,8 +516,6 @@ export default function LandingPage() {
         part4TargetRef.current = 0
         smoothedPart4Ref.current = 0
         setSmoothedPart4Progress(0)
-        lastP4FrameRef.current = 0
-        setPart4FrameIndex(0)
       } else {
         setInPart3(false)
         setInPart4(false)
@@ -474,14 +523,10 @@ export default function LandingPage() {
         part3TargetRef.current = 0
         smoothedPart3Ref.current = 0
         setSmoothedPart3Progress(0)
-        lastP3FrameRef.current = 0
-        setPart3FrameIndex(0)
         part3FrameCurrentRef.current = 0
         part4TargetRef.current = 0
         smoothedPart4Ref.current = 0
         setSmoothedPart4Progress(0)
-        lastP4FrameRef.current = 0
-        setPart4FrameIndex(0)
         part4FrameCurrentRef.current = 0
       }
     }
@@ -508,7 +553,14 @@ export default function LandingPage() {
       if (isMobile) {
         maxFrameDelta = Math.min(maxFrameDelta, MAX_FRAME_DELTA_PER_TICK_MOBILE)
         maxTargetDelta = Math.min(maxTargetDelta, MAX_TARGET_DELTA_PER_TICK_MOBILE)
+      } else {
+        maxFrameDelta = Math.min(maxFrameDelta, MAX_FRAME_DELTA_PER_TICK_DESKTOP)
+        maxTargetDelta = Math.min(maxTargetDelta, MAX_TARGET_DELTA_PER_TICK_DESKTOP)
       }
+
+      const shouldUpdateProgress = (next: number, lastRef: { current: number }) =>
+        Math.abs(next - lastRef.current) >= SMOOTHED_PROGRESS_THROTTLE_DELTA ||
+        now - lastSmoothedProgressStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
 
       if (part2TargetRef.current > 0) {
         // Part 2: smooth progress with time-based lerp; cap frame delta so reverse sequence plays smoothly
@@ -516,7 +568,11 @@ export default function LandingPage() {
         const current2 = smoothedPart2Ref.current
         const next2 = current2 + (target2 - current2) * smoothFactor
         smoothedPart2Ref.current = next2
-        setSmoothedPart2Progress(next2)
+        if (shouldUpdateProgress(next2, lastSmoothedPart2StateRef)) {
+          lastSmoothedPart2StateRef.current = next2
+          lastSmoothedProgressStateTimeRef.current = now
+          setSmoothedPart2Progress(next2)
+        }
         const targetPart2Frame =
           DAVINICI_FRAME_COUNT - 1 - next2 * (DAVINICI_FRAME_COUNT - 1 - DAVINICI_PART2_END_INDEX)
         const part2Current = part2FrameCurrentRef.current
@@ -528,7 +584,7 @@ export default function LandingPage() {
         )
         part2FrameCurrentRef.current = nextPart2Frame
         sequenceFrameCurrentRef.current = nextPart2Frame
-        const seqInt = clamp(Math.round(nextPart2Frame), 0, DAVINICI_FRAME_COUNT - 1)
+        const seqInt = nearestLoadedReverse(loadedSeqRef.current, nextPart2Frame, DAVINICI_PART2_END_INDEX, DAVINICI_FRAME_COUNT - 1)
         if (seqInt !== lastSeqFrameRef.current) {
           lastSeqFrameRef.current = seqInt
           setSequenceFrameIndex(seqInt)
@@ -546,7 +602,8 @@ export default function LandingPage() {
         delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, delta))
         const nextFrame = currentFrame + delta
         sequenceFrameCurrentRef.current = nextFrame
-        const seqInt = clamp(Math.round(nextFrame), 0, DAVINICI_FRAME_COUNT - 1)
+        const rawSeqInt = clamp(Math.round(nextFrame), 0, DAVINICI_FRAME_COUNT - 1)
+        const seqInt = nearestLoadedForward(loadedSeqRef.current, rawSeqInt, DAVINICI_FRAME_COUNT - 1)
         if (seqInt !== lastSeqFrameRef.current) {
           lastSeqFrameRef.current = seqInt
           setSequenceFrameIndex(seqInt)
@@ -557,7 +614,11 @@ export default function LandingPage() {
       const current3 = smoothedPart3Ref.current
       const next3 = current3 + (target3 - current3) * smoothFactor
       smoothedPart3Ref.current = next3
-      setSmoothedPart3Progress(next3)
+      if (shouldUpdateProgress(next3, lastSmoothedPart3StateRef)) {
+        lastSmoothedPart3StateRef.current = next3
+        lastSmoothedProgressStateTimeRef.current = now
+        setSmoothedPart3Progress(next3)
+      }
       if (target3 > 0) {
         const targetPart3Frame = next3 * (SEQUENCE02_FRAME_COUNT - 1)
         const part3Current = part3FrameCurrentRef.current
@@ -565,10 +626,17 @@ export default function LandingPage() {
         part3Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part3Delta))
         const nextPart3Frame = Math.max(0, Math.min(SEQUENCE02_FRAME_COUNT - 1, part3Current + part3Delta))
         part3FrameCurrentRef.current = nextPart3Frame
-        const p3Int = clamp(Math.round(nextPart3Frame), 0, SEQUENCE02_FRAME_COUNT - 1)
+        const rawP3Int = clamp(Math.round(nextPart3Frame), 0, SEQUENCE02_FRAME_COUNT - 1)
+        const p3Int = nearestLoadedForward(loadedP3Ref.current, rawP3Int, SEQUENCE02_FRAME_COUNT - 1)
         if (p3Int !== lastP3FrameRef.current) {
           lastP3FrameRef.current = p3Int
           setPart3FrameIndex(p3Int)
+        }
+      } else {
+        part3FrameCurrentRef.current = 0
+        if (lastP3FrameRef.current !== 0) {
+          lastP3FrameRef.current = 0
+          setPart3FrameIndex(0)
         }
       }
 
@@ -576,7 +644,11 @@ export default function LandingPage() {
       const current4 = smoothedPart4Ref.current
       const next4 = current4 + (target4 - current4) * smoothFactor
       smoothedPart4Ref.current = next4
-      setSmoothedPart4Progress(next4)
+      if (shouldUpdateProgress(next4, lastSmoothedPart4StateRef)) {
+        lastSmoothedPart4StateRef.current = next4
+        lastSmoothedProgressStateTimeRef.current = now
+        setSmoothedPart4Progress(next4)
+      }
       if (target4 > 0) {
         const easedProgress = Math.pow(next4, PART4_FRAME_EASING)
         const targetPart4Frame = easedProgress * (SEQUENCE03_FRAME_COUNT - 1)
@@ -585,10 +657,17 @@ export default function LandingPage() {
         part4Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part4Delta))
         const nextPart4Frame = Math.max(0, Math.min(SEQUENCE03_FRAME_COUNT - 1, part4Current + part4Delta))
         part4FrameCurrentRef.current = nextPart4Frame
-        const p4Int = clamp(Math.round(nextPart4Frame), 0, SEQUENCE03_FRAME_COUNT - 1)
+        const rawP4Int = clamp(Math.round(nextPart4Frame), 0, SEQUENCE03_FRAME_COUNT - 1)
+        const p4Int = nearestLoadedForward(loadedP4Ref.current, rawP4Int, SEQUENCE03_FRAME_COUNT - 1)
         if (p4Int !== lastP4FrameRef.current) {
           lastP4FrameRef.current = p4Int
           setPart4FrameIndex(p4Int)
+        }
+      } else {
+        part4FrameCurrentRef.current = 0
+        if (lastP4FrameRef.current !== 0) {
+          lastP4FrameRef.current = 0
+          setPart4FrameIndex(0)
         }
       }
 
@@ -596,7 +675,11 @@ export default function LandingPage() {
       const videoCurrent = smoothedVideoTransitionRef.current
       const videoNext = videoCurrent + (videoTarget - videoCurrent) * smoothFactor
       smoothedVideoTransitionRef.current = videoNext
-      setSmoothedVideoTransitionProgress(videoNext)
+      if (shouldUpdateProgress(videoNext, lastSmoothedVideoStateRef)) {
+        lastSmoothedVideoStateRef.current = videoNext
+        lastSmoothedProgressStateTimeRef.current = now
+        setSmoothedVideoTransitionProgress(videoNext)
+      }
 
       rafId = requestAnimationFrame(tick)
     }
