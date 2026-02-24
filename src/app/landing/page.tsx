@@ -67,6 +67,11 @@ const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
+/** Part 1: 0 → end. Part 2: end → mid (reverse). */
+const SEQ_VIDEO_MID = 0.5
+const SEQ_SCRUB_FRAME_DUR = 1 / 60
+const SEQ_SCRUB_TAU_MOBILE = 0.065
+const SEQ_SCRUB_TAU_DESKTOP = 0.045
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -192,6 +197,15 @@ export default function LandingPage() {
   const lastP4NextRef = useRef(0)
   const lastP4AlphaRef = useRef(0)
   const lastCrossfadeStateTimeRef = useRef(0)
+  const seqVideoRef = useRef<HTMLVideoElement>(null)
+  const seqReadyRef = useRef(false)
+  const seqDurationRef = useRef(0)
+  const seqTargetTimeRef = useRef(0)
+  const seqSmoothTimeRef = useRef(0)
+  const seqSeekingRef = useRef(false)
+  const seqLastPresentedRef = useRef(-1)
+  const seqLastNowRef = useRef(0)
+  const seqUseRvfCRef = useRef(false)
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -583,7 +597,7 @@ export default function LandingPage() {
         now - lastSmoothedProgressStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
 
       if (part2TargetRef.current > 0) {
-        // Part 2: smooth progress with time-based lerp; cap frame delta so reverse sequence plays smoothly
+        // Part 2: smooth progress for overlay text (sequenceProgress + smoothedPart2Progress)
         const target2 = part2TargetRef.current
         const current2 = smoothedPart2Ref.current
         const next2 = current2 + (target2 - current2) * smoothFactor
@@ -593,86 +607,51 @@ export default function LandingPage() {
           lastSmoothedProgressStateTimeRef.current = now
           setSmoothedPart2Progress(next2)
         }
-        const targetPart2Frame =
-          DAVINICI_FRAME_COUNT - 1 - next2 * (DAVINICI_FRAME_COUNT - 1 - DAVINICI_PART2_END_INDEX)
-        const part2Current = part2FrameCurrentRef.current
-        let part2Delta = targetPart2Frame - part2Current
-        part2Delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, part2Delta))
-        const nextPart2Frame = Math.max(
-          DAVINICI_PART2_END_INDEX,
-          Math.min(DAVINICI_FRAME_COUNT - 1, part2Current + part2Delta)
-        )
-        part2FrameCurrentRef.current = nextPart2Frame
-        sequenceFrameCurrentRef.current = nextPart2Frame
-        const loadedSeq = loadedSeqRef.current
-        let base = clamp(Math.ceil(nextPart2Frame), DAVINICI_PART2_END_INDEX, DAVINICI_FRAME_COUNT - 1)
-        let alpha = base - nextPart2Frame
-        let next = clamp(base - 1, DAVINICI_PART2_END_INDEX, DAVINICI_FRAME_COUNT - 1)
-        if (!loadedSeq.has(base)) {
-          base = nearestLoadedReverse(loadedSeq, nextPart2Frame, DAVINICI_PART2_END_INDEX, DAVINICI_FRAME_COUNT - 1)
-          alpha = 0
-          next = base
-        } else if (alpha > 0 && !loadedSeq.has(next)) {
-          alpha = 0
-          next = base
-        }
-        alpha = clamp(alpha, 0, 1)
-        const seqCommit =
-          base !== lastSeqBaseRef.current ||
-          next !== lastSeqNextRef.current ||
-          Math.abs(alpha - lastSeqAlphaRef.current) >= ALPHA_COMMIT_THRESHOLD ||
-          now - lastCrossfadeStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
-        if (seqCommit) {
-          lastSeqBaseRef.current = base
-          lastSeqNextRef.current = next
-          lastSeqAlphaRef.current = alpha
-          lastCrossfadeStateTimeRef.current = now
-          setSeqBaseIndex(base)
-          setSeqNextIndex(next)
-          setSeqAlpha(alpha)
-          setSequenceFrameIndex(base)
-        }
       } else {
-        // Part 1: smoothed target (no jump) then cap frame delta — smooth on desktop and mobile
-        const rawTarget = sequenceFrameTargetRef.current
-        const smoothedTarget = sequenceFrameSmoothedTargetRef.current
-        let targetDelta = rawTarget - smoothedTarget
-        targetDelta = Math.max(-maxTargetDelta, Math.min(maxTargetDelta, targetDelta))
-        sequenceFrameSmoothedTargetRef.current = smoothedTarget + targetDelta
-        const targetFrame = sequenceFrameSmoothedTargetRef.current
-        const currentFrame = sequenceFrameCurrentRef.current
-        let delta = targetFrame - currentFrame
-        delta = Math.max(-maxFrameDelta, Math.min(maxFrameDelta, delta))
-        const nextFrame = currentFrame + delta
-        sequenceFrameCurrentRef.current = nextFrame
-        const float = nextFrame
-        const loadedSeq = loadedSeqRef.current
-        let base = clamp(Math.floor(float), 0, DAVINICI_FRAME_COUNT - 1)
-        let frac = float - base
-        let next = clamp(base + 1, 0, DAVINICI_FRAME_COUNT - 1)
-        if (!loadedSeq.has(base)) {
-          base = nearestLoadedForward(loadedSeq, base, DAVINICI_FRAME_COUNT - 1)
-          frac = 0
-          next = base
-        } else if (frac > 0 && !loadedSeq.has(next)) {
-          frac = 0
-          next = base
+        // Part 1: no frame state; video scrub drives Part1/2 display
+      }
+
+      // Part1/2 video: Part 1 = 0→end (forward); Part 2 = end→mid (reverse)
+      if (seqReadyRef.current && seqDurationRef.current > 0) {
+        const duration = seqDurationRef.current
+        const midTime = duration * SEQ_VIDEO_MID
+        const p2 = part2TargetRef.current
+        if (p2 > 0) {
+          seqTargetTimeRef.current = duration - p2 * (duration - midTime)
+        } else {
+          const p1 = sequenceFrameTargetRef.current / (DAVINICI_FRAME_COUNT - 1)
+          seqTargetTimeRef.current = clamp(p1, 0, 1) * duration
         }
-        const alpha = clamp(frac, 0, 1)
-        const seqCommit =
-          base !== lastSeqBaseRef.current ||
-          next !== lastSeqNextRef.current ||
-          Math.abs(alpha - lastSeqAlphaRef.current) >= ALPHA_COMMIT_THRESHOLD ||
-          now - lastCrossfadeStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
-        if (seqCommit) {
-          lastSeqBaseRef.current = base
-          lastSeqNextRef.current = next
-          lastSeqAlphaRef.current = alpha
-          lastCrossfadeStateTimeRef.current = now
-          setSeqBaseIndex(base)
-          setSeqNextIndex(next)
-          setSeqAlpha(alpha)
-          setSequenceFrameIndex(base)
+      }
+
+      // Part1/2 scrub engine: smooth, snap to 60fps, cap delta, seek with rVFC
+      const video = seqVideoRef.current
+      if (seqReadyRef.current && video) {
+        const dtSec = Math.min(0.05, (now - seqLastNowRef.current) / 1000)
+        seqLastNowRef.current = now
+        const tau = isMobile ? SEQ_SCRUB_TAU_MOBILE : SEQ_SCRUB_TAU_DESKTOP
+        const a = 1 - Math.exp(-dtSec / tau)
+        seqSmoothTimeRef.current += (seqTargetTimeRef.current - seqSmoothTimeRef.current) * a
+        const frameDur = SEQ_SCRUB_FRAME_DUR
+        const maxTime = seqDurationRef.current
+        let snapped = Math.round(seqSmoothTimeRef.current / frameDur) * frameDur
+        snapped = clamp(snapped, 0, maxTime)
+        const maxDelta = isMobile ? 1.2 * frameDur : 2.0 * frameDur
+        const currentTime = video.currentTime
+        const delta = clamp(snapped - currentTime, -maxDelta, maxDelta)
+        const next = currentTime + delta
+        if (!seqSeekingRef.current && Math.abs(next - seqLastPresentedRef.current) >= frameDur * 0.5) {
+          seqSeekingRef.current = true
+          video.currentTime = next
+          const onPresented = () => {
+            seqLastPresentedRef.current = video.currentTime
+            seqSeekingRef.current = false
+          }
+          if (seqUseRvfCRef.current && typeof (video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback === 'function') {
+            ;(video as HTMLVideoElement & { requestVideoFrameCallback: (cb: () => void) => number }).requestVideoFrameCallback(onPresented)
+          } else {
+            setTimeout(onPresented, 34)
+          }
         }
       }
 
@@ -986,41 +965,66 @@ export default function LandingPage() {
                   ))}
                 </svg>
               </div>
-              {/* Frame image: Part 1/2 davinici; Part 3 sequence02; Part 4 sequence03 — two-image crossfade for glide */}
+              {/* Part 1/2: scrub video; Part 3: sequence02 two-image; Part 4: sequence03 two-image */}
               <div className="relative z-10 w-full min-w-0 max-w-[100vw] h-[72vh] max-h-[78dvh] overflow-hidden border-0 border-none sm:h-[76vh] sm:max-h-[80dvh] md:w-[98vw] md:max-w-[1200px] md:h-[92vh] md:max-h-[800px] lg:w-full lg:h-full lg:max-w-none lg:max-h-none lg:min-w-full pointer-events-none">
-                {(() => {
-                  const basePath = inPart4
-                    ? sequence03FramePath(p4BaseIndex)
-                    : inPart3
-                      ? sequence02FramePath(p3BaseIndex)
-                      : daviniciFramePath(seqBaseIndex)
-                  const nextPath = inPart4
-                    ? sequence03FramePath(p4NextIndex)
-                    : inPart3
-                      ? sequence02FramePath(p3NextIndex)
-                      : daviniciFramePath(seqNextIndex)
-                  const alpha = inPart4 ? p4Alpha : inPart3 ? p3Alpha : seqAlpha
-                  const sharedStyle: React.CSSProperties = {
-                    ...frameImgStyle,
-                    transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`,
-                  }
-                  return (
-                    <div className="relative w-full h-full">
-                      <img
-                        src={basePath}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
-                        style={{ ...sharedStyle, opacity: 1 }}
-                      />
-                      <img
-                        src={nextPath}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
-                        style={{ ...sharedStyle, opacity: alpha, willChange: 'opacity' }}
-                      />
-                    </div>
-                  )
-                })()}
+                {inPart4 ? (
+                  <div className="relative w-full h-full">
+                    <img
+                      src={sequence03FramePath(p4BaseIndex)}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
+                      style={{ ...frameImgStyle, transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`, opacity: 1 }}
+                    />
+                    <img
+                      src={sequence03FramePath(p4NextIndex)}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
+                      style={{ ...frameImgStyle, transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`, opacity: p4Alpha, willChange: 'opacity' }}
+                    />
+                  </div>
+                ) : inPart3 ? (
+                  <div className="relative w-full h-full">
+                    <img
+                      src={sequence02FramePath(p3BaseIndex)}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
+                      style={{ ...frameImgStyle, transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`, opacity: 1 }}
+                    />
+                    <img
+                      src={sequence02FramePath(p3NextIndex)}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
+                      style={{ ...frameImgStyle, transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`, opacity: p3Alpha, willChange: 'opacity' }}
+                    />
+                  </div>
+                ) : (
+                  <video
+                    ref={seqVideoRef}
+                    src="/videos/shot1_60fps_alpha.webm"
+                    muted
+                    playsInline
+                    preload="auto"
+                    className="block w-full min-w-full h-full object-contain object-center lg:object-cover border-0 border-none outline-none"
+                    style={{
+                      ...frameImgStyle,
+                      transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`,
+                      willChange: 'transform',
+                      backfaceVisibility: 'hidden',
+                    }}
+                    onLoadedMetadata={(e) => {
+                      const v = e.currentTarget
+                      seqDurationRef.current = v.duration
+                      seqReadyRef.current = true
+                      seqUseRvfCRef.current =
+                        typeof (v as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback === 'function'
+                      v.playbackRate = 1
+                      v.play()
+                        .then(() => v.pause())
+                        .catch(() => {})
+                      v.currentTime = 0
+                    }}
+                  />
+                )}
               </div>
               {/* System text: fixed at left center; comes up with frame 1, then scrolls up as sequence runs */}
               <div
