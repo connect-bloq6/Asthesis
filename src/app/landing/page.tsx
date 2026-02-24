@@ -67,10 +67,12 @@ const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
-/** Part 1: scroll-locked seek (30Hz max, 60fps snap). No playback when scroll stops. */
+/** Part 1: scroll-locked seek (30Hz max, 60fps snap). Smooth p1 for mobile. */
 const SCROLL_IDLE_MS = 90
 const SEQ_SEEK_INTERVAL_MS = 33
 const SEQ_FRAME_DUR = 1 / 60
+const PART1_TAU_DESKTOP = 0.06
+const PART1_TAU_MOBILE = 0.085
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -205,6 +207,8 @@ export default function LandingPage() {
   const lastScrollAtRef = useRef(0)
   const lastSeekAtRef = useRef(0)
   const pendingSeekRef = useRef<number | null>(null)
+  const part1SmoothProgressRef = useRef(0)
+  const lastRafTimeRef = useRef(0)
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -644,7 +648,7 @@ export default function LandingPage() {
         scrollActiveRef.current = false
       }
 
-      // Part 1: scroll-locked hybrid — seek at 30Hz while scrolling, pause + lock when stopped
+      // Part 1: scroll-locked hybrid — smooth p1 then seek at 30Hz; pause + lock when stopped
       const video = seqVideoRef.current
       if (seqReadyRef.current && video && seqDurationRef.current > 0) {
         const vh = stableVhRef.current
@@ -658,7 +662,14 @@ export default function LandingPage() {
         video.pause()
 
         if (inPart1) {
-          const p1 = clamp((y - sequenceStart) / part1Height, 0, 1)
+          const rawP1 = clamp((y - sequenceStart) / part1Height, 0, 1)
+          const dt = Math.min((now - lastRafTimeRef.current) / 1000, 0.05)
+          lastRafTimeRef.current = now
+          const tau = isMobileRef.current ? PART1_TAU_MOBILE : PART1_TAU_DESKTOP
+          const alpha = 1 - Math.exp(-dt / tau)
+          part1SmoothProgressRef.current += (rawP1 - part1SmoothProgressRef.current) * alpha
+          const p1 = part1SmoothProgressRef.current
+
           let desiredTime = p1 * duration
           desiredTime = clamp(Math.round(desiredTime / frameDur) * frameDur, 0, Math.max(0, duration - frameDur))
 
@@ -681,8 +692,13 @@ export default function LandingPage() {
             }
           }
         } else {
-          if (y < sequenceStart) video.currentTime = 0
-          else if (y >= part2Start) video.currentTime = duration
+          if (y < sequenceStart) {
+            part1SmoothProgressRef.current = 0
+            video.currentTime = 0
+          } else if (y >= part2Start) {
+            part1SmoothProgressRef.current = 1
+            video.currentTime = duration
+          }
         }
       }
 
