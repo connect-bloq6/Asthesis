@@ -53,12 +53,15 @@ const CARE_VERTICAL_OFFSET_VH = 4
 const INSIDE_FROM_BOTTOM_VH = 95 // inside: right bottom to right center over full Part 4 (like design, care)
 const INSIDE_VERTICAL_OFFSET_VH = 2
 // Frame-rate independent smoothing: delta-time so 60Hz/90Hz/120Hz feel the same; no frame skips on fast scroll.
-const FRAME_CATCHUP_MAX_PER_SEC = 58 // desktop: ~1 frame per frame at 60fps
-const FRAME_CATCHUP_MAX_PER_SEC_MOBILE = 28 // mobile: stricter so sequence never skips (smooth scroll)
+const FRAME_CATCHUP_MAX_PER_SEC = 58 // ~1 frame per frame at 60fps
+const FRAME_CATCHUP_MAX_PER_SEC_MOBILE = 58
 const TARGET_SMOOTHING_MAX_PER_SEC = 55 // max "target" movement per second (smoothed target follows scroll)
-const TARGET_SMOOTHING_MAX_PER_SEC_MOBILE = 32 // mobile: target itself moves smoothly, no jump
+const TARGET_SMOOTHING_MAX_PER_SEC_MOBILE = 55
 const SMOOTHING_TIME_CONSTANT = 0.06 // seconds for progress/transition to catch up (exponential smoothing)
-const SMOOTHING_TIME_CONSTANT_MOBILE = 0.1 // mobile: slightly gentler so less jitter
+const SMOOTHING_TIME_CONSTANT_MOBILE = 0.06
+// On mobile, RAF can be throttled (e.g. during scroll) so dtSec is large; cap per-tick deltas so we always play through the sequence instead of jumping.
+const MAX_FRAME_DELTA_PER_TICK_MOBILE = 1.15 // max frames the displayed image can advance in one tick on mobile
+const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4 // max smoothed-target movement per tick on mobile
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -206,7 +209,8 @@ export default function LandingPage() {
     const main = mainRef.current
     const scrollTop = main?.scrollTop ?? 0
     const windowScrollY = typeof window !== 'undefined' ? window.scrollY ?? document.documentElement.scrollTop : 0
-    const effectiveScroll = Math.max(scrollTop, windowScrollY)
+    const bodyScrollTop = typeof document !== 'undefined' && document.body ? document.body.scrollTop ?? 0 : 0
+    const effectiveScroll = Math.max(scrollTop, windowScrollY, bodyScrollTop)
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800
     const sequenceStart = vh
     const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
@@ -316,7 +320,8 @@ export default function LandingPage() {
       const main = mainRef.current
       const scrollTop = main?.scrollTop ?? 0
       const windowScrollY = typeof window !== 'undefined' ? window.scrollY ?? document.documentElement.scrollTop : 0
-      const effectiveScroll = Math.max(scrollTop, windowScrollY)
+      const bodyScrollTop = typeof document !== 'undefined' && document.body ? document.body.scrollTop ?? 0 : 0
+      const effectiveScroll = Math.max(scrollTop, windowScrollY, bodyScrollTop)
       const threshold = typeof window !== 'undefined' ? window.innerHeight * HERO_HEIGHT_THRESHOLD : 0
       setHeroCrossed(effectiveScroll >= threshold)
       // Polygon fade: 0→1 as we scroll from hero into frame 1 (one viewport); stays 1 after frame 1 is fully in view; fades out when scrolling back up
@@ -483,8 +488,12 @@ export default function LandingPage() {
       lastTickTimeRef.current = now
       const isMobile = isMobileRef.current
       const smoothFactor = 1 - Math.exp(-dtSec / (isMobile ? SMOOTHING_TIME_CONSTANT_MOBILE : SMOOTHING_TIME_CONSTANT))
-      const maxFrameDelta = (isMobile ? FRAME_CATCHUP_MAX_PER_SEC_MOBILE : FRAME_CATCHUP_MAX_PER_SEC) * dtSec
-      const maxTargetDelta = (isMobile ? TARGET_SMOOTHING_MAX_PER_SEC_MOBILE : TARGET_SMOOTHING_MAX_PER_SEC) * dtSec
+      let maxFrameDelta = (isMobile ? FRAME_CATCHUP_MAX_PER_SEC_MOBILE : FRAME_CATCHUP_MAX_PER_SEC) * dtSec
+      let maxTargetDelta = (isMobile ? TARGET_SMOOTHING_MAX_PER_SEC_MOBILE : TARGET_SMOOTHING_MAX_PER_SEC) * dtSec
+      if (isMobile) {
+        maxFrameDelta = Math.min(maxFrameDelta, MAX_FRAME_DELTA_PER_TICK_MOBILE)
+        maxTargetDelta = Math.min(maxTargetDelta, MAX_TARGET_DELTA_PER_TICK_MOBILE)
+      }
 
       if (part2TargetRef.current > 0) {
         // Part 2: smooth progress with time-based lerp; cap frame delta so reverse sequence plays smoothly
