@@ -87,9 +87,9 @@ const TRAVEL_STOP_EPS = 0.004
 const TAU_NORMAL_DESKTOP = 0.06
 const TAU_NORMAL_MOBILE = 0.085
 const MAX_CACHE_DESKTOP = 220
-const MAX_CACHE_MOBILE = 90
+const MAX_CACHE_MOBILE = 45
 const MAX_CONCURRENT_DECODES_DESKTOP = 6
-const MAX_CONCURRENT_DECODES_MOBILE = 3
+const MAX_CONCURRENT_DECODES_MOBILE = 2
 
 function touchLRU(map: Map<number, HTMLImageElement>, key: number): void {
   if (map.has(key)) {
@@ -206,9 +206,15 @@ export default function LandingPage() {
   const loading2Ref = useRef(new Set<number>())
   const loading3Ref = useRef(new Set<number>())
   const loading4Ref = useRef(new Set<number>())
+  const queued1Ref = useRef(new Set<number>())
+  const queued2Ref = useRef(new Set<number>())
+  const queued3Ref = useRef(new Set<number>())
+  const queued4Ref = useRef(new Set<number>())
   const lastDrawnIdxRef = useRef<{ 1: number; 2: number; 3: number; 4: number }>({ 1: 0, 2: 0, 3: 0, 4: 0 })
   const lastDrawnPartRef = useRef<1 | 2 | 3 | 4>(1)
   const lastScrollYRef = useRef(0)
+  const lastPrefetchAtRef = useRef(0)
+  const lastPrefetchKeyRef = useRef(0)
   const decodeQueueRef = useRef<number[]>([])
   const activeDecodesRef = useRef(0)
   const displayPartRef = useRef<1 | 2 | 3 | 4>(1)
@@ -325,6 +331,7 @@ export default function LandingPage() {
 
   const getCacheRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? cache1Ref : part === 2 ? cache2Ref : part === 3 ? cache3Ref : cache4Ref), [])
   const getLoadingRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? loading1Ref : part === 2 ? loading2Ref : part === 3 ? loading3Ref : loading4Ref), [])
+  const getQueuedRef = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? queued1Ref : part === 2 ? queued2Ref : part === 3 ? queued3Ref : queued4Ref), [])
   const getTotal = useCallback((part: 1 | 2 | 3 | 4) => (part === 1 ? PART1_TOTAL : part === 2 ? PART2_TOTAL : part === 3 ? PART3_TOTAL : PART4_TOTAL), [])
 
   const pumpQueue = useCallback(() => {
@@ -334,9 +341,11 @@ export default function LandingPage() {
       const encoded = queue.shift()!
       const part = (encoded >> 16) as 1 | 2 | 3 | 4
       const i = encoded & 0xffff
+      getQueuedRef(part).current.delete(i)
       const cache = getCacheRef(part).current
       const loading = getLoadingRef(part).current
       if (cache.has(i)) continue
+      if (loading.has(i)) continue
       loading.add(i)
       activeDecodesRef.current += 1
       const img = new Image()
@@ -358,7 +367,7 @@ export default function LandingPage() {
           pumpQueue()
         })
     }
-  }, [getCacheRef, getLoadingRef])
+  }, [getCacheRef, getLoadingRef, getQueuedRef])
 
   const enqueueLoad = useCallback(
     (part: 1 | 2 | 3 | 4, i: number) => {
@@ -366,11 +375,13 @@ export default function LandingPage() {
       if (i < 0 || i >= total) return
       const cache = getCacheRef(part).current
       const loading = getLoadingRef(part).current
-      if (cache.has(i) || loading.has(i)) return
+      const queued = getQueuedRef(part).current
+      if (cache.has(i) || loading.has(i) || queued.has(i)) return
+      queued.add(i)
       decodeQueueRef.current.push((part << 16) | i)
       pumpQueue()
     },
-    [getCacheRef, getLoadingRef, getTotal, pumpQueue]
+    [getCacheRef, getLoadingRef, getQueuedRef, getTotal, pumpQueue]
   )
 
   const ensureWindow = useCallback(
@@ -380,19 +391,30 @@ export default function LandingPage() {
       const loading = getLoadingRef(part).current
       const direction =
         directionOverride !== undefined ? directionOverride : getScrollY() - lastScrollYRef.current
+      const isMobile = isMobileRef.current
       let start: number
       let end: number
-      if (direction > 0) {
-        start = center - 20
-        end = center + 70
+      if (isMobile) {
+        if (direction > 0) {
+          start = center - 10
+          end = center + 24
+        } else {
+          start = center - 24
+          end = center + 10
+        }
       } else {
-        start = center - 70
-        end = center + 20
+        if (direction > 0) {
+          start = center - 20
+          end = center + 70
+        } else {
+          start = center - 70
+          end = center + 20
+        }
       }
       start = Math.max(0, start)
       end = Math.min(total - 1, end)
-      for (let i = start; i <= end; i++) {
-        if (!cache.has(i) && !loading.has(i)) enqueueLoad(part, i)
+      for (let idx = start; idx <= end; idx++) {
+        if (!cache.has(idx) && !loading.has(idx)) enqueueLoad(part, idx)
       }
     },
     [getCacheRef, getLoadingRef, getTotal, enqueueLoad, getScrollY]
@@ -795,7 +817,13 @@ export default function LandingPage() {
           travelActiveRef.current
             ? Math.sign(targetProgRef.current - displayProgRef.current)
             : undefined
-        ensureWindow(drawPartNum, centerIndex, direction)
+        const prefetchInterval = isMobileRef.current ? 60 : 40
+        const key = (drawPartNum << 16) | centerIndex
+        if (key !== lastPrefetchKeyRef.current || now - lastPrefetchAtRef.current >= prefetchInterval) {
+          ensureWindow(drawPartNum, centerIndex, direction)
+          lastPrefetchKeyRef.current = key
+          lastPrefetchAtRef.current = now
+        }
         drawPart(drawPartNum, drawProg)
       }
       lastScrollYRef.current = y
