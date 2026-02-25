@@ -55,23 +55,13 @@ const CARE_VERTICAL_OFFSET_VH = 4
 const INSIDE_FROM_BOTTOM_VH = 95 // inside: right bottom to right center over full Part 4 (like design, care)
 const INSIDE_VERTICAL_OFFSET_VH = 2
 // Frame-rate independent smoothing: delta-time so 60Hz/90Hz/120Hz feel the same; no frame skips on fast scroll.
-const FRAME_CATCHUP_MAX_PER_SEC = 58 // ~1 frame per frame at 60fps
-const FRAME_CATCHUP_MAX_PER_SEC_MOBILE = 58
-const TARGET_SMOOTHING_MAX_PER_SEC = 55 // max "target" movement per second (smoothed target follows scroll)
-const TARGET_SMOOTHING_MAX_PER_SEC_MOBILE = 55
 const SMOOTHING_TIME_CONSTANT = 0.06 // seconds for progress/transition to catch up (exponential smoothing)
 const SMOOTHING_TIME_CONSTANT_MOBILE = 0.06
-// Per-tick caps prevent multi-frame jumps when RAF is delayed (desktop and mobile).
-const MAX_FRAME_DELTA_PER_TICK_DESKTOP = 1.25
-const MAX_TARGET_DELTA_PER_TICK_DESKTOP = 1.5
-const MAX_FRAME_DELTA_PER_TICK_MOBILE = 1.15
-const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
 /** Part 1–4: scroll-driven VP9 alpha video scrub (frame-quantized, 30fps). */
 const SCRUB_FPS = 30
-const SEEK_THRESHOLD = 0.03
 const SEEK_MIN_INTERVAL_MS_DESKTOP = 0
 const SEEK_MIN_INTERVAL_MS_MOBILE = 24
 
@@ -178,10 +168,14 @@ export default function LandingPage() {
   const displayPartRef = useRef<1 | 2 | 3 | 4>(1)
   const targetTimeRef = useRef(0)
   const displayTimeRef = useRef(0)
-  const lastFrameIndexRef = useRef<number | null>(null)
+  const lastRequestedFrameByPartRef = useRef<{ 1: number | null; 2: number | null; 3: number | null; 4: number | null }>({
+    1: null,
+    2: null,
+    3: null,
+    4: null,
+  })
   const pendingSeekRef = useRef<number | null>(null)
-  const seekArmedRef = useRef(false)
-  const lastSeekAtRef = useRef(0)
+  const lastSeekMsRef = useRef(0)
   const lastTickRef = useRef(0)
 
   const getScrollY = useCallback(
@@ -281,7 +275,7 @@ export default function LandingPage() {
     canvas.style.height = `${rect.height}px`
     canvas.width = rect.width * dpr
     canvas.height = rect.height * dpr
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true }) || canvas.getContext('2d')
     ctxRef.current = ctx
     if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     canvasRectRef.current = { w: rect.width, h: rect.height }
@@ -301,9 +295,33 @@ export default function LandingPage() {
     }
   }, [gradientTransitionComplete, syncCanvasSize])
 
-  // Alpha videos: load metadata, store duration, warm decoder (muted+playsInline)
+  // Alpha videos: load metadata, store duration, warm decoder (muted+playsInline), attach seeked handlers once
   useEffect(() => {
     if (!gradientTransitionComplete) return
+    const getActiveVideo = () =>
+      displayPartRef.current === 1 ? v1Ref.current
+        : displayPartRef.current === 2 ? v2Ref.current
+        : displayPartRef.current === 3 ? v3Ref.current
+        : v4Ref.current
+    const onSeeked = (v: HTMLVideoElement) => {
+      if (getActiveVideo() !== v || v.readyState < 2) return
+      const ctx = ctxRef.current
+      const rect = canvasRectRef.current
+      if (ctx && rect.w > 0 && rect.h > 0) {
+        ctx.globalCompositeOperation = 'copy'
+        ctx.drawImage(v, 0, 0, rect.w, rect.h)
+        ctx.globalCompositeOperation = 'source-over'
+      }
+      const pending = pendingSeekRef.current
+      if (pending !== null) {
+        const pendingFrame = Math.round(pending * SCRUB_FPS)
+        const currentFrame = Math.round(v.currentTime * SCRUB_FPS)
+
+        if (pendingFrame !== currentFrame) {
+          v.currentTime = pending
+        }
+      }
+    }
     const videos = [v1Ref, v2Ref, v3Ref, v4Ref] as const
     const durRefs = [dur1Ref, dur2Ref, dur3Ref, dur4Ref] as const
     const warm = (v: HTMLVideoElement, durRef: { current: number }) => {
@@ -321,6 +339,9 @@ export default function LandingPage() {
       v.addEventListener('loadedmetadata', onMeta)
       if (v.readyState >= 1) onMeta()
       cleanups.push(() => v.removeEventListener('loadedmetadata', onMeta))
+      const boundSeeked = () => onSeeked(v)
+      v.addEventListener('seeked', boundSeeked)
+      cleanups.push(() => v.removeEventListener('seeked', boundSeeked))
     })
     return () => cleanups.forEach((c) => c())
   }, [gradientTransitionComplete])
@@ -564,15 +585,6 @@ export default function LandingPage() {
       lastTickTimeRef.current = now
       const isMobile = isMobileRef.current
       const smoothFactor = 1 - Math.exp(-dtSec / (isMobile ? SMOOTHING_TIME_CONSTANT_MOBILE : SMOOTHING_TIME_CONSTANT))
-      let maxFrameDelta = (isMobile ? FRAME_CATCHUP_MAX_PER_SEC_MOBILE : FRAME_CATCHUP_MAX_PER_SEC) * dtSec
-      let maxTargetDelta = (isMobile ? TARGET_SMOOTHING_MAX_PER_SEC_MOBILE : TARGET_SMOOTHING_MAX_PER_SEC) * dtSec
-      if (isMobile) {
-        maxFrameDelta = Math.min(maxFrameDelta, MAX_FRAME_DELTA_PER_TICK_MOBILE)
-        maxTargetDelta = Math.min(maxTargetDelta, MAX_TARGET_DELTA_PER_TICK_MOBILE)
-      } else {
-        maxFrameDelta = Math.min(maxFrameDelta, MAX_FRAME_DELTA_PER_TICK_DESKTOP)
-        maxTargetDelta = Math.min(maxTargetDelta, MAX_TARGET_DELTA_PER_TICK_DESKTOP)
-      }
 
       const shouldUpdateProgress = (next: number, lastRef: { current: number }) =>
         Math.abs(next - lastRef.current) >= SMOOTHED_PROGRESS_THROTTLE_DELTA ||
@@ -626,25 +638,23 @@ export default function LandingPage() {
       const duration =
         part === 1 ? dur1Ref.current : part === 2 ? dur2Ref.current : part === 3 ? dur3Ref.current : dur4Ref.current
       let targetTime = 0
+      let frameIndex = 0
       if (duration > 0) {
         const totalFrames = Math.max(1, Math.floor(duration * SCRUB_FPS))
-        const frameIndex = Math.round(raw * (totalFrames - 1))
-        if (lastFrameIndexRef.current !== frameIndex) {
-          lastFrameIndexRef.current = frameIndex
-        }
+        frameIndex = clamp(Math.floor(raw * totalFrames), 0, totalFrames - 1)
         targetTime = frameIndex / SCRUB_FPS
       }
       targetPartRef.current = part
       targetTimeRef.current = targetTime
+      displayTimeRef.current = targetTime
 
       lastTickRef.current = now
 
       if (part !== displayPartRef.current) {
         displayPartRef.current = part
-        displayTimeRef.current = targetTime
-        seekArmedRef.current = false
+        lastRequestedFrameByPartRef.current[part] = null
+        pendingSeekRef.current = targetTime
       }
-      displayTimeRef.current = targetTime
 
       const getActiveVideo = () =>
         displayPartRef.current === 1 ? v1Ref.current
@@ -653,56 +663,27 @@ export default function LandingPage() {
           : v4Ref.current
 
       const activePart = displayPartRef.current
-      const displayTime = displayTimeRef.current
       const activeDur = activePart === 1 ? dur1Ref.current : activePart === 2 ? dur2Ref.current : activePart === 3 ? dur3Ref.current : dur4Ref.current
       const video = getActiveVideo()
       ;[v1Ref.current, v2Ref.current, v3Ref.current, v4Ref.current].forEach((v) => {
         if (v && v !== video && !v.paused) v.pause()
       })
       if (video && activeDur > 0) {
-        const diff = Math.abs(video.currentTime - displayTime)
-        const minInterval = isMobileRef.current ? SEEK_MIN_INTERVAL_MS_MOBILE : SEEK_MIN_INTERVAL_MS_DESKTOP
+        const lastRequested = lastRequestedFrameByPartRef.current[part]
+        const needsSeek = lastRequested !== frameIndex
+        if (needsSeek) {
+          lastRequestedFrameByPartRef.current[part] = frameIndex
+          pendingSeekRef.current = targetTime
 
-        if (
-          diff > SEEK_THRESHOLD &&
-          !video.seeking &&
-          now - lastSeekAtRef.current >= minInterval
-        ) {
-          lastSeekAtRef.current = now
-          pendingSeekRef.current = displayTime
-
-          if (!seekArmedRef.current) {
-            seekArmedRef.current = true
-
-            const onSeeked = () => {
-              seekArmedRef.current = false
-              video.removeEventListener('seeked', onSeeked)
-
-              const ctx = ctxRef.current
-              const rect = canvasRectRef.current
-
-              if (ctx && rect.w > 0 && rect.h > 0) {
-                ctx.globalCompositeOperation = 'copy'
-                ctx.drawImage(video, 0, 0, rect.w, rect.h)
-                ctx.globalCompositeOperation = 'source-over'
-              }
-            }
-
-            video.addEventListener('seeked', onSeeked, { once: true })
-            video.currentTime = displayTime
-          }
-        } else if (diff <= SEEK_THRESHOLD && video.readyState >= 2 && !video.seeking) {
-          const ctx = ctxRef.current
-          const rect = canvasRectRef.current
-          if (ctx && rect.w > 0 && rect.h > 0) {
-            ctx.globalCompositeOperation = 'copy'
-            ctx.drawImage(video, 0, 0, rect.w, rect.h)
-            ctx.globalCompositeOperation = 'source-over'
+          const minInterval = isMobileRef.current ? SEEK_MIN_INTERVAL_MS_MOBILE : SEEK_MIN_INTERVAL_MS_DESKTOP
+          if (!video.seeking && now - lastSeekMsRef.current >= minInterval) {
+            lastSeekMsRef.current = now
+            video.currentTime = targetTime
           }
         }
       }
 
-      if (DEBUG_FRAME) console.log({ part, raw, targetTime, displayTime })
+      if (DEBUG_FRAME) console.log({ part, raw, targetTime, frameIndex })
 
       const target3 = part3TargetRef.current
       const current3 = smoothedPart3Ref.current
