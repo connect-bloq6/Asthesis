@@ -63,7 +63,7 @@ const ALPHA_COMMIT_THRESHOLD = 0.03
 /** Part 1–4: scroll-driven VP9 alpha video scrub (frame-quantized, 30fps). */
 const SCRUB_FPS = 30
 const SEEK_MIN_INTERVAL_MS_DESKTOP = 0
-const SEEK_MIN_INTERVAL_MS_MOBILE = 24
+const SEEK_MIN_INTERVAL_MS_MOBILE = 16
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -83,10 +83,10 @@ const FRAME_CROP_SCALE = 100 / 70
 const frameImgStyle: React.CSSProperties = {
   border: 'none',
   outline: 'none',
-  height: 'calc(100% + 24px)',
-  marginTop: '-12px',
-  marginBottom: '-12px',
-  maxHeight: 'none',
+  width: '100%',
+  height: '100%',
+  margin: 0,
+  display: 'block',
   transformOrigin: 'center center',
 }
 
@@ -926,7 +926,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               {/* Part 1–4: canvas + hidden alpha videos (scroll-driven scrub, 540p mobile / 720p desktop) */}
-              <div className="relative z-10 w-full min-w-0 max-w-[100vw] h-[72vh] max-h-[78dvh] overflow-hidden border-0 border-none sm:h-[76vh] sm:max-h-[80dvh] md:w-[98vw] md:max-w-[1200px] md:h-[92vh] md:max-h-[800px] lg:w-full lg:h-full lg:max-w-none lg:max-h-none lg:min-w-full pointer-events-none">
+              <div className="relative z-10 w-full max-w-[100vw] overflow-hidden border-0 border-none pointer-events-none aspect-video sm:aspect-video md:aspect-video lg:aspect-auto lg:w-full lg:h-full lg:max-w-none lg:min-w-full">
                 {(() => {
                   const isMobile = !isDesktopViewport
                   const shot1Src = isMobile ? '/videos/alpha/shot1_alpha_540p.webm' : '/videos/alpha/shot1_alpha_720p.webm'
@@ -947,7 +947,7 @@ export default function LandingPage() {
                   className="block w-full h-full border-0 border-none outline-none"
                   style={{
                     ...frameImgStyle,
-                    transform: `translateZ(0) scale(${FRAME_CROP_SCALE})`,
+                    transform: `translateZ(0) scale(${isDesktopViewport ? FRAME_CROP_SCALE : 1})`,
                     willChange: 'transform',
                     backfaceVisibility: 'hidden',
                     contain: 'layout paint',
