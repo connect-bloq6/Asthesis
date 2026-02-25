@@ -92,6 +92,34 @@ const frameImgStyle: React.CSSProperties = {
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 
+function drawCover(
+  ctx: CanvasRenderingContext2D,
+  source: HTMLVideoElement,
+  dw: number,
+  dh: number
+) {
+  const sw = source.videoWidth || 1
+  const sh = source.videoHeight || 1
+
+  const sAspect = sw / sh
+  const dAspect = dw / dh
+
+  let sx = 0,
+    sy = 0,
+    sWidth = sw,
+    sHeight = sh
+
+  if (sAspect > dAspect) {
+    sWidth = sh * dAspect
+    sx = (sw - sWidth) / 2
+  } else {
+    sHeight = sw / dAspect
+    sy = (sh - sHeight) / 2
+  }
+
+  ctx.drawImage(source, sx, sy, sWidth, sHeight, 0, 0, dw, dh)
+}
+
 function nearestLoadedForward(loaded: Set<number>, target: number, maxIndex: number): number {
   const t = Math.round(target)
   for (let i = Math.min(t, maxIndex); i >= 0; i--) {
@@ -275,7 +303,7 @@ export default function LandingPage() {
     canvas.style.height = `${rect.height}px`
     canvas.width = rect.width * dpr
     canvas.height = rect.height * dpr
-    const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true }) || canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true, desynchronized: false, willReadFrequently: false }) || canvas.getContext('2d')
     ctxRef.current = ctx
     if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     canvasRectRef.current = { w: rect.width, h: rect.height }
@@ -308,9 +336,9 @@ export default function LandingPage() {
       const ctx = ctxRef.current
       const rect = canvasRectRef.current
       if (ctx && rect.w > 0 && rect.h > 0) {
-        ctx.globalCompositeOperation = 'copy'
-        ctx.drawImage(v, 0, 0, rect.w, rect.h)
+        ctx.clearRect(0, 0, rect.w, rect.h)
         ctx.globalCompositeOperation = 'source-over'
+        drawCover(ctx, v, rect.w, rect.h)
       }
       const pending = pendingSeekRef.current
       if (pending !== null) {
@@ -907,10 +935,10 @@ export default function LandingPage() {
                   const shot4Src = isMobile ? '/videos/alpha/shot4_alpha_540p.webm' : '/videos/alpha/shot4_alpha_720p.webm'
                   return (
                     <>
-                      <video ref={v1Ref} src={shot1Src} muted playsInline preload="auto" style={{ display: 'none' }} />
-                      <video ref={v2Ref} src={shot2Src} muted playsInline preload="auto" style={{ display: 'none' }} />
-                      <video ref={v3Ref} src={shot3Src} muted playsInline preload="auto" style={{ display: 'none' }} />
-                      <video ref={v4Ref} src={shot4Src} muted playsInline preload="auto" style={{ display: 'none' }} />
+                      <video ref={v1Ref} src={shot1Src} muted playsInline disablePictureInPicture preload="metadata" style={{ display: 'none' }} />
+                      <video ref={v2Ref} src={shot2Src} muted playsInline disablePictureInPicture preload="metadata" style={{ display: 'none' }} />
+                      <video ref={v3Ref} src={shot3Src} muted playsInline disablePictureInPicture preload="metadata" style={{ display: 'none' }} />
+                      <video ref={v4Ref} src={shot4Src} muted playsInline disablePictureInPicture preload="metadata" style={{ display: 'none' }} />
                     </>
                   )
                 })()}
