@@ -726,8 +726,7 @@ export default function LandingPage() {
       const current4 = smoothedPart4Ref.current
       const next4 = current4 + (target4 - current4) * smoothFactor
       smoothedPart4Ref.current = next4
-      const part4JustBecameVisible = target4 > 0 && lastSmoothedPart4StateRef.current === 0
-      if (part4JustBecameVisible || shouldUpdateProgress(next4, lastSmoothedPart4StateRef)) {
+      if (shouldUpdateProgress(next4, lastSmoothedPart4StateRef)) {
         lastSmoothedPart4StateRef.current = next4
         lastSmoothedProgressStateTimeRef.current = now
         setSmoothedPart4Progress(next4)
