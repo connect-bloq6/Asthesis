@@ -726,7 +726,8 @@ export default function LandingPage() {
       const current4 = smoothedPart4Ref.current
       const next4 = current4 + (target4 - current4) * smoothFactor
       smoothedPart4Ref.current = next4
-      if (shouldUpdateProgress(next4, lastSmoothedPart4StateRef)) {
+      const part4JustBecameVisible = target4 > 0 && lastSmoothedPart4StateRef.current === 0
+      if (part4JustBecameVisible || shouldUpdateProgress(next4, lastSmoothedPart4StateRef)) {
         lastSmoothedPart4StateRef.current = next4
         lastSmoothedProgressStateTimeRef.current = now
         setSmoothedPart4Progress(next4)
@@ -926,7 +927,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               {/* Part 1–4: canvas + hidden alpha videos (scroll-driven scrub, 540p mobile / 720p desktop) */}
-              <div className="relative z-10 w-full max-w-[100vw] overflow-hidden border-0 border-none pointer-events-none aspect-video sm:aspect-video md:aspect-video lg:aspect-auto lg:w-full lg:h-full lg:max-w-none lg:min-w-full">
+              <div className="relative z-10 w-full max-w-[100vw] overflow-hidden border-0 border-none pointer-events-none aspect-square sm:aspect-square md:aspect-video lg:aspect-auto lg:w-full lg:h-full lg:max-w-none lg:min-w-full">
                 {(() => {
                   const isMobile = !isDesktopViewport
                   const shot1Src = isMobile ? '/videos/alpha/shot1_alpha_540p.webm' : '/videos/alpha/shot1_alpha_720p.webm'
