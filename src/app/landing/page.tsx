@@ -69,16 +69,11 @@ const MAX_TARGET_DELTA_PER_TICK_MOBILE = 1.4
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
-/** Part 1–4: scroll-driven VP9 alpha video scrub (720p WebM). */
-const MAX_TIME_SPEED_DESKTOP = 3.5
-const MAX_TIME_SPEED_MOBILE = 2.2
-const TIME_TAU_DESKTOP = 0.05
-const TIME_TAU_MOBILE = 0.08
-const TRAVEL_TIME_THRESHOLD = 0.1
-const TIME_STOP_EPS = 0.01
-const SEEK_THRESHOLD = 0.016 // ~1 frame at 60fps
+/** Part 1–4: scroll-driven VP9 alpha video scrub (frame-quantized, 30fps). */
+const SCRUB_FPS = 30
+const SEEK_THRESHOLD = 0.03
 const SEEK_MIN_INTERVAL_MS_DESKTOP = 0
-const SEEK_MIN_INTERVAL_MS_MOBILE = 16 // cap seeks ~60Hz
+const SEEK_MIN_INTERVAL_MS_MOBILE = 24
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -183,11 +178,9 @@ export default function LandingPage() {
   const displayPartRef = useRef<1 | 2 | 3 | 4>(1)
   const targetTimeRef = useRef(0)
   const displayTimeRef = useRef(0)
-  const travelActiveRef = useRef(false)
-  const rvfPendingRef = useRef(false)
-  const rvfIdRef = useRef<number | null>(null)
-  const lastRvfVideoRef = useRef<HTMLVideoElement | null>(null)
-  const drawTokenRef = useRef(0)
+  const lastFrameIndexRef = useRef<number | null>(null)
+  const pendingSeekRef = useRef<number | null>(null)
+  const seekArmedRef = useRef(false)
   const lastSeekAtRef = useRef(0)
   const lastTickRef = useRef(0)
 
@@ -632,42 +625,26 @@ export default function LandingPage() {
 
       const duration =
         part === 1 ? dur1Ref.current : part === 2 ? dur2Ref.current : part === 3 ? dur3Ref.current : dur4Ref.current
-      const targetTime = duration > 0 ? raw * duration : 0
+      let targetTime = 0
+      if (duration > 0) {
+        const totalFrames = Math.max(1, Math.floor(duration * SCRUB_FPS))
+        const frameIndex = Math.round(raw * (totalFrames - 1))
+        if (lastFrameIndexRef.current !== frameIndex) {
+          lastFrameIndexRef.current = frameIndex
+        }
+        targetTime = frameIndex / SCRUB_FPS
+      }
       targetPartRef.current = part
       targetTimeRef.current = targetTime
 
-      const dt = Math.min((now - lastTickRef.current) / 1000, 0.05)
       lastTickRef.current = now
 
       if (part !== displayPartRef.current) {
         displayPartRef.current = part
-        if (lastRvfVideoRef.current && rvfIdRef.current !== null) {
-          ;(lastRvfVideoRef.current as any).cancelVideoFrameCallback?.(rvfIdRef.current)
-        }
-        rvfIdRef.current = null
-        lastRvfVideoRef.current = null
-        rvfPendingRef.current = false
         displayTimeRef.current = targetTime
-        drawTokenRef.current += 1
+        seekArmedRef.current = false
       }
-      const delta = targetTime - displayTimeRef.current
-      if (Math.abs(delta) > TRAVEL_TIME_THRESHOLD) travelActiveRef.current = true
-
-      if (travelActiveRef.current) {
-        const maxSpeed = isMobileRef.current ? MAX_TIME_SPEED_MOBILE : MAX_TIME_SPEED_DESKTOP
-        const dir = Math.sign(delta)
-        displayTimeRef.current += dir * maxSpeed * dt
-        if (Math.abs(targetTime - displayTimeRef.current) < TIME_STOP_EPS) {
-          displayTimeRef.current = targetTime
-          travelActiveRef.current = false
-        }
-        displayTimeRef.current = clamp(displayTimeRef.current, 0, duration)
-      } else {
-        const tau = isMobileRef.current ? TIME_TAU_MOBILE : TIME_TAU_DESKTOP
-        const alpha = 1 - Math.exp(-dt / tau)
-        displayTimeRef.current += (targetTime - displayTimeRef.current) * alpha
-        displayTimeRef.current = clamp(displayTimeRef.current, 0, duration)
-      }
+      displayTimeRef.current = targetTime
 
       const getActiveVideo = () =>
         displayPartRef.current === 1 ? v1Ref.current
@@ -685,45 +662,47 @@ export default function LandingPage() {
       if (video && activeDur > 0) {
         const diff = Math.abs(video.currentTime - displayTime)
         const minInterval = isMobileRef.current ? SEEK_MIN_INTERVAL_MS_MOBILE : SEEK_MIN_INTERVAL_MS_DESKTOP
-        if (diff > SEEK_THRESHOLD && now - lastSeekAtRef.current >= minInterval) {
+
+        if (
+          diff > SEEK_THRESHOLD &&
+          !video.seeking &&
+          now - lastSeekAtRef.current >= minInterval
+        ) {
           lastSeekAtRef.current = now
-          video.currentTime = displayTime
+          pendingSeekRef.current = displayTime
+
+          if (!seekArmedRef.current) {
+            seekArmedRef.current = true
+
+            const onSeeked = () => {
+              seekArmedRef.current = false
+              video.removeEventListener('seeked', onSeeked)
+
+              const ctx = ctxRef.current
+              const rect = canvasRectRef.current
+
+              if (ctx && rect.w > 0 && rect.h > 0) {
+                ctx.globalCompositeOperation = 'copy'
+                ctx.drawImage(video, 0, 0, rect.w, rect.h)
+                ctx.globalCompositeOperation = 'source-over'
+              }
+            }
+
+            video.addEventListener('seeked', onSeeked, { once: true })
+            video.currentTime = displayTime
+          }
+        } else if (diff <= SEEK_THRESHOLD && video.readyState >= 2 && !video.seeking) {
+          const ctx = ctxRef.current
+          const rect = canvasRectRef.current
+          if (ctx && rect.w > 0 && rect.h > 0) {
+            ctx.globalCompositeOperation = 'copy'
+            ctx.drawImage(video, 0, 0, rect.w, rect.h)
+            ctx.globalCompositeOperation = 'source-over'
+          }
         }
       }
 
-      if (DEBUG_FRAME) console.log({ part, raw, targetTime, displayTime, travel: travelActiveRef.current })
-      const draw = (vid: HTMLVideoElement) => {
-        const c = ctxRef.current
-        const rect = canvasRectRef.current
-        if (!c || rect.w <= 0 || rect.h <= 0 || getActiveVideo() !== vid || vid.readyState < 2 || vid.seeking) return
-        c.globalCompositeOperation = 'copy'
-        c.drawImage(vid, 0, 0, rect.w, rect.h)
-        c.globalCompositeOperation = 'source-over'
-      }
-      const ctx = ctxRef.current
-      const { w, h } = canvasRectRef.current
-      if (ctx && w > 0 && h > 0 && video && video.readyState >= 2 && !video.seeking) {
-        const rvfc = (video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: (now: number, meta: any) => void) => number })
-          .requestVideoFrameCallback
-        const canRvf = typeof rvfc === 'function'
-        if (canRvf) {
-          if (lastRvfVideoRef.current !== video) rvfPendingRef.current = false
-          if (!rvfPendingRef.current) {
-            const token = drawTokenRef.current
-            const vid = video
-            rvfPendingRef.current = true
-            lastRvfVideoRef.current = vid
-            rvfIdRef.current = rvfc.call(vid, (_now: number, _meta: any) => {
-              rvfPendingRef.current = false
-              if (drawTokenRef.current !== token) return
-              if (getActiveVideo() !== vid) return
-              draw(vid)
-            })
-          }
-        } else {
-          draw(video)
-        }
-      }
+      if (DEBUG_FRAME) console.log({ part, raw, targetTime, displayTime })
 
       const target3 = part3TargetRef.current
       const current3 = smoothedPart3Ref.current
@@ -757,14 +736,7 @@ export default function LandingPage() {
       rafId = requestAnimationFrame(tick)
     }
     rafId = requestAnimationFrame(tick)
-    return () => {
-      if (lastRvfVideoRef.current && rvfIdRef.current !== null) {
-        ;(lastRvfVideoRef.current as any).cancelVideoFrameCallback?.(rvfIdRef.current)
-      }
-      rvfIdRef.current = null
-      lastRvfVideoRef.current = null
-      cancelAnimationFrame(rafId)
-    }
+    return () => cancelAnimationFrame(rafId)
   }, [gradientTransitionComplete, updateTargetsFromScroll])
 
   return (
@@ -944,12 +916,23 @@ export default function LandingPage() {
                   ))}
                 </svg>
               </div>
-              {/* Part 1–4: canvas + hidden alpha videos (scroll-driven scrub) */}
+              {/* Part 1–4: canvas + hidden alpha videos (scroll-driven scrub, 540p mobile / 720p desktop) */}
               <div className="relative z-10 w-full min-w-0 max-w-[100vw] h-[72vh] max-h-[78dvh] overflow-hidden border-0 border-none sm:h-[76vh] sm:max-h-[80dvh] md:w-[98vw] md:max-w-[1200px] md:h-[92vh] md:max-h-[800px] lg:w-full lg:h-full lg:max-w-none lg:max-h-none lg:min-w-full pointer-events-none">
-                <video ref={v1Ref} src="/videos/alpha/shot1_alpha_720p.webm" muted playsInline preload="auto" style={{ display: 'none' }} />
-                <video ref={v2Ref} src="/videos/alpha/shot2_alpha_720p.webm" muted playsInline preload="auto" style={{ display: 'none' }} />
-                <video ref={v3Ref} src="/videos/alpha/shot3_alpha_720p.webm" muted playsInline preload="auto" style={{ display: 'none' }} />
-                <video ref={v4Ref} src="/videos/alpha/shot4_alpha_720p.webm" muted playsInline preload="auto" style={{ display: 'none' }} />
+                {(() => {
+                  const isMobile = !isDesktopViewport
+                  const shot1Src = isMobile ? '/videos/alpha/shot1_alpha_540p.webm' : '/videos/alpha/shot1_alpha_720p.webm'
+                  const shot2Src = isMobile ? '/videos/alpha/shot2_alpha_540p.webm' : '/videos/alpha/shot2_alpha_720p.webm'
+                  const shot3Src = isMobile ? '/videos/alpha/shot3_alpha_540p.webm' : '/videos/alpha/shot3_alpha_720p.webm'
+                  const shot4Src = isMobile ? '/videos/alpha/shot4_alpha_540p.webm' : '/videos/alpha/shot4_alpha_720p.webm'
+                  return (
+                    <>
+                      <video ref={v1Ref} src={shot1Src} muted playsInline preload="auto" style={{ display: 'none' }} />
+                      <video ref={v2Ref} src={shot2Src} muted playsInline preload="auto" style={{ display: 'none' }} />
+                      <video ref={v3Ref} src={shot3Src} muted playsInline preload="auto" style={{ display: 'none' }} />
+                      <video ref={v4Ref} src={shot4Src} muted playsInline preload="auto" style={{ display: 'none' }} />
+                    </>
+                  )
+                })()}
                 <canvas
                   ref={canvasRef}
                   className="block w-full h-full border-0 border-none outline-none"
