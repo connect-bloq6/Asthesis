@@ -77,6 +77,8 @@ const TIME_TAU_MOBILE = 0.08
 const TRAVEL_TIME_THRESHOLD = 0.1
 const TIME_STOP_EPS = 0.01
 const SEEK_THRESHOLD = 0.016 // ~1 frame at 60fps
+const SEEK_MIN_INTERVAL_MS_DESKTOP = 0
+const SEEK_MIN_INTERVAL_MS_MOBILE = 16 // cap seeks ~60Hz
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -183,6 +185,10 @@ export default function LandingPage() {
   const displayTimeRef = useRef(0)
   const travelActiveRef = useRef(false)
   const rvfPendingRef = useRef(false)
+  const rvfIdRef = useRef<number | null>(null)
+  const lastRvfVideoRef = useRef<HTMLVideoElement | null>(null)
+  const drawTokenRef = useRef(0)
+  const lastSeekAtRef = useRef(0)
   const lastTickRef = useRef(0)
 
   const getScrollY = useCallback(
@@ -635,7 +641,14 @@ export default function LandingPage() {
 
       if (part !== displayPartRef.current) {
         displayPartRef.current = part
-        displayTimeRef.current = clamp(displayTimeRef.current, 0, duration)
+        if (lastRvfVideoRef.current && rvfIdRef.current !== null) {
+          ;(lastRvfVideoRef.current as any).cancelVideoFrameCallback?.(rvfIdRef.current)
+        }
+        rvfIdRef.current = null
+        lastRvfVideoRef.current = null
+        rvfPendingRef.current = false
+        displayTimeRef.current = targetTime
+        drawTokenRef.current += 1
       }
       const delta = targetTime - displayTimeRef.current
       if (Math.abs(delta) > TRAVEL_TIME_THRESHOLD) travelActiveRef.current = true
@@ -656,38 +669,59 @@ export default function LandingPage() {
         displayTimeRef.current = clamp(displayTimeRef.current, 0, duration)
       }
 
+      const getActiveVideo = () =>
+        displayPartRef.current === 1 ? v1Ref.current
+          : displayPartRef.current === 2 ? v2Ref.current
+          : displayPartRef.current === 3 ? v3Ref.current
+          : v4Ref.current
+
       const activePart = displayPartRef.current
       const displayTime = displayTimeRef.current
       const activeDur = activePart === 1 ? dur1Ref.current : activePart === 2 ? dur2Ref.current : activePart === 3 ? dur3Ref.current : dur4Ref.current
-      const video = activePart === 1 ? v1Ref.current : activePart === 2 ? v2Ref.current : activePart === 3 ? v3Ref.current : v4Ref.current
+      const video = getActiveVideo()
       ;[v1Ref.current, v2Ref.current, v3Ref.current, v4Ref.current].forEach((v) => {
-        if (v && v !== video) v.pause()
+        if (v && v !== video && !v.paused) v.pause()
       })
       if (video && activeDur > 0) {
-        if (Math.abs(video.currentTime - displayTime) > SEEK_THRESHOLD) {
+        const diff = Math.abs(video.currentTime - displayTime)
+        const minInterval = isMobileRef.current ? SEEK_MIN_INTERVAL_MS_MOBILE : SEEK_MIN_INTERVAL_MS_DESKTOP
+        if (diff > SEEK_THRESHOLD && now - lastSeekAtRef.current >= minInterval) {
+          lastSeekAtRef.current = now
           video.currentTime = displayTime
         }
       }
 
       if (DEBUG_FRAME) console.log({ part, raw, targetTime, displayTime, travel: travelActiveRef.current })
+      const draw = (vid: HTMLVideoElement) => {
+        const c = ctxRef.current
+        const rect = canvasRectRef.current
+        if (!c || rect.w <= 0 || rect.h <= 0 || getActiveVideo() !== vid || vid.readyState < 2 || vid.seeking) return
+        c.globalCompositeOperation = 'copy'
+        c.drawImage(vid, 0, 0, rect.w, rect.h)
+        c.globalCompositeOperation = 'source-over'
+      }
       const ctx = ctxRef.current
       const { w, h } = canvasRectRef.current
-      if (ctx && w > 0 && h > 0 && video && video.readyState >= 2) {
-        const rvfc = (video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number }).requestVideoFrameCallback
-        if (typeof rvfc === 'function' && !rvfPendingRef.current) {
-          rvfPendingRef.current = true
-          rvfc.call(video, () => {
-            rvfPendingRef.current = false
-            const c = ctxRef.current
-            const rect = canvasRectRef.current
-            if (c && rect.w > 0 && rect.h > 0) {
-              c.clearRect(0, 0, rect.w, rect.h)
-              c.drawImage(video, 0, 0, rect.w, rect.h)
-            }
-          })
-        } else if (typeof rvfc !== 'function') {
-          ctx.clearRect(0, 0, w, h)
-          ctx.drawImage(video, 0, 0, w, h)
+      if (ctx && w > 0 && h > 0 && video && video.readyState >= 2 && !video.seeking) {
+        const rvfc = (video as HTMLVideoElement & { requestVideoFrameCallback?: (cb: (now: number, meta: any) => void) => number })
+          .requestVideoFrameCallback
+        const canRvf = typeof rvfc === 'function'
+        if (canRvf) {
+          if (lastRvfVideoRef.current !== video) rvfPendingRef.current = false
+          if (!rvfPendingRef.current) {
+            const token = drawTokenRef.current
+            const vid = video
+            rvfPendingRef.current = true
+            lastRvfVideoRef.current = vid
+            rvfIdRef.current = rvfc.call(vid, (_now: number, _meta: any) => {
+              rvfPendingRef.current = false
+              if (drawTokenRef.current !== token) return
+              if (getActiveVideo() !== vid) return
+              draw(vid)
+            })
+          }
+        } else {
+          draw(video)
         }
       }
 
@@ -723,7 +757,14 @@ export default function LandingPage() {
       rafId = requestAnimationFrame(tick)
     }
     rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
+    return () => {
+      if (lastRvfVideoRef.current && rvfIdRef.current !== null) {
+        ;(lastRvfVideoRef.current as any).cancelVideoFrameCallback?.(rvfIdRef.current)
+      }
+      rvfIdRef.current = null
+      lastRvfVideoRef.current = null
+      cancelAnimationFrame(rafId)
+    }
   }, [gradientTransitionComplete, updateTargetsFromScroll])
 
   return (
