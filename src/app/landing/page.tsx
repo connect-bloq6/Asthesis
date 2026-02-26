@@ -276,7 +276,9 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!isLoading && videoRef.current) {
-      videoRef.current.play().catch(() => {
+      const v = videoRef.current
+      if (v.currentTime < 0.1) v.currentTime = 0.1
+      v.play().catch(() => {
         // Autoplay may be blocked; user can tap to play
       })
     }
@@ -957,10 +959,14 @@ export default function LandingPage() {
                     </div>
                     <video
                       ref={videoRef}
-                      src="/videos/Asthesis_Intro_video.webm"
+                      src="/videos/hero_alpha_ios.mp4"
                       className="relative z-10 w-full h-full object-contain"
                       playsInline
                       muted
+                      onLoadedData={(e) => {
+                        const v = e.currentTarget
+                        if (v.currentTime < 0.1) v.currentTime = 0.1
+                      }}
                       onTimeUpdate={onTimeUpdate}
                     />
                   </div>
