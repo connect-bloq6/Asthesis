@@ -86,6 +86,11 @@ const frameImgStyle: React.CSSProperties = {
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
 function drawCover(
   ctx: CanvasRenderingContext2D,
   source: HTMLVideoElement | HTMLImageElement,
@@ -328,7 +333,8 @@ export default function LandingPage() {
       const rect = canvasRectRef.current
       if (ctx && rect.w > 0 && rect.h > 0) {
         ctx.globalCompositeOperation = 'copy'
-        drawCover(ctx, v, rect.w, rect.h, isMobileRef.current ? 1 : FRAME_CROP_SCALE)
+        const cropScale = isIOS() && displayPartRef.current === 1 ? 1.01 : (isMobileRef.current ? 1 : FRAME_CROP_SCALE)
+        drawCover(ctx, v, rect.w, rect.h, cropScale)
         ctx.globalCompositeOperation = 'source-over'
       }
       const pending = pendingSeekRef.current
@@ -377,7 +383,8 @@ export default function LandingPage() {
       const rect = canvasRectRef.current
       if (v && ctx && rect.w > 0 && rect.h > 0 && v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) {
         ctx.globalCompositeOperation = 'copy'
-        drawCover(ctx, v, rect.w, rect.h, isMobileRef.current ? 1 : FRAME_CROP_SCALE)
+        const cropScale = isIOS() && displayPartRef.current === 1 ? 1.01 : (isMobileRef.current ? 1 : FRAME_CROP_SCALE)
+        drawCover(ctx, v, rect.w, rect.h, cropScale)
         ctx.globalCompositeOperation = 'source-over'
       }
     }
