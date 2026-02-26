@@ -60,10 +60,15 @@ const SMOOTHING_TIME_CONSTANT_MOBILE = 0.06
 const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 const ALPHA_COMMIT_THRESHOLD = 0.03
-/** Part 1–4: scroll-driven VP9 alpha video scrub (frame-quantized, 30fps). */
-const SCRUB_FPS = 30
+/** Part 1–4: scroll-driven VP9 alpha video scrub (glide/smooth). */
 const SEEK_MIN_INTERVAL_MS_DESKTOP = 0
 const SEEK_MIN_INTERVAL_MS_MOBILE = 16
+const FOLLOW_TC_DESKTOP = 0.085
+const FOLLOW_TC_MOBILE = 0.1
+const MAX_SPEED_DESKTOP = 10
+const MAX_SPEED_MOBILE = 7
+const SEEK_EPS_DESKTOP = 0.008
+const SEEK_EPS_MOBILE = 0.012
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -196,15 +201,13 @@ export default function LandingPage() {
   const displayPartRef = useRef<1 | 2 | 3 | 4>(1)
   const targetTimeRef = useRef(0)
   const displayTimeRef = useRef(0)
-  const lastRequestedFrameByPartRef = useRef<{ 1: number | null; 2: number | null; 3: number | null; 4: number | null }>({
-    1: null,
-    2: null,
-    3: null,
-    4: null,
-  })
   const pendingSeekRef = useRef<number | null>(null)
-  const lastSeekMsRef = useRef(0)
+  const lastSeekCommitMsRef = useRef(0)
   const lastTickRef = useRef(0)
+  const seekRafScheduledRef = useRef(false)
+  const isScrubbingRef = useRef(false)
+  const drawRafRef = useRef<number | null>(null)
+  const vfcHandleRef = useRef<number | null>(null)
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -342,10 +345,8 @@ export default function LandingPage() {
       }
       const pending = pendingSeekRef.current
       if (pending !== null) {
-        const pendingFrame = Math.round(pending * SCRUB_FPS)
-        const currentFrame = Math.round(v.currentTime * SCRUB_FPS)
-
-        if (pendingFrame !== currentFrame) {
+        const EPS = isMobileRef.current ? 0.03 : 0.02
+        if (Math.abs((v.currentTime || 0) - pending) > EPS && !v.seeking) {
           v.currentTime = pending
         }
       }
@@ -372,6 +373,59 @@ export default function LandingPage() {
       cleanups.push(() => v.removeEventListener('seeked', boundSeeked))
     })
     return () => cleanups.forEach((c) => c())
+  }, [gradientTransitionComplete])
+
+  useEffect(() => {
+    if (!gradientTransitionComplete) return
+    const getActiveVideo = () =>
+      displayPartRef.current === 1 ? v1Ref.current
+        : displayPartRef.current === 2 ? v2Ref.current
+        : displayPartRef.current === 3 ? v3Ref.current
+        : v4Ref.current
+
+    const draw = () => {
+      const v = getActiveVideo()
+      const ctx = ctxRef.current
+      const rect = canvasRectRef.current
+      if (v && ctx && rect.w > 0 && rect.h > 0 && v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) {
+        ctx.clearRect(0, 0, rect.w, rect.h)
+        ctx.globalCompositeOperation = 'source-over'
+        drawCover(ctx, v, rect.w, rect.h)
+      }
+    }
+
+    const vfcLoop = () => {
+      const v = getActiveVideo()
+      if (!v || typeof (v as any).requestVideoFrameCallback !== 'function') {
+        vfcHandleRef.current = null
+        return
+      }
+      vfcHandleRef.current = (v as any).requestVideoFrameCallback(() => {
+        draw()
+        vfcLoop()
+      })
+    }
+
+    const rafLoop = () => {
+      if (isScrubbingRef.current) draw()
+      drawRafRef.current = requestAnimationFrame(rafLoop)
+    }
+
+    const v0 = getActiveVideo()
+    const hasVFC = !!v0 && typeof (v0 as any).requestVideoFrameCallback === 'function'
+    if (hasVFC) vfcLoop()
+    drawRafRef.current = requestAnimationFrame(rafLoop)
+
+    return () => {
+      if (drawRafRef.current !== null) cancelAnimationFrame(drawRafRef.current)
+      drawRafRef.current = null
+      const v = getActiveVideo()
+      const h = vfcHandleRef.current
+      if (v && h !== null && typeof (v as any).cancelVideoFrameCallback === 'function') {
+        ;(v as any).cancelVideoFrameCallback(h)
+      }
+      vfcHandleRef.current = null
+    }
   }, [gradientTransitionComplete])
 
   // Update only target refs from current scroll position (no setState). Single scroll source (window) + stable vh for deterministic mobile behavior.
@@ -666,23 +720,32 @@ export default function LandingPage() {
       const duration =
         part === 1 ? dur1Ref.current : part === 2 ? dur2Ref.current : part === 3 ? dur3Ref.current : dur4Ref.current
       let targetTime = 0
-      let frameIndex = 0
       if (duration > 0) {
-        const totalFrames = Math.max(1, Math.floor(duration * SCRUB_FPS))
-        frameIndex = clamp(Math.floor(raw * totalFrames), 0, totalFrames - 1)
-        targetTime = frameIndex / SCRUB_FPS
+        targetTime = clamp(raw * duration, 0, Math.max(0, duration - 0.001))
       }
       targetPartRef.current = part
       targetTimeRef.current = targetTime
-      displayTimeRef.current = targetTime
-
-      lastTickRef.current = now
 
       if (part !== displayPartRef.current) {
         displayPartRef.current = part
-        lastRequestedFrameByPartRef.current[part] = null
-        pendingSeekRef.current = targetTime
+        const vNew = part === 1 ? v1Ref.current : part === 2 ? v2Ref.current : part === 3 ? v3Ref.current : v4Ref.current
+        const initTime = vNew?.readyState && vNew.readyState >= 2 ? (vNew.currentTime || 0) : displayTimeRef.current
+        displayTimeRef.current = initTime
       }
+
+      if (duration > 0) {
+        const FOLLOW_TC = isMobile ? FOLLOW_TC_MOBILE : FOLLOW_TC_DESKTOP
+        const MAX_SPEED = isMobile ? MAX_SPEED_MOBILE : MAX_SPEED_DESKTOP
+        let current = displayTimeRef.current
+        const diff = targetTime - current
+        const maxStep = MAX_SPEED * dtSec
+        const clampedDiff = clamp(diff, -maxStep, maxStep)
+        const followFactor = 1 - Math.exp(-dtSec / FOLLOW_TC)
+        current = current + clampedDiff * followFactor
+        displayTimeRef.current = clamp(current, 0, Math.max(0, duration - 0.001))
+      }
+
+      lastTickRef.current = now
 
       const getActiveVideo = () =>
         displayPartRef.current === 1 ? v1Ref.current
@@ -697,21 +760,35 @@ export default function LandingPage() {
         if (v && v !== video && !v.paused) v.pause()
       })
       if (video && activeDur > 0) {
-        const lastRequested = lastRequestedFrameByPartRef.current[part]
-        const needsSeek = lastRequested !== frameIndex
-        if (needsSeek) {
-          lastRequestedFrameByPartRef.current[part] = frameIndex
-          pendingSeekRef.current = targetTime
+        const desired = displayTimeRef.current
+        const EPS = isMobileRef.current ? SEEK_EPS_MOBILE : SEEK_EPS_DESKTOP
+        if (Math.abs((video.currentTime || 0) - desired) > EPS) {
+          pendingSeekRef.current = desired
+          isScrubbingRef.current = true
 
-          const minInterval = isMobileRef.current ? SEEK_MIN_INTERVAL_MS_MOBILE : SEEK_MIN_INTERVAL_MS_DESKTOP
-          if (!video.seeking && now - lastSeekMsRef.current >= minInterval) {
-            lastSeekMsRef.current = now
-            video.currentTime = targetTime
+          if (!seekRafScheduledRef.current) {
+            seekRafScheduledRef.current = true
+            requestAnimationFrame(() => {
+              seekRafScheduledRef.current = false
+              const v = displayPartRef.current === 1 ? v1Ref.current : displayPartRef.current === 2 ? v2Ref.current : displayPartRef.current === 3 ? v3Ref.current : v4Ref.current
+              const t = pendingSeekRef.current
+              if (!v || t === null) return
+              const minInterval = isMobileRef.current ? SEEK_MIN_INTERVAL_MS_MOBILE : SEEK_MIN_INTERVAL_MS_DESKTOP
+              const nowMs = performance.now()
+              if (!v.seeking && nowMs - lastSeekCommitMsRef.current >= minInterval) {
+                lastSeekCommitMsRef.current = nowMs
+                v.currentTime = t
+              }
+            })
           }
+        } else {
+          isScrubbingRef.current = false
         }
+      } else {
+        isScrubbingRef.current = false
       }
 
-      if (DEBUG_FRAME) console.log({ part, raw, targetTime, frameIndex })
+      if (DEBUG_FRAME) console.log({ part, raw, targetTime, displayTime: displayTimeRef.current })
 
       const target3 = part3TargetRef.current
       const current3 = smoothedPart3Ref.current
