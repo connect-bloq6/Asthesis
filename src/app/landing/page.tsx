@@ -97,6 +97,17 @@ const frameImgStyle: React.CSSProperties = {
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}
+
+function supportsVp9Webm(): boolean {
+  if (typeof document === 'undefined') return true
+  const v = document.createElement('video')
+  return v.canPlayType('video/webm; codecs="vp9"') !== ''
+}
+
 function drawCover(
   ctx: CanvasRenderingContext2D,
   source: HTMLVideoElement,
@@ -157,7 +168,8 @@ export default function LandingPage() {
   const [part3Progress, setPart3Progress] = useState(0)
   const [smoothedPart3Progress, setSmoothedPart3Progress] = useState(0)
   const [smoothedPart4Progress, setSmoothedPart4Progress] = useState(0)
-  const [isDesktopViewport, setIsDesktopViewport] = useState(true) // lg breakpoint: frame uses full scale on desktop only
+  const [isDesktopViewport, setIsDesktopViewport] = useState(true)
+  const [alphaPlaybackMode, setAlphaPlaybackMode] = useState<'webm' | 'mp4' | 'png'>('webm')
   const videoRef = useRef<HTMLVideoElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const frameSectionRef = useRef<HTMLElement>(null)
@@ -221,6 +233,15 @@ export default function LandingPage() {
     const h = () => setIsDesktopViewport(m.matches)
     m.addEventListener('change', h)
     return () => m.removeEventListener('change', h)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const ios = isIOS()
+    const vp9Ok = supportsVp9Webm()
+    if (ios) setAlphaPlaybackMode('mp4')
+    else if (vp9Ok) setAlphaPlaybackMode('webm')
+    else setAlphaPlaybackMode('png')
   }, [])
 
   // Stable viewport height (avoids mobile address bar collapse/expand shifting section boundaries).
@@ -1002,20 +1023,25 @@ export default function LandingPage() {
                   ))}
                 </svg>
               </div>
-              {/* Part 1–4: canvas + hidden alpha videos (scroll-driven scrub, 540p mobile / 720p desktop) */}
+              {/* Part 1–4: canvas + hidden alpha videos (iOS: HEVC MP4, else: WebM VP9) */}
               <div className="relative z-10 w-full max-w-[100vw] overflow-hidden border-0 border-none pointer-events-none aspect-square sm:aspect-square md:aspect-video lg:aspect-auto lg:w-full lg:h-full lg:max-w-none lg:min-w-full">
                 {(() => {
                   const isMobile = !isDesktopViewport
-                  const shot1Src = isMobile ? '/videos/alpha/shot1_alpha_540p.webm' : '/videos/alpha/shot1_alpha_720p.webm'
-                  const shot2Src = isMobile ? '/videos/alpha/shot2_alpha_540p.webm' : '/videos/alpha/shot2_alpha_720p.webm'
-                  const shot3Src = isMobile ? '/videos/alpha/shot3_alpha_540p.webm' : '/videos/alpha/shot3_alpha_720p.webm'
-                  const shot4Src = isMobile ? '/videos/alpha/shot4_alpha_540p.webm' : '/videos/alpha/shot4_alpha_720p.webm'
+                  const useMp4 = alphaPlaybackMode === 'mp4'
+                  const ext = useMp4 ? 'mp4' : 'webm'
+                  const res = isMobile ? '540p' : '720p'
+                  const suffix = useMp4 ? `_alpha_ios_${res}` : `_alpha_${res}`
+                  const shot1Src = `/videos/alpha/shot1${suffix}.${ext}`
+                  const shot2Src = `/videos/alpha/shot2${suffix}.${ext}`
+                  const shot3Src = `/videos/alpha/shot3${suffix}.${ext}`
+                  const shot4Src = `/videos/alpha/shot4${suffix}.${ext}`
+                  const preload = useMp4 ? 'auto' : 'metadata'
                   return (
                     <>
-                      <video ref={v1Ref} src={shot1Src} muted playsInline disablePictureInPicture preload="metadata" style={{ display: 'none' }} />
-                      <video ref={v2Ref} src={shot2Src} muted playsInline disablePictureInPicture preload="metadata" style={{ display: 'none' }} />
-                      <video ref={v3Ref} src={shot3Src} muted playsInline disablePictureInPicture preload="metadata" style={{ display: 'none' }} />
-                      <video ref={v4Ref} src={shot4Src} muted playsInline disablePictureInPicture preload="metadata" style={{ display: 'none' }} />
+                      <video ref={v1Ref} src={shot1Src} muted playsInline disablePictureInPicture preload={preload} style={{ display: 'none' }} />
+                      <video ref={v2Ref} src={shot2Src} muted playsInline disablePictureInPicture preload={preload} style={{ display: 'none' }} />
+                      <video ref={v3Ref} src={shot3Src} muted playsInline disablePictureInPicture preload={preload} style={{ display: 'none' }} />
+                      <video ref={v4Ref} src={shot4Src} muted playsInline disablePictureInPicture preload={preload} style={{ display: 'none' }} />
                     </>
                   )
                 })()}
