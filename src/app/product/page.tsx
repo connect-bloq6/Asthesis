@@ -10,9 +10,9 @@ import ProductSection5 from '@/components/ui/ProductSection5'
 
 export default function ProductPage() {
   return (
-    <main className="relative min-h-screen overflow-visible bg-[#363636]">
-      {/* White content area: navbar + hero */}
-      <div className="relative bg-white max-w-[1440px] mx-auto min-h-screen overflow-visible">
+    <main className="relative min-h-screen overflow-x-hidden overflow-y-visible bg-[#363636]">
+      {/* White content area: navbar + hero – full width */}
+      <div className="relative bg-white w-full min-h-screen overflow-visible">
         <Navbar solid />
         <ProductSection1 />
       </div>

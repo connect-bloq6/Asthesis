@@ -95,7 +95,6 @@ const FOOTER_BG = '#FFFFFF'
 const FOOTER_TEXT = '#374151'
 const FOOTER_TEXT_MUTED = '#4B5563'
 const FOOTER_DIVIDER = '#E5E7EB'
-const FOOTER_BAR = '#101828'
 
 const columnTitleClass = 'text-[10px] font-medium uppercase tracking-wider mb-3'
 const linkClass = 'text-[11px] font-normal transition-colors hover:opacity-80'
@@ -247,8 +246,6 @@ export default function Footer() {
           <p className="text-sm text-[#1D1D1F]/70">Designed for dignity. Built for trust.</p>
         </div>
       </div>
-      {/* Dark gray bar at very bottom */}
-      <div className="w-full h-3 md:h-4" style={{ backgroundColor: FOOTER_BAR }} aria-hidden />
     </footer>
   )
 }
