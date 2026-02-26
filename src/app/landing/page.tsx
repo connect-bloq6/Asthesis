@@ -98,6 +98,11 @@ const frameImgStyle: React.CSSProperties = {
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 
+const roundToDprPx = (px: number) => {
+  const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1
+  return Math.round(px * dpr) / dpr
+}
+
 function isIOS(): boolean {
   if (typeof navigator === 'undefined') return false
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
@@ -192,6 +197,12 @@ export default function LandingPage() {
   const lastTickTimeRef = useRef<number>(0)
   const scrollWhenInsideAtCenterRef = useRef<number | null>(null)
   const isMobileRef = useRef(false)
+  const isIOSRef = useRef(false)
+  const systemTextRef = useRef<HTMLDivElement>(null)
+  const styleTextRef = useRef<HTMLDivElement>(null)
+  const designTextRef = useRef<HTMLDivElement>(null)
+  const careTextRef = useRef<HTMLDivElement>(null)
+  const insideTextRef = useRef<HTMLDivElement>(null)
   const stableVhRef = useRef(800)
   const lastSmoothedProgressStateTimeRef = useRef(0)
   const lastSmoothedPart2StateRef = useRef(0)
@@ -268,6 +279,7 @@ export default function LandingPage() {
       const touch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
       const narrow = window.innerWidth < 1024
       isMobileRef.current = touch || narrow
+      isIOSRef.current = isIOS()
     }
     update()
     window.addEventListener('resize', update)
@@ -844,6 +856,33 @@ export default function LandingPage() {
         setSmoothedVideoTransitionProgress(videoNext)
       }
 
+      // Text offsets: px-based + DPR rounding for iOS jitter fix (no React re-render)
+      const seqProgress = y < sequenceStart ? 0 : y >= part2Start ? 1 : clamp((y - sequenceStart) / part1Height, 0, 1)
+      const sm2 = smoothedPart2Ref.current
+      const sm3 = smoothedPart3Ref.current
+      const sm4 = smoothedPart4Ref.current
+      const sysOffsetPx = roundToDprPx(((seqProgress * SYSTEM_TEXT_SCROLL_VH + sm2 * SYSTEM_TEXT_PART2_VH) / 100) * vh)
+      const rawStyle = Math.max(0, (seqProgress - STYLE_TEXT_DELAY) / (1 - STYLE_TEXT_DELAY))
+      const styleProgress = Math.pow(rawStyle, STYLE_TEXT_EASING)
+      const styleOffsetPx = roundToDprPx((((1 - styleProgress) * 85 - sm2 * STYLE_TEXT_PART2_VH) / 100) * vh)
+      const designVisible = sm2 > 0
+      const designOffsetPx = roundToDprPx(
+        ((designVisible ? DESIGN_FROM_BOTTOM_VH - DESIGN_FROM_BOTTOM_VH * sm2 - DESIGN_SCROLL_UP_VH * sm3 : DESIGN_FROM_BOTTOM_VH) + DESIGN_VERTICAL_OFFSET_VH) / 100 * vh
+      )
+      const careVisible = sm3 > 0
+      const careOffsetPx = roundToDprPx(
+        ((careVisible ? CARE_FROM_BOTTOM_VH - CARE_FROM_BOTTOM_VH * sm3 - CARE_SCROLL_UP_VH * sm4 : CARE_FROM_BOTTOM_VH) + CARE_VERTICAL_OFFSET_VH) / 100 * vh
+      )
+      const insideVisible = sm4 > 0
+      const insideOffsetPx = roundToDprPx(
+        (((insideVisible ? INSIDE_FROM_BOTTOM_VH - INSIDE_FROM_BOTTOM_VH * sm4 : INSIDE_FROM_BOTTOM_VH) + INSIDE_VERTICAL_OFFSET_VH) / 100) * vh
+      )
+      systemTextRef.current?.style.setProperty('--sysY', `${sysOffsetPx}px`)
+      styleTextRef.current?.style.setProperty('--styleY', `${styleOffsetPx}px`)
+      designTextRef.current?.style.setProperty('--designY', `${designOffsetPx}px`)
+      careTextRef.current?.style.setProperty('--careY', `${careOffsetPx}px`)
+      insideTextRef.current?.style.setProperty('--insideY', `${insideOffsetPx}px`)
+
       rafId = requestAnimationFrame(tick)
     }
     rafId = requestAnimationFrame(tick)
@@ -1074,14 +1113,15 @@ export default function LandingPage() {
               </div>
               {/* System text: fixed at left center; comes up with frame 1, then scrolls up as sequence runs */}
               <div
-                className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-4xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none transition-all duration-150 ease-out"
+                ref={systemTextRef}
+                className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-4xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
                 style={{
                   top: '50%',
                   bottom: 'auto',
-                  transform:
-                    frameStickyMode === 'before'
-                      ? 'translateY(-50%)'
-                      : `translateY(calc(-50% - ${sequenceProgress * SYSTEM_TEXT_SCROLL_VH + smoothedPart2Progress * SYSTEM_TEXT_PART2_VH}vh))`,
+                  transform: frameStickyMode === 'before' ? 'translate3d(0,-50%,0)' : 'translate3d(0, calc(-50% - var(--sysY, 0px)), 0)',
+                  willChange: 'transform',
+                  backfaceVisibility: 'hidden' as const,
+                  WebkitFontSmoothing: 'antialiased' as const,
                 }}
                 aria-hidden
               >
@@ -1154,18 +1194,18 @@ export default function LandingPage() {
                 </div>
               </div>
               {/* Style: scrolls up on right (delayed start) */}
-              {(() => {
-                const rawStyle = Math.max(0, (sequenceProgress - STYLE_TEXT_DELAY) / (1 - STYLE_TEXT_DELAY))
-                const styleProgress = Math.pow(rawStyle, STYLE_TEXT_EASING)
-                const offsetVh = (1 - styleProgress) * 85 - smoothedPart2Progress * STYLE_TEXT_PART2_VH
-                return (
+              {(() => (
                   <div
-                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-3xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-all duration-150 ease-out"
+                    ref={styleTextRef}
+                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-3xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
                     style={{
                       top: '50%',
                       bottom: 'auto',
-                      transform: `translateY(calc(-50% + ${offsetVh}vh))`,
+                      transform: 'translate3d(0, calc(-50% + var(--styleY, 0px)), 0)',
                       opacity: frameStickyMode === 'before' ? 0 : 1,
+                      willChange: 'transform',
+                      backfaceVisibility: 'hidden' as const,
+                      WebkitFontSmoothing: 'antialiased' as const,
                     }}
                     aria-hidden
                   >
@@ -1213,22 +1253,22 @@ export default function LandingPage() {
                       </p>
                     </div>
                   </div>
-                )
-              })()}
+              ))()}
               {/* Design: left side; Part 2: bottom to center; Part 3: center to top (scroll off) */}
               {(() => {
                 const designVisible = smoothedPart2Progress > 0
-                const designOffsetVh = (designVisible
-                  ? DESIGN_FROM_BOTTOM_VH - DESIGN_FROM_BOTTOM_VH * smoothedPart2Progress - DESIGN_SCROLL_UP_VH * smoothedPart3Progress
-                  : DESIGN_FROM_BOTTOM_VH) + DESIGN_VERTICAL_OFFSET_VH
                 return (
                   <div
-                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none transition-all duration-150 ease-out"
+                    ref={designTextRef}
+                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
                     style={{
                       top: '50%',
                       bottom: 'auto',
-                      transform: `translateY(calc(-50% + ${designOffsetVh}vh))`,
+                      transform: 'translate3d(0, calc(-50% + var(--designY, 0px)), 0)',
                       opacity: frameStickyMode === 'before' || !designVisible ? 0 : 1,
+                      willChange: 'transform',
+                      backfaceVisibility: 'hidden' as const,
+                      WebkitFontSmoothing: 'antialiased' as const,
                     }}
                     aria-hidden
                   >
@@ -1281,17 +1321,18 @@ INTELLIGENCE, MADE PHYSICAL
               {/* Care: right side; Part 3 bottom→right center (reaches center when Part 3 ends), Part 4 center→top */}
               {(() => {
                 const careVisible = smoothedPart3Progress > 0
-                const careOffsetVh = (careVisible
-                  ? CARE_FROM_BOTTOM_VH - CARE_FROM_BOTTOM_VH * smoothedPart3Progress - CARE_SCROLL_UP_VH * smoothedPart4Progress
-                  : CARE_FROM_BOTTOM_VH) + CARE_VERTICAL_OFFSET_VH
                 return (
                   <div
-                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-all duration-150 ease-out"
+                    ref={careTextRef}
+                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
                     style={{
                       top: '50%',
                       bottom: 'auto',
-                      transform: `translateY(calc(-50% + ${careOffsetVh}vh))`,
+                      transform: 'translate3d(0, calc(-50% + var(--careY, 0px)), 0)',
                       opacity: frameStickyMode === 'before' || !careVisible ? 0 : 1,
+                      willChange: 'transform',
+                      backfaceVisibility: 'hidden' as const,
+                      WebkitFontSmoothing: 'antialiased' as const,
                     }}
                     aria-hidden
                   >
@@ -1344,17 +1385,18 @@ INTELLIGENCE, MADE PHYSICAL
               {/* Inside Asthesis: right side; Part 4 bottom→right center (no delay, same as design/care) */}
               {(() => {
                 const insideVisible = smoothedPart4Progress > 0
-                const insideOffsetVh = (insideVisible
-                  ? INSIDE_FROM_BOTTOM_VH - INSIDE_FROM_BOTTOM_VH * smoothedPart4Progress
-                  : INSIDE_FROM_BOTTOM_VH) + INSIDE_VERTICAL_OFFSET_VH
                 return (
                   <div
-                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-all duration-150 ease-out"
+                    ref={insideTextRef}
+                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
                     style={{
                       top: '50%',
                       bottom: 'auto',
-                      transform: `translateY(calc(-50% + ${insideOffsetVh}vh))`,
+                      transform: 'translate3d(0, calc(-50% + var(--insideY, 0px)), 0)',
                       opacity: frameStickyMode === 'before' || !insideVisible ? 0 : 1,
+                      willChange: 'transform',
+                      backfaceVisibility: 'hidden' as const,
+                      WebkitFontSmoothing: 'antialiased' as const,
                     }}
                     aria-hidden
                   >
