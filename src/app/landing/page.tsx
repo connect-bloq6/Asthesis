@@ -84,6 +84,8 @@ function sequence03FramePath(index: number): string {
 
 // Crop top/bottom black bars: uniform zoom (no stretch) so middle ~30% fills frame
 const FRAME_CROP_SCALE = 100 / 70
+const DESKTOP_VIDEO_SCALE = 1.15 // reduced from FRAME_CROP_SCALE (~1.43) for desktop view
+const PART4_ZOOM_OUT_END = 0.50 // scale factor at end of Part 4 (1 = no zoom, 0.66 = 34% zoom out)
 
 const frameImgStyle: React.CSSProperties = {
   border: 'none',
@@ -220,6 +222,7 @@ export default function LandingPage() {
   const isScrubbingRef = useRef(false)
   const drawRafRef = useRef<number | null>(null)
   const vfcHandleRef = useRef<number | null>(null)
+  const part4ZoomRef = useRef(1) // mobile-only: zoom applied to video draw, not canvas
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
@@ -362,7 +365,17 @@ export default function LandingPage() {
       if (ctx && rect.w > 0 && rect.h > 0) {
         ctx.clearRect(0, 0, rect.w, rect.h)
         ctx.globalCompositeOperation = 'source-over'
-        drawCover(ctx, v, rect.w, rect.h)
+        const zoom = part4ZoomRef.current
+        if (isMobileRef.current && zoom < 1) {
+          ctx.save()
+          ctx.translate(rect.w / 2, rect.h / 2)
+          ctx.scale(zoom, zoom)
+          ctx.translate(-rect.w / 2, -rect.h / 2)
+          drawCover(ctx, v, rect.w, rect.h)
+          ctx.restore()
+        } else {
+          drawCover(ctx, v, rect.w, rect.h)
+        }
       }
       const pending = pendingSeekRef.current
       if (pending !== null) {
@@ -411,7 +424,17 @@ export default function LandingPage() {
       if (v && ctx && rect.w > 0 && rect.h > 0 && v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) {
         ctx.clearRect(0, 0, rect.w, rect.h)
         ctx.globalCompositeOperation = 'source-over'
-        drawCover(ctx, v, rect.w, rect.h)
+        const zoom = part4ZoomRef.current
+        if (isMobileRef.current && zoom < 1) {
+          ctx.save()
+          ctx.translate(rect.w / 2, rect.h / 2)
+          ctx.scale(zoom, zoom)
+          ctx.translate(-rect.w / 2, -rect.h / 2)
+          drawCover(ctx, v, rect.w, rect.h)
+          ctx.restore()
+        } else {
+          drawCover(ctx, v, rect.w, rect.h)
+        }
       }
     }
 
@@ -829,6 +852,10 @@ export default function LandingPage() {
         lastSmoothedProgressStateTimeRef.current = now
         setSmoothedPart4Progress(next4)
       }
+      // Mobile: apply Part 4 zoom in draw, not on canvas
+      part4ZoomRef.current = isMobileRef.current
+        ? 1 - (1 - PART4_ZOOM_OUT_END) * smoothedPart4Ref.current
+        : 1
 
       const videoTarget = videoTransitionTargetRef.current
       const videoCurrent = smoothedVideoTransitionRef.current
@@ -1050,7 +1077,13 @@ export default function LandingPage() {
                   className="block w-full h-full border-0 border-none outline-none"
                   style={{
                     ...frameImgStyle,
-                    transform: `translateZ(0) scale(${isDesktopViewport ? FRAME_CROP_SCALE : 1})`,
+                    transform: (() => {
+                      const base = isDesktopViewport ? DESKTOP_VIDEO_SCALE : 1
+                      // Mobile: Part 4 zoom is applied in draw, not here
+                      const p4 = isDesktopViewport ? smoothedPart4Progress : 0
+                      const scale = base * (1 - (1 - PART4_ZOOM_OUT_END) * p4)
+                      return `translateZ(0) scale(${scale})`
+                    })(),
                     willChange: 'transform',
                     backfaceVisibility: 'hidden',
                     contain: 'layout paint',
