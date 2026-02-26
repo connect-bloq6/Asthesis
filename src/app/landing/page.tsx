@@ -5,9 +5,8 @@ import Navbar from '@/components/ui/Navbar'
 import Footer from '@/components/ui/Footer'
 import LoadingScreen from '@/components/ui/LoadingScreen'
 
-const ASSETS = process.env.NEXT_PUBLIC_ASSETS_BASE_URL || ''
-const assetUrl = (p: string) => (ASSETS ? `${ASSETS}${p}` : p)
-const LANDING_PAGE_VIDEO = process.env.NEXT_PUBLIC_LANDING_PAGE_VIDEO_URL || assetUrl('/videos/landing_page_video.mp4')
+const ASSETS_BASE = (process.env.NEXT_PUBLIC_ASSETS_BASE_URL || '').replace(/\/$/, '')
+const assetUrl = (path: string) => (ASSETS_BASE ? `${ASSETS_BASE}${path.startsWith('/') ? path : `/${path}`}` : path)
 
 const DEBUG_FRAME = false
 
@@ -1566,7 +1565,7 @@ INTELLIGENCE, MADE PHYSICAL
                   <video
                     ref={careVideoRef}
                     className="absolute inset-0 w-full h-full object-cover"
-                    src={LANDING_PAGE_VIDEO}
+                    src={assetUrl('/videos/landing_page_video.mp4')}
                     playsInline
                     muted
                     loop
