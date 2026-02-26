@@ -108,6 +108,11 @@ function isIOS(): boolean {
   return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 }
 
+function isAndroid(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android/.test(navigator.userAgent)
+}
+
 function supportsVp9Webm(): boolean {
   if (typeof document === 'undefined') return true
   const v = document.createElement('video')
@@ -1000,7 +1005,7 @@ export default function LandingPage() {
                     </div>
                     <video
                       ref={videoRef}
-                      src="/videos/hero_alpha_ios.mp4"
+                      src={typeof navigator !== 'undefined' && isIOS() ? '/videos/hero_alpha_ios.mp4' : '/videos/Asthesis_Intro_video.webm'}
                       className="relative z-10 w-full h-full object-contain"
                       playsInline
                       muted
