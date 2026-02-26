@@ -65,11 +65,22 @@ const SEEK_MIN_INTERVAL_MS_DESKTOP = 0
 const SEEK_MIN_INTERVAL_MS_MOBILE = 16
 const FOLLOW_TC_DESKTOP = 0.085
 const FOLLOW_TC_MOBILE = 0.1
-const MAX_SPEED_DESKTOP = 18
-const MAX_SPEED_MOBILE = 14
-const CATCHUP_K = 3
+const MAX_SPEED_DESKTOP = 10
+const MAX_SPEED_MOBILE = 7
 const SEEK_EPS_DESKTOP = 0.008
 const SEEK_EPS_MOBILE = 0.012
+
+function daviniciFramePath(index: number): string {
+  return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
+}
+
+function sequence02FramePath(index: number): string {
+  return `/sequence02/davinci${String(SEQUENCE02_FRAME_START + index).padStart(8, '0')}.png`
+}
+
+function sequence03FramePath(index: number): string {
+  return `/sequence03/davinci${String(SEQUENCE03_FRAME_START + index).padStart(8, '0')}.png`
+}
 
 // Crop top/bottom black bars: uniform zoom (no stretch) so middle ~30% fills frame
 const FRAME_CROP_SCALE = 100 / 70
@@ -86,48 +97,48 @@ const frameImgStyle: React.CSSProperties = {
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
 
-function isIOS(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-}
-
 function drawCover(
   ctx: CanvasRenderingContext2D,
-  source: HTMLVideoElement | HTMLImageElement,
+  source: HTMLVideoElement,
   dw: number,
-  dh: number,
-  cropScale = 1
+  dh: number
 ) {
-  const sw = 'videoWidth' in source ? (source.videoWidth || 1) : (source.naturalWidth || 1)
-  const sh = 'videoHeight' in source ? (source.videoHeight || 1) : (source.naturalHeight || 1)
+  const sw = source.videoWidth || 1
+  const sh = source.videoHeight || 1
+
+  const sAspect = sw / sh
+  const dAspect = dw / dh
 
   let sx = 0,
     sy = 0,
     sWidth = sw,
     sHeight = sh
 
-  if (cropScale > 1) {
-    const inv = 1 / cropScale
-    sWidth = sw * inv
-    sHeight = sh * inv
+  if (sAspect > dAspect) {
+    sWidth = sh * dAspect
     sx = (sw - sWidth) / 2
+  } else {
+    sHeight = sw / dAspect
     sy = (sh - sHeight) / 2
   }
 
-  const sAspect = sWidth / sHeight
-  const dAspect = dw / dh
-
-  if (sAspect > dAspect) {
-    const w = sHeight * dAspect
-    sx += (sWidth - w) / 2
-    sWidth = w
-  } else {
-    const h = sWidth / dAspect
-    sy += (sHeight - h) / 2
-    sHeight = h
-  }
-
   ctx.drawImage(source, sx, sy, sWidth, sHeight, 0, 0, dw, dh)
+}
+
+function nearestLoadedForward(loaded: Set<number>, target: number, maxIndex: number): number {
+  const t = Math.round(target)
+  for (let i = Math.min(t, maxIndex); i >= 0; i--) {
+    if (loaded.has(i)) return i
+  }
+  return 0
+}
+
+function nearestLoadedReverse(loaded: Set<number>, target: number, minIndex: number, maxIndex: number): number {
+  const t = Math.round(target)
+  for (let i = Math.max(t, minIndex); i <= maxIndex; i++) {
+    if (loaded.has(i)) return i
+  }
+  return maxIndex
 }
 
 export default function LandingPage() {
@@ -140,7 +151,6 @@ export default function LandingPage() {
   const [part2Progress, setPart2Progress] = useState(0)
   const [smoothedPart2Progress, setSmoothedPart2Progress] = useState(0)
   const [frameStickyMode, setFrameStickyMode] = useState<'before' | 'stuck' | 'after'>('before')
-  const [frameSectionHeightPx, setFrameSectionHeightPx] = useState(0)
   const [frameScrollOutProgress, setFrameScrollOutProgress] = useState(0)
   const [smoothedVideoTransitionProgress, setSmoothedVideoTransitionProgress] = useState(0)
   const [videoStickyMode, setVideoStickyMode] = useState<'before' | 'stuck' | 'after'>('before')
@@ -162,7 +172,6 @@ export default function LandingPage() {
   const smoothedVideoTransitionRef = useRef(0)
   const smoothedPart2Ref = useRef(0)
   const part2TargetRef = useRef(0)
-  const sequenceTargetRef = useRef(0)
   const smoothedPart3Ref = useRef(0)
   const part3TargetRef = useRef(0)
   const smoothedPart4Ref = useRef(0)
@@ -173,7 +182,6 @@ export default function LandingPage() {
   const stableVhRef = useRef(800)
   const lastSmoothedProgressStateTimeRef = useRef(0)
   const lastSmoothedPart2StateRef = useRef(0)
-  const lastSequenceStateRef = useRef(0)
   const lastSmoothedPart3StateRef = useRef(0)
   const lastSmoothedPart4StateRef = useRef(0)
   const lastSmoothedVideoStateRef = useRef(0)
@@ -200,6 +208,7 @@ export default function LandingPage() {
   const isScrubbingRef = useRef(false)
   const drawRafRef = useRef<number | null>(null)
   const vfcHandleRef = useRef<number | null>(null)
+
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
     []
@@ -218,10 +227,7 @@ export default function LandingPage() {
   useEffect(() => {
     const updateVh = () => {
       if (typeof window === 'undefined') return
-      const vh = window.visualViewport?.height ?? window.innerHeight
-      stableVhRef.current = vh
-      const totalVh = 100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH + FRAME_SCROLL_OUT_VH
-      setFrameSectionHeightPx(vh * (totalVh / 100))
+      stableVhRef.current = window.visualViewport?.height ?? window.innerHeight
     }
     updateVh()
     window.addEventListener('resize', updateVh)
@@ -300,23 +306,24 @@ export default function LandingPage() {
     canvas.style.height = `${rect.height}px`
     canvas.width = rect.width * dpr
     canvas.height = rect.height * dpr
-    const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true, willReadFrequently: false }) || canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true, desynchronized: false, willReadFrequently: false }) || canvas.getContext('2d')
     ctxRef.current = ctx
-    if (ctx) {
-      ctx.imageSmoothingEnabled = true
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     canvasRectRef.current = { w: rect.width, h: rect.height }
   }, [])
 
   useEffect(() => {
     if (!gradientTransitionComplete) return
-    const canvas = canvasRef.current
-    if (!canvas?.parentElement) return
     syncCanvasSize()
-    const ro = new ResizeObserver(() => syncCanvasSize())
-    ro.observe(canvas.parentElement)
-    return () => ro.disconnect()
+    const onResize = () => syncCanvasSize()
+    window.addEventListener('resize', onResize)
+    window.addEventListener('orientationchange', onResize)
+    window.visualViewport?.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.removeEventListener('orientationchange', onResize)
+      window.visualViewport?.removeEventListener('resize', onResize)
+    }
   }, [gradientTransitionComplete, syncCanvasSize])
 
   // Alpha videos: load metadata, store duration, warm decoder (muted+playsInline), attach seeked handlers once
@@ -332,10 +339,9 @@ export default function LandingPage() {
       const ctx = ctxRef.current
       const rect = canvasRectRef.current
       if (ctx && rect.w > 0 && rect.h > 0) {
-        ctx.globalCompositeOperation = 'copy'
-        const cropScale = isIOS() && displayPartRef.current === 1 ? 1.01 : (isMobileRef.current ? 1 : FRAME_CROP_SCALE)
-        drawCover(ctx, v, rect.w, rect.h, cropScale)
+        ctx.clearRect(0, 0, rect.w, rect.h)
         ctx.globalCompositeOperation = 'source-over'
+        drawCover(ctx, v, rect.w, rect.h)
       }
       const pending = pendingSeekRef.current
       if (pending !== null) {
@@ -382,10 +388,9 @@ export default function LandingPage() {
       const ctx = ctxRef.current
       const rect = canvasRectRef.current
       if (v && ctx && rect.w > 0 && rect.h > 0 && v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) {
-        ctx.globalCompositeOperation = 'copy'
-        const cropScale = isIOS() && displayPartRef.current === 1 ? 1.01 : (isMobileRef.current ? 1 : FRAME_CROP_SCALE)
-        drawCover(ctx, v, rect.w, rect.h, cropScale)
+        ctx.clearRect(0, 0, rect.w, rect.h)
         ctx.globalCompositeOperation = 'source-over'
+        drawCover(ctx, v, rect.w, rect.h)
       }
     }
 
@@ -439,14 +444,10 @@ export default function LandingPage() {
     if (effectiveScroll >= part2Start) {
       const p2 = Math.min(1, (effectiveScroll - part2Start) / part2Height)
       part2TargetRef.current = p2
-      sequenceTargetRef.current = 1
     } else if (effectiveScroll >= sequenceStart) {
       part2TargetRef.current = 0
-      const progress = Math.min(1, (effectiveScroll - sequenceStart) / part1Height)
-      sequenceTargetRef.current = progress
     } else {
       part2TargetRef.current = 0
-      sequenceTargetRef.current = 0
     }
 
     const frameSectionContentVh = 100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH
@@ -514,16 +515,41 @@ export default function LandingPage() {
     }
   }, [getScrollY])
 
-  // Corner crosses + layout state from scroll. RAF handles targets; scroll listener only for rare UI state updates.
+  // Corner crosses + layout state from scroll. Single scroll source (window) + stable vh.
   useEffect(() => {
     if (!gradientTransitionComplete) return
 
     const checkScroll = () => {
+      updateTargetsFromScroll()
       const effectiveScroll = getScrollY()
       const vh = stableVhRef.current
       const threshold = vh * HERO_HEIGHT_THRESHOLD
       setHeroCrossed(effectiveScroll >= threshold)
       setPolygonOpacity(Math.min(1, effectiveScroll / vh))
+      // Part 1: frame sequence forward (86400→86520); Part 2: reverse (86520→86455)
+      const sequenceStart = vh
+      const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
+      const part2Start = sequenceStart + part1Height
+      const part2Height = (PART2_SCROLL_VH / 100) * vh
+      if (effectiveScroll >= part2Start) {
+        const p2 = Math.min(1, (effectiveScroll - part2Start) / part2Height)
+        setPart2Progress(p2)
+        part2TargetRef.current = p2
+        setSequenceProgress(1)
+      } else if (effectiveScroll >= sequenceStart) {
+        setPart2Progress(0)
+        part2TargetRef.current = 0
+        smoothedPart2Ref.current = 0
+        setSmoothedPart2Progress(0)
+        const progress = Math.min(1, (effectiveScroll - sequenceStart) / part1Height)
+        setSequenceProgress(progress)
+      } else {
+        setPart2Progress(0)
+        part2TargetRef.current = 0
+        smoothedPart2Ref.current = 0
+        setSmoothedPart2Progress(0)
+        setSequenceProgress(0)
+      }
       // Scroll-out phase: frame (and inside text) start scrolling up as soon as we reach end of Part 4 (no extra scroll), then move 1:1 with scroll
       const frameSectionContentVh = 100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH
       const scrollOutStartPx = vh + (frameSectionContentVh / 100) * vh
@@ -576,12 +602,12 @@ export default function LandingPage() {
             videoTransitionTargetRef.current = progress
           }
         } else if (rect.top <= VIDEO_STICK_TOP_THRESHOLD_PX) {
-          // Stick as soon as video nears the top (threshold) so it never scrolls past and readjusts; measure before switching to freeze layout
+          // Stick as soon as video nears the top (threshold) so it never scrolls past and readjusts
           if (videoStickyModeRef.current !== 'stuck') {
-            videoPlaceholderHeightRef.current = rect.height
             videoStickyModeRef.current = 'stuck'
             setVideoStickyMode('stuck')
             videoStickyStartScrollRef.current = effectiveScroll
+            videoPlaceholderHeightRef.current = rect.height
           }
           if (videoStickyStartScrollRef.current !== null) {
             const scrollIntoSticky = effectiveScroll - videoStickyStartScrollRef.current
@@ -596,12 +622,36 @@ export default function LandingPage() {
           videoTransitionTargetRef.current = 0
         }
       }
+      // Part 3: sequence02; Part 4: sequence03 (same sticky view)
+      const part3StartPx = sequenceStart + part1Height + part2Height
+      const part3HeightPx = (PART3_SCROLL_VH / 100) * vh
+      const part4StartPx = part3StartPx + part3HeightPx
+      const part4HeightPx = (PART4_SCROLL_VH / 100) * vh
+      if (effectiveScroll >= part4StartPx) {
+        part3TargetRef.current = 1
+        const p4 = Math.min(1, (effectiveScroll - part4StartPx) / part4HeightPx)
+        part4TargetRef.current = p4
+      } else if (effectiveScroll >= part3StartPx) {
+        const p3 = Math.min(1, (effectiveScroll - part3StartPx) / part3HeightPx)
+        part3TargetRef.current = p3
+        part4TargetRef.current = 0
+        smoothedPart4Ref.current = 0
+        setSmoothedPart4Progress(0)
+      } else {
+        setPart3Progress(0)
+        part3TargetRef.current = 0
+        smoothedPart3Ref.current = 0
+        setSmoothedPart3Progress(0)
+        part4TargetRef.current = 0
+        smoothedPart4Ref.current = 0
+        setSmoothedPart4Progress(0)
+      }
     }
 
     checkScroll()
     window.addEventListener('scroll', checkScroll, { passive: true })
     return () => window.removeEventListener('scroll', checkScroll)
-  }, [gradientTransitionComplete, getScrollY])
+  }, [gradientTransitionComplete, updateTargetsFromScroll, getScrollY])
 
   // Frame-rate independent smooth animation: follow scroll target without jumping.
   // Read scroll position inside RAF every frame so mobile (throttled scroll events) still gets smooth targets.
@@ -622,15 +672,8 @@ export default function LandingPage() {
         Math.abs(next - lastRef.current) >= SMOOTHED_PROGRESS_THROTTLE_DELTA ||
         now - lastSmoothedProgressStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
 
-      const seqTarget = sequenceTargetRef.current
-      if (shouldUpdateProgress(seqTarget, lastSequenceStateRef)) {
-        lastSequenceStateRef.current = seqTarget
-        lastSmoothedProgressStateTimeRef.current = now
-        setSequenceProgress(seqTarget)
-        setPart2Progress(part2TargetRef.current)
-      }
-
       if (part2TargetRef.current > 0) {
+        // Part 2: smooth progress for overlay text (sequenceProgress + smoothedPart2Progress)
         const target2 = part2TargetRef.current
         const current2 = smoothedPart2Ref.current
         const next2 = current2 + (target2 - current2) * smoothFactor
@@ -641,12 +684,7 @@ export default function LandingPage() {
           setSmoothedPart2Progress(next2)
         }
       } else {
-        smoothedPart2Ref.current = 0
-        if (shouldUpdateProgress(0, lastSmoothedPart2StateRef)) {
-          lastSmoothedPart2StateRef.current = 0
-          lastSmoothedProgressStateTimeRef.current = now
-          setSmoothedPart2Progress(0)
-        }
+        // Part 1: no frame state; video scrub drives Part1/2 display
       }
 
       const y = getScrollY()
@@ -697,12 +735,10 @@ export default function LandingPage() {
 
       if (duration > 0) {
         const FOLLOW_TC = isMobile ? FOLLOW_TC_MOBILE : FOLLOW_TC_DESKTOP
-        const baseMaxSpeed = isMobile ? MAX_SPEED_MOBILE : MAX_SPEED_DESKTOP
+        const MAX_SPEED = isMobile ? MAX_SPEED_MOBILE : MAX_SPEED_DESKTOP
         let current = displayTimeRef.current
         const diff = targetTime - current
-        const absDiff = Math.abs(diff)
-        const dynamicMaxSpeed = baseMaxSpeed + absDiff * CATCHUP_K
-        const maxStep = dynamicMaxSpeed * dtSec
+        const maxStep = MAX_SPEED * dtSec
         const clampedDiff = clamp(diff, -maxStep, maxStep)
         const followFactor = 1 - Math.exp(-dtSec / FOLLOW_TC)
         current = current + clampedDiff * followFactor
@@ -711,47 +747,45 @@ export default function LandingPage() {
 
       lastTickRef.current = now
 
-      {
-        const getActiveVideo = () =>
-          displayPartRef.current === 1 ? v1Ref.current
-            : displayPartRef.current === 2 ? v2Ref.current
-            : displayPartRef.current === 3 ? v3Ref.current
-            : v4Ref.current
+      const getActiveVideo = () =>
+        displayPartRef.current === 1 ? v1Ref.current
+          : displayPartRef.current === 2 ? v2Ref.current
+          : displayPartRef.current === 3 ? v3Ref.current
+          : v4Ref.current
 
-        const activePart = displayPartRef.current
-        const activeDur = activePart === 1 ? dur1Ref.current : activePart === 2 ? dur2Ref.current : activePart === 3 ? dur3Ref.current : dur4Ref.current
-        const video = getActiveVideo()
-        ;[v1Ref.current, v2Ref.current, v3Ref.current, v4Ref.current].forEach((v) => {
-          if (v && v !== video && !v.paused) v.pause()
-        })
-        if (video && activeDur > 0) {
-          const desired = displayTimeRef.current
-          const EPS = isMobileRef.current ? SEEK_EPS_MOBILE : SEEK_EPS_DESKTOP
-          if (Math.abs((video.currentTime || 0) - desired) > EPS) {
-            pendingSeekRef.current = desired
-            isScrubbingRef.current = true
+      const activePart = displayPartRef.current
+      const activeDur = activePart === 1 ? dur1Ref.current : activePart === 2 ? dur2Ref.current : activePart === 3 ? dur3Ref.current : dur4Ref.current
+      const video = getActiveVideo()
+      ;[v1Ref.current, v2Ref.current, v3Ref.current, v4Ref.current].forEach((v) => {
+        if (v && v !== video && !v.paused) v.pause()
+      })
+      if (video && activeDur > 0) {
+        const desired = displayTimeRef.current
+        const EPS = isMobileRef.current ? SEEK_EPS_MOBILE : SEEK_EPS_DESKTOP
+        if (Math.abs((video.currentTime || 0) - desired) > EPS) {
+          pendingSeekRef.current = desired
+          isScrubbingRef.current = true
 
-            if (!seekRafScheduledRef.current) {
-              seekRafScheduledRef.current = true
-              requestAnimationFrame(() => {
-                seekRafScheduledRef.current = false
-                const v = displayPartRef.current === 1 ? v1Ref.current : displayPartRef.current === 2 ? v2Ref.current : displayPartRef.current === 3 ? v3Ref.current : v4Ref.current
-                const t = pendingSeekRef.current
-                if (!v || t === null) return
-                const minInterval = isMobileRef.current ? SEEK_MIN_INTERVAL_MS_MOBILE : SEEK_MIN_INTERVAL_MS_DESKTOP
-                const nowMs = performance.now()
-                if (!v.seeking && nowMs - lastSeekCommitMsRef.current >= minInterval) {
-                  lastSeekCommitMsRef.current = nowMs
-                  v.currentTime = t
-                }
-              })
-            }
-          } else {
-            isScrubbingRef.current = false
+          if (!seekRafScheduledRef.current) {
+            seekRafScheduledRef.current = true
+            requestAnimationFrame(() => {
+              seekRafScheduledRef.current = false
+              const v = displayPartRef.current === 1 ? v1Ref.current : displayPartRef.current === 2 ? v2Ref.current : displayPartRef.current === 3 ? v3Ref.current : v4Ref.current
+              const t = pendingSeekRef.current
+              if (!v || t === null) return
+              const minInterval = isMobileRef.current ? SEEK_MIN_INTERVAL_MS_MOBILE : SEEK_MIN_INTERVAL_MS_DESKTOP
+              const nowMs = performance.now()
+              if (!v.seeking && nowMs - lastSeekCommitMsRef.current >= minInterval) {
+                lastSeekCommitMsRef.current = nowMs
+                v.currentTime = t
+              }
+            })
           }
         } else {
           isScrubbingRef.current = false
         }
+      } else {
+        isScrubbingRef.current = false
       }
 
       if (DEBUG_FRAME) console.log({ part, raw, targetTime, displayTime: displayTimeRef.current })
@@ -789,7 +823,7 @@ export default function LandingPage() {
     }
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [gradientTransitionComplete, updateTargetsFromScroll, getScrollY])
+  }, [gradientTransitionComplete, updateTargetsFromScroll])
 
   return (
     <>
@@ -918,12 +952,9 @@ export default function LandingPage() {
           <section
             ref={frameSectionRef}
             className="relative w-full bg-white border-0 border-none"
-            style={{
-              height: frameSectionHeightPx > 0 ? `${frameSectionHeightPx}px` : `${100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH + FRAME_SCROLL_OUT_VH}vh`,
-              border: 'none',
-            }}
+            style={{ height: `${100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH + FRAME_SCROLL_OUT_VH}vh`, border: 'none' }}
           >
-            {frameStickyMode === 'stuck' && <div aria-hidden style={{ height: stableVhRef.current }} />}
+            {frameStickyMode === 'stuck' && <div aria-hidden style={{ height: '100vh' }} />}
             <div
               className="w-full flex items-center justify-center border-0 border-none bg-white overflow-hidden lg:overflow-visible"
               style={{
@@ -938,8 +969,8 @@ export default function LandingPage() {
                   left: 0,
                   right: 0,
                   zIndex: 5,
-                  // 1:1 movement: frame moves up by same vh as scroll in this phase = feels like normal scroll (px avoids iOS vh jitter)
-                  transform: frameScrollOutProgress > 0 ? `translate3d(0, -${Math.round(frameScrollOutProgress * FRAME_SCROLL_OUT_VH * (stableVhRef.current / 100))}px, 0)` : undefined,
+                  // 1:1 movement: frame moves up by same vh as scroll in this phase = feels like normal scroll
+                  transform: frameScrollOutProgress > 0 ? `translateY(-${frameScrollOutProgress * FRAME_SCROLL_OUT_VH}vh)` : undefined,
                 }),
                 ...(frameStickyMode === 'after' && {
                   position: 'absolute',
@@ -993,7 +1024,7 @@ export default function LandingPage() {
                   className="block w-full h-full border-0 border-none outline-none"
                   style={{
                     ...frameImgStyle,
-                    transform: 'translateZ(0) scale(1)',
+                    transform: `translateZ(0) scale(${isDesktopViewport ? FRAME_CROP_SCALE : 1})`,
                     willChange: 'transform',
                     backfaceVisibility: 'hidden',
                     contain: 'layout paint',
@@ -1003,15 +1034,14 @@ export default function LandingPage() {
               </div>
               {/* System text: fixed at left center; comes up with frame 1, then scrolls up as sequence runs */}
               <div
-                className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-4xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none transition-opacity duration-150"
+                className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-4xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none transition-all duration-150 ease-out"
                 style={{
                   top: '50%',
                   bottom: 'auto',
-                  willChange: 'transform',
                   transform:
                     frameStickyMode === 'before'
-                      ? 'translate3d(0, -50%, 0)'
-                      : `translate3d(0, calc(-50% - ${Math.round((sequenceProgress * SYSTEM_TEXT_SCROLL_VH + smoothedPart2Progress * SYSTEM_TEXT_PART2_VH) * (stableVhRef.current / 100))}px), 0)`,
+                      ? 'translateY(-50%)'
+                      : `translateY(calc(-50% - ${sequenceProgress * SYSTEM_TEXT_SCROLL_VH + smoothedPart2Progress * SYSTEM_TEXT_PART2_VH}vh))`,
                 }}
                 aria-hidden
               >
@@ -1088,15 +1118,13 @@ export default function LandingPage() {
                 const rawStyle = Math.max(0, (sequenceProgress - STYLE_TEXT_DELAY) / (1 - STYLE_TEXT_DELAY))
                 const styleProgress = Math.pow(rawStyle, STYLE_TEXT_EASING)
                 const offsetVh = (1 - styleProgress) * 85 - smoothedPart2Progress * STYLE_TEXT_PART2_VH
-                const offsetPx = Math.round(offsetVh * (stableVhRef.current / 100))
                 return (
                   <div
-                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-3xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-opacity duration-150"
+                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-3xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-all duration-150 ease-out"
                     style={{
                       top: '50%',
                       bottom: 'auto',
-                      willChange: 'transform',
-                      transform: `translate3d(0, calc(-50% + ${offsetPx}px), 0)`,
+                      transform: `translateY(calc(-50% + ${offsetVh}vh))`,
                       opacity: frameStickyMode === 'before' ? 0 : 1,
                     }}
                     aria-hidden
@@ -1153,15 +1181,13 @@ export default function LandingPage() {
                 const designOffsetVh = (designVisible
                   ? DESIGN_FROM_BOTTOM_VH - DESIGN_FROM_BOTTOM_VH * smoothedPart2Progress - DESIGN_SCROLL_UP_VH * smoothedPart3Progress
                   : DESIGN_FROM_BOTTOM_VH) + DESIGN_VERTICAL_OFFSET_VH
-                const designOffsetPx = Math.round(designOffsetVh * (stableVhRef.current / 100))
                 return (
                   <div
-                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none transition-opacity duration-150"
+                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none transition-all duration-150 ease-out"
                     style={{
                       top: '50%',
                       bottom: 'auto',
-                      willChange: 'transform',
-                      transform: `translate3d(0, calc(-50% + ${designOffsetPx}px), 0)`,
+                      transform: `translateY(calc(-50% + ${designOffsetVh}vh))`,
                       opacity: frameStickyMode === 'before' || !designVisible ? 0 : 1,
                     }}
                     aria-hidden
@@ -1218,15 +1244,13 @@ INTELLIGENCE, MADE PHYSICAL
                 const careOffsetVh = (careVisible
                   ? CARE_FROM_BOTTOM_VH - CARE_FROM_BOTTOM_VH * smoothedPart3Progress - CARE_SCROLL_UP_VH * smoothedPart4Progress
                   : CARE_FROM_BOTTOM_VH) + CARE_VERTICAL_OFFSET_VH
-                const careOffsetPx = Math.round(careOffsetVh * (stableVhRef.current / 100))
                 return (
                   <div
-                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-opacity duration-150"
+                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-all duration-150 ease-out"
                     style={{
                       top: '50%',
                       bottom: 'auto',
-                      willChange: 'transform',
-                      transform: `translate3d(0, calc(-50% + ${careOffsetPx}px), 0)`,
+                      transform: `translateY(calc(-50% + ${careOffsetVh}vh))`,
                       opacity: frameStickyMode === 'before' || !careVisible ? 0 : 1,
                     }}
                     aria-hidden
@@ -1283,15 +1307,13 @@ INTELLIGENCE, MADE PHYSICAL
                 const insideOffsetVh = (insideVisible
                   ? INSIDE_FROM_BOTTOM_VH - INSIDE_FROM_BOTTOM_VH * smoothedPart4Progress
                   : INSIDE_FROM_BOTTOM_VH) + INSIDE_VERTICAL_OFFSET_VH
-                const insideOffsetPx = Math.round(insideOffsetVh * (stableVhRef.current / 100))
                 return (
                   <div
-                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-opacity duration-150"
+                    className="absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-all duration-150 ease-out"
                     style={{
                       top: '50%',
                       bottom: 'auto',
-                      willChange: 'transform',
-                      transform: `translate3d(0, calc(-50% + ${insideOffsetPx}px), 0)`,
+                      transform: `translateY(calc(-50% + ${insideOffsetVh}vh))`,
                       opacity: frameStickyMode === 'before' || !insideVisible ? 0 : 1,
                     }}
                     aria-hidden
@@ -1391,23 +1413,20 @@ INTELLIGENCE, MADE PHYSICAL
                 }}
               >
               <div
-                className="w-full max-w-7xl mx-auto border border-white/30 bg-[#1a1a1a] shadow-xl will-change-transform"
+                className="w-full max-w-7xl mx-auto overflow-hidden border border-white/30 bg-[#1a1a1a] shadow-xl will-change-transform"
                 style={{
                   boxShadow: '0 0 0 1px rgba(255,255,255,0.2)',
                   width: `${100 - (100 - VIDEO_TRANSITION_WIDTH_END_PCT) * smoothedVideoTransitionProgress}%`,
                   marginLeft: 'auto',
                   marginRight: 'auto',
                   borderRadius: `${VIDEO_TRANSITION_BORDER_RADIUS_PX * smoothedVideoTransitionProgress}px`,
-                  overflow: 'hidden',
+                  transform: `scale(${1 - (1 - VIDEO_TRANSITION_SCALE_END) * smoothedVideoTransitionProgress}, 1)`,
+                  transformOrigin: 'center top',
+                  // Clip from bottom with rounded bottom edges (round matches top corners)
+                  clipPath: `inset(0 0 ${(1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * smoothedVideoTransitionProgress * 100}% 0 round ${VIDEO_TRANSITION_BORDER_RADIUS_PX * smoothedVideoTransitionProgress}px)`,
                 }}
               >
-                <div
-                  className="relative aspect-video w-full min-h-[280px] sm:min-h-[320px] md:min-h-[420px]"
-                  style={{
-                    transformOrigin: 'center top',
-                    transform: `scale(${1 - (1 - VIDEO_TRANSITION_SCALE_END) * smoothedVideoTransitionProgress}, ${1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * smoothedVideoTransitionProgress})`,
-                  }}
-                >
+                <div className="relative aspect-video w-full min-h-[280px] sm:min-h-[320px] md:min-h-[420px]">
                   <video
                     ref={careVideoRef}
                     className="absolute inset-0 w-full h-full object-cover"
