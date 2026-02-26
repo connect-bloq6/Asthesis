@@ -5,6 +5,9 @@ import Navbar from '@/components/ui/Navbar'
 import Footer from '@/components/ui/Footer'
 import LoadingScreen from '@/components/ui/LoadingScreen'
 
+const ASSETS = process.env.NEXT_PUBLIC_ASSETS_BASE_URL || ''
+const assetUrl = (p: string) => (ASSETS ? `${ASSETS}${p}` : p)
+
 const DEBUG_FRAME = false
 
 const GRADIENT_START_TIME = 3.2 // seconds into the 5s video (start a bit early)
@@ -1562,7 +1565,7 @@ INTELLIGENCE, MADE PHYSICAL
                   <video
                     ref={careVideoRef}
                     className="absolute inset-0 w-full h-full object-cover"
-                    src="/videos/landing_page_video.mp4"
+                    src={assetUrl('/videos/landing_page_video.mp4')}
                     playsInline
                     muted
                     loop
