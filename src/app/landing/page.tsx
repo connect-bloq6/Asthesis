@@ -7,6 +7,7 @@ import LoadingScreen from '@/components/ui/LoadingScreen'
 
 const ASSETS = process.env.NEXT_PUBLIC_ASSETS_BASE_URL || ''
 const assetUrl = (p: string) => (ASSETS ? `${ASSETS}${p}` : p)
+const LANDING_PAGE_VIDEO = process.env.NEXT_PUBLIC_LANDING_PAGE_VIDEO_URL || assetUrl('/videos/landing_page_video.mp4')
 
 const DEBUG_FRAME = false
 
@@ -1565,7 +1566,7 @@ INTELLIGENCE, MADE PHYSICAL
                   <video
                     ref={careVideoRef}
                     className="absolute inset-0 w-full h-full object-cover"
-                    src={assetUrl('/videos/landing_page_video.mp4')}
+                    src={LANDING_PAGE_VIDEO}
                     playsInline
                     muted
                     loop
