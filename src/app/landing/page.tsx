@@ -71,18 +71,6 @@ const CATCHUP_K = 3
 const SEEK_EPS_DESKTOP = 0.008
 const SEEK_EPS_MOBILE = 0.012
 
-function daviniciFramePath(index: number): string {
-  return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
-}
-
-function sequence02FramePath(index: number): string {
-  return `/sequence02/davinci${String(SEQUENCE02_FRAME_START + index).padStart(8, '0')}.png`
-}
-
-function sequence03FramePath(index: number): string {
-  return `/sequence03/davinci${String(SEQUENCE03_FRAME_START + index).padStart(8, '0')}.png`
-}
-
 // Crop top/bottom black bars: uniform zoom (no stretch) so middle ~30% fills frame
 const FRAME_CROP_SCALE = 100 / 70
 
@@ -97,18 +85,6 @@ const frameImgStyle: React.CSSProperties = {
 }
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v))
-
-function isIOS(): boolean {
-  if (typeof navigator === 'undefined') return false
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-}
-
-function supportsVp9Webm(): boolean {
-  if (typeof document === 'undefined') return false
-  const v = document.createElement('video')
-  const result = v.canPlayType('video/webm; codecs="vp9"')
-  return result === 'probably' || result === 'maybe'
-}
 
 function drawCover(
   ctx: CanvasRenderingContext2D,
@@ -167,7 +143,6 @@ export default function LandingPage() {
   const [smoothedPart3Progress, setSmoothedPart3Progress] = useState(0)
   const [smoothedPart4Progress, setSmoothedPart4Progress] = useState(0)
   const [isDesktopViewport, setIsDesktopViewport] = useState(true) // lg breakpoint: frame uses full scale on desktop only
-  const [usePngSequenceFallback, setUsePngSequenceFallback] = useState<boolean | null>(null) // null = detecting
   const videoRef = useRef<HTMLVideoElement>(null)
   const mainRef = useRef<HTMLElement>(null)
   const frameSectionRef = useRef<HTMLElement>(null)
@@ -220,14 +195,6 @@ export default function LandingPage() {
   const isScrubbingRef = useRef(false)
   const drawRafRef = useRef<number | null>(null)
   const vfcHandleRef = useRef<number | null>(null)
-  const targetFrameIndexRef = useRef(0)
-  const displayFrameIndexRef = useRef(0)
-  const displayPngPartRef = useRef<1 | 2 | 3 | 4>(1)
-  const pngImageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map())
-  const pngCacheOrderRef = useRef<string[]>([])
-  const PNG_CACHE_MAX = 100
-  const PNG_PRELOAD_WINDOW = 4
-
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
     []
@@ -240,10 +207,6 @@ export default function LandingPage() {
     const h = () => setIsDesktopViewport(m.matches)
     m.addEventListener('change', h)
     return () => m.removeEventListener('change', h)
-  }, [])
-
-  useEffect(() => {
-    setUsePngSequenceFallback(isIOS() || !supportsVp9Webm())
   }, [])
 
   // Stable viewport height (avoids mobile address bar collapse/expand shifting section boundaries).
@@ -351,9 +314,9 @@ export default function LandingPage() {
     return () => ro.disconnect()
   }, [gradientTransitionComplete, syncCanvasSize])
 
-  // Alpha videos: load metadata, store duration, warm decoder (muted+playsInline), attach seeked handlers once (skipped when PNG fallback; null = assume VP9)
+  // Alpha videos: load metadata, store duration, warm decoder (muted+playsInline), attach seeked handlers once
   useEffect(() => {
-    if (!gradientTransitionComplete || usePngSequenceFallback === true) return
+    if (!gradientTransitionComplete) return
     const getActiveVideo = () =>
       displayPartRef.current === 1 ? v1Ref.current
         : displayPartRef.current === 2 ? v2Ref.current
@@ -398,10 +361,10 @@ export default function LandingPage() {
       cleanups.push(() => v.removeEventListener('seeked', boundSeeked))
     })
     return () => cleanups.forEach((c) => c())
-  }, [gradientTransitionComplete, usePngSequenceFallback])
+  }, [gradientTransitionComplete])
 
   useEffect(() => {
-    if (!gradientTransitionComplete || usePngSequenceFallback === true) return
+    if (!gradientTransitionComplete) return
     const getActiveVideo = () =>
       displayPartRef.current === 1 ? v1Ref.current
         : displayPartRef.current === 2 ? v2Ref.current
@@ -451,7 +414,7 @@ export default function LandingPage() {
       }
       vfcHandleRef.current = null
     }
-  }, [gradientTransitionComplete, usePngSequenceFallback])
+  }, [gradientTransitionComplete])
 
   // Update only target refs from current scroll position (no setState). Single scroll source (window) + stable vh for deterministic mobile behavior.
   const updateTargetsFromScroll = useCallback(() => {
@@ -718,69 +681,30 @@ export default function LandingPage() {
       targetPartRef.current = part
       targetTimeRef.current = targetTime
 
-      const usePng = usePngSequenceFallback === true
+      if (part !== displayPartRef.current) {
+        displayPartRef.current = part
+        const vNew = part === 1 ? v1Ref.current : part === 2 ? v2Ref.current : part === 3 ? v3Ref.current : v4Ref.current
+        const initTime = vNew?.readyState && vNew.readyState >= 2 ? (vNew.currentTime || 0) : displayTimeRef.current
+        displayTimeRef.current = initTime
+      }
 
-      if (usePng) {
-        let targetFrameIndex = 0
-        const maxIdx = DAVINICI_FRAME_COUNT - 1
-        if (part === 1) {
-          targetFrameIndex = raw * maxIdx
-        } else if (part === 2) {
-          targetFrameIndex = maxIdx - raw * (maxIdx - DAVINICI_PART2_END_INDEX)
-        } else if (part === 3) {
-          targetFrameIndex = raw * (SEQUENCE02_FRAME_COUNT - 1)
-        } else {
-          const frameProgress = Math.pow(raw, PART4_FRAME_EASING)
-          targetFrameIndex = frameProgress * (SEQUENCE03_FRAME_COUNT - 1)
-        }
-        targetFrameIndexRef.current = targetFrameIndex
-        const maxIdxForPart = part === 1 || part === 2 ? DAVINICI_FRAME_COUNT - 1 : part === 3 ? SEQUENCE02_FRAME_COUNT - 1 : SEQUENCE03_FRAME_COUNT - 1
-
-        if (part !== displayPartRef.current) {
-          displayPartRef.current = part
-          displayPngPartRef.current = part
-          displayFrameIndexRef.current = targetFrameIndex
-        }
-
+      if (duration > 0) {
         const FOLLOW_TC = isMobile ? FOLLOW_TC_MOBILE : FOLLOW_TC_DESKTOP
         const baseMaxSpeed = isMobile ? MAX_SPEED_MOBILE : MAX_SPEED_DESKTOP
-        let current = displayFrameIndexRef.current
-        const diff = targetFrameIndex - current
+        let current = displayTimeRef.current
+        const diff = targetTime - current
         const absDiff = Math.abs(diff)
         const dynamicMaxSpeed = baseMaxSpeed + absDiff * CATCHUP_K
         const maxStep = dynamicMaxSpeed * dtSec
         const clampedDiff = clamp(diff, -maxStep, maxStep)
         const followFactor = 1 - Math.exp(-dtSec / FOLLOW_TC)
         current = current + clampedDiff * followFactor
-        displayFrameIndexRef.current = clamp(current, 0, maxIdxForPart)
-      } else {
-        if (part !== displayPartRef.current) {
-          displayPartRef.current = part
-          const vNew = part === 1 ? v1Ref.current : part === 2 ? v2Ref.current : part === 3 ? v3Ref.current : v4Ref.current
-          const initTime = vNew?.readyState && vNew.readyState >= 2 ? (vNew.currentTime || 0) : displayTimeRef.current
-          displayTimeRef.current = initTime
-        }
-
-        if (duration > 0) {
-          const FOLLOW_TC = isMobile ? FOLLOW_TC_MOBILE : FOLLOW_TC_DESKTOP
-          const baseMaxSpeed = isMobile ? MAX_SPEED_MOBILE : MAX_SPEED_DESKTOP
-          let current = displayTimeRef.current
-          const diff = targetTime - current
-          const absDiff = Math.abs(diff)
-          const dynamicMaxSpeed = baseMaxSpeed + absDiff * CATCHUP_K
-          const maxStep = dynamicMaxSpeed * dtSec
-          const clampedDiff = clamp(diff, -maxStep, maxStep)
-          const followFactor = 1 - Math.exp(-dtSec / FOLLOW_TC)
-          current = current + clampedDiff * followFactor
-          displayTimeRef.current = clamp(current, 0, Math.max(0, duration - 0.001))
-        }
+        displayTimeRef.current = clamp(current, 0, Math.max(0, duration - 0.001))
       }
 
       lastTickRef.current = now
 
-      if (usePng) {
-        isScrubbingRef.current = true
-      } else {
+      {
         const getActiveVideo = () =>
           displayPartRef.current === 1 ? v1Ref.current
             : displayPartRef.current === 2 ? v2Ref.current
@@ -858,113 +782,7 @@ export default function LandingPage() {
     }
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [gradientTransitionComplete, updateTargetsFromScroll, usePngSequenceFallback, getScrollY])
-
-  // PNG fallback: draw frames to canvas when usePngSequenceFallback (e.g. iOS)
-  useEffect(() => {
-    if (!gradientTransitionComplete || usePngSequenceFallback !== true) return
-
-    const cache = pngImageCacheRef.current
-    const order = pngCacheOrderRef.current
-
-    const getMaxIndexForPart = (p: 1 | 2 | 3 | 4): number => {
-      if (p === 1 || p === 2) return DAVINICI_FRAME_COUNT - 1
-      if (p === 3) return SEQUENCE02_FRAME_COUNT - 1
-      return SEQUENCE03_FRAME_COUNT - 1
-    }
-
-    const evictLRU = () => {
-      while (order.length >= PNG_CACHE_MAX && order.length > 0) {
-        const key = order.shift()!
-        cache.delete(key)
-      }
-    }
-
-    const touchLRU = (path: string) => {
-      const i = order.indexOf(path)
-      if (i >= 0) order.splice(i, 1)
-      order.push(path)
-    }
-
-    const loadImage = (path: string): Promise<HTMLImageElement> => {
-      const cached = cache.get(path)
-      if (cached?.complete && cached.naturalWidth > 0) {
-        touchLRU(path)
-        return Promise.resolve(cached)
-      }
-      return new Promise((resolve, reject) => {
-        const img = new Image()
-        img.onload = () => {
-          const i = order.indexOf(path)
-          if (i >= 0) order.splice(i, 1)
-          evictLRU()
-          cache.set(path, img)
-          order.push(path)
-          resolve(img)
-        }
-        img.onerror = reject
-        img.src = path
-      })
-    }
-
-    const getPathForPartAndIndex = (part: 1 | 2 | 3 | 4, index: number): string => {
-      const maxIdx = getMaxIndexForPart(part)
-      const idx = Math.round(clamp(index, 0, maxIdx))
-      if (part === 1 || part === 2) return daviniciFramePath(idx)
-      if (part === 3) return sequence02FramePath(idx)
-      return sequence03FramePath(idx)
-    }
-
-    const getNearestLoaded = (part: 1 | 2 | 3 | 4, targetIndex: number): HTMLImageElement | null => {
-      const maxIdx = getMaxIndexForPart(part)
-      const ti = Math.round(clamp(targetIndex, 0, maxIdx))
-      for (let d = 0; d <= maxIdx; d++) {
-        const paths = [
-          ti + d <= maxIdx ? getPathForPartAndIndex(part, ti + d) : null,
-          d > 0 && ti - d >= 0 ? getPathForPartAndIndex(part, ti - d) : null,
-        ].filter(Boolean) as string[]
-        for (const p of paths) {
-          const img = cache.get(p)
-          if (img?.complete && img.naturalWidth > 0) {
-            touchLRU(p)
-            return img
-          }
-        }
-      }
-      return null
-    }
-
-    let rafId = 0
-    const draw = () => {
-      const ctx = ctxRef.current
-      const rect = canvasRectRef.current
-      if (!ctx || rect.w <= 0 || rect.h <= 0) {
-        rafId = requestAnimationFrame(draw)
-        return
-      }
-
-      const part = displayPngPartRef.current
-      const frameIndex = displayFrameIndexRef.current
-      const path = getPathForPartAndIndex(part, frameIndex)
-      const nearest = getNearestLoaded(part, frameIndex)
-
-      if (nearest) {
-        ctx.globalCompositeOperation = 'copy'
-        drawCover(ctx, nearest, rect.w, rect.h, isMobileRef.current ? 1 : FRAME_CROP_SCALE)
-        ctx.globalCompositeOperation = 'source-over'
-      }
-
-      loadImage(path).catch(() => {})
-      for (let i = 1; i <= PNG_PRELOAD_WINDOW; i++) {
-        loadImage(getPathForPartAndIndex(part, frameIndex + i)).catch(() => {})
-        loadImage(getPathForPartAndIndex(part, frameIndex - i)).catch(() => {})
-      }
-
-      rafId = requestAnimationFrame(draw)
-    }
-    rafId = requestAnimationFrame(draw)
-    return () => cancelAnimationFrame(rafId)
-  }, [gradientTransitionComplete, usePngSequenceFallback])
+  }, [gradientTransitionComplete, updateTargetsFromScroll, getScrollY])
 
   return (
     <>
@@ -1148,7 +966,7 @@ export default function LandingPage() {
               </div>
               {/* Part 1–4: canvas + hidden alpha videos (scroll-driven scrub, 540p mobile / 720p desktop) */}
               <div className="relative z-10 w-full max-w-[100vw] overflow-hidden border-0 border-none pointer-events-none aspect-square sm:aspect-square md:aspect-video lg:aspect-auto lg:w-full lg:h-full lg:max-w-none lg:min-w-full">
-                {usePngSequenceFallback !== true && (() => {
+                {(() => {
                   const isMobile = !isDesktopViewport
                   const shot1Src = isMobile ? '/videos/alpha/shot1_alpha_540p.webm' : '/videos/alpha/shot1_alpha_720p.webm'
                   const shot2Src = isMobile ? '/videos/alpha/shot2_alpha_540p.webm' : '/videos/alpha/shot2_alpha_720p.webm'
