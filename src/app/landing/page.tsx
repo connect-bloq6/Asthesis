@@ -29,14 +29,13 @@ const PART4_FRAME_EASING = 0.72 // ease frame progress so last frame lands when 
 const FRAME_SCROLL_OUT_VH = 28 // scroll-out phase; shorter = video section appears sooner (frame moves up by same vh as scroll)
 
 // ——— Last section video transition (sticky video, footer scrolls up as video shrinks) ———
-const VIDEO_STICK_TOP_THRESHOLD_PX = 72 // stick when video is this far from top so it doesn't scroll too high before fixing
 const VIDEO_STICK_TOP_OFFSET_PX = 56 // when stuck, video sits this many px from viewport top (increased distance from top)
 const VIDEO_STICKY_SCROLL_VH = 100 // vh of scroll while video is sticky (footer appears below during this)
 const VIDEO_TRANSITION_LERP = 0.08 // smooth follow (higher = snappier)
 const VIDEO_TRANSITION_WIDTH_END_PCT = 80 // width at progress 1 (%)
 const VIDEO_TRANSITION_BORDER_RADIUS_PX = 24 // border radius at progress 1
 const VIDEO_TRANSITION_SCALE_END = 0.9 // scale X at progress 1 (1 → 0.9)
-const VIDEO_TRANSITION_HEIGHT_SCALE_END = 0.3 // height at progress 1 (1 → 0.3); frame shrinks to 30% with scroll
+const VIDEO_TRANSITION_HEIGHT_SCALE_END = 0.35 // height at progress 1 (1 → 0.35); frame shrinks to 35% with scroll
 
 const PART4_SMOOTH_LERP = 0.035 // lower = smoother scroll-driven progress and scale
 const PART4_SCALE_START = 1 // match Part 3 end
@@ -178,8 +177,8 @@ export default function LandingPage() {
   const careSectionRef = useRef<HTMLElement>(null)
   const careVideoStickyRef = useRef<HTMLDivElement>(null)
   const careVideoRef = useRef<HTMLVideoElement>(null)
+  const videoStickSentinelRef = useRef<HTMLDivElement>(null)
   const videoStickyWrapperRef = useRef<HTMLDivElement>(null)
-  const videoStickyStartScrollRef = useRef<number | null>(null)
   const videoPlaceholderHeightRef = useRef<number>(0)
   const videoStickyModeRef = useRef<'before' | 'stuck' | 'after'>('before')
   const videoTransitionTargetRef = useRef(0)
@@ -503,45 +502,36 @@ export default function LandingPage() {
       scrollWhenInsideAtCenterRef.current = null
     }
 
-    const videoStickyEl = videoStickyWrapperRef.current
-    const careSection = careSectionRef.current
-    if (videoStickyEl && careSection) {
-      const rect = videoStickyEl.getBoundingClientRect()
-      const sectionRect = careSection.getBoundingClientRect()
+    const sentinel = videoStickSentinelRef.current
+    const section = careSectionRef.current
+    const wrapper = videoStickyWrapperRef.current
+    if (sentinel && section) {
+      const sentinelRect = sentinel.getBoundingClientRect()
+      const sectionRect = section.getBoundingClientRect()
       const spacerHeightPx = (VIDEO_STICKY_SCROLL_VH / 100) * vh
-      const currentVideoStickyMode = videoStickyModeRef.current
+      const stickStartY = effectiveScroll + sentinelRect.top - VIDEO_STICK_TOP_OFFSET_PX
+      const stickEndY = stickStartY + spacerHeightPx
+      let mode: 'before' | 'stuck' | 'after' = 'before'
+      let progress = 0
       if (sectionRect.bottom <= 0) {
-        videoStickyModeRef.current = 'after'
-        videoStickyStartScrollRef.current = null
-        videoTransitionTargetRef.current = 0
-      } else if (currentVideoStickyMode === 'stuck') {
-        const stickStart = videoStickyStartScrollRef.current
-        if (stickStart !== null && effectiveScroll < stickStart) {
-          videoStickyModeRef.current = 'before'
-          videoStickyStartScrollRef.current = null
-          videoPlaceholderHeightRef.current = 0
-          videoTransitionTargetRef.current = 0
-        } else if (stickStart !== null) {
-          const scrollIntoSticky = effectiveScroll - stickStart
-          videoTransitionTargetRef.current = Math.max(0, Math.min(1, scrollIntoSticky / spacerHeightPx))
-        }
-      } else if (rect.top <= VIDEO_STICK_TOP_THRESHOLD_PX) {
-        if (videoStickyModeRef.current !== 'stuck') {
-          videoStickyModeRef.current = 'stuck'
-          videoStickyStartScrollRef.current = effectiveScroll
-          videoPlaceholderHeightRef.current = rect.height
-        }
-        const stickStart = videoStickyStartScrollRef.current
-        if (stickStart !== null) {
-          const scrollIntoSticky = effectiveScroll - stickStart
-          videoTransitionTargetRef.current = Math.max(0, Math.min(1, scrollIntoSticky / spacerHeightPx))
+        mode = 'after'
+        progress = 1
+      } else if (effectiveScroll < stickStartY) {
+        mode = 'before'
+        progress = 0
+        videoPlaceholderHeightRef.current = 0
+      } else if (effectiveScroll >= stickStartY && effectiveScroll <= stickEndY) {
+        mode = 'stuck'
+        progress = Math.max(0, Math.min(1, (effectiveScroll - stickStartY) / spacerHeightPx))
+        if (videoStickyModeRef.current !== 'stuck' && wrapper) {
+          videoPlaceholderHeightRef.current = wrapper.getBoundingClientRect().height
         }
       } else {
-        videoStickyModeRef.current = 'before'
-        videoStickyStartScrollRef.current = null
-        videoPlaceholderHeightRef.current = 0
-        videoTransitionTargetRef.current = 0
+        mode = 'after'
+        progress = 1
       }
+      videoStickyModeRef.current = mode
+      videoTransitionTargetRef.current = progress
     }
 
     if (effectiveScroll >= part4StartPx) {
@@ -618,53 +608,38 @@ export default function LandingPage() {
         else if (rect.bottom <= 0 || scrollOutProgress >= 1) setFrameStickyMode('after')
         else setFrameStickyMode('stuck')
       }
-      // Video: JS fixed with hysteresis (stuck once when rect.top<=0, leave only when section past) to avoid blink
-      const videoStickyEl = videoStickyWrapperRef.current
+      // Video: sentinel-based stick; stickStartY/stickEndY from scrollY + sentinel rect
+      const sentinel = videoStickSentinelRef.current
       const careSection = careSectionRef.current
-      if (videoStickyEl && careSection) {
-        const rect = videoStickyEl.getBoundingClientRect()
+      const videoWrapper = videoStickyWrapperRef.current
+      if (sentinel && careSection) {
+        const sentinelRect = sentinel.getBoundingClientRect()
         const sectionRect = careSection.getBoundingClientRect()
         const spacerHeightPx = (VIDEO_STICKY_SCROLL_VH / 100) * vh
-        const currentVideoStickyMode = videoStickyModeRef.current
+        const stickStartY = effectiveScroll + sentinelRect.top - VIDEO_STICK_TOP_OFFSET_PX
+        const stickEndY = stickStartY + spacerHeightPx
+        let mode: 'before' | 'stuck' | 'after' = 'before'
+        let progress = 0
         if (sectionRect.bottom <= 0) {
-          videoStickyModeRef.current = 'after'
-          setVideoStickyMode('after')
-          videoStickyStartScrollRef.current = null
-          videoTransitionTargetRef.current = 0
-        } else if (currentVideoStickyMode === 'stuck') {
-          // Unstick when user scrolls back up (scroll position above stick point)
-          const stickStart = videoStickyStartScrollRef.current
-          if (stickStart !== null && effectiveScroll < stickStart) {
-            videoStickyModeRef.current = 'before'
-            setVideoStickyMode('before')
-            videoStickyStartScrollRef.current = null
-            videoPlaceholderHeightRef.current = 0
-            videoTransitionTargetRef.current = 0
-          } else if (stickStart !== null) {
-            const scrollIntoSticky = effectiveScroll - stickStart
-            const progress = Math.max(0, Math.min(1, scrollIntoSticky / spacerHeightPx))
-            videoTransitionTargetRef.current = progress
-          }
-        } else if (rect.top <= VIDEO_STICK_TOP_THRESHOLD_PX) {
-          // Stick as soon as video nears the top (threshold) so it never scrolls past and readjusts
-          if (videoStickyModeRef.current !== 'stuck') {
-            videoStickyModeRef.current = 'stuck'
-            setVideoStickyMode('stuck')
-            videoStickyStartScrollRef.current = effectiveScroll
-            videoPlaceholderHeightRef.current = rect.height
-          }
-          if (videoStickyStartScrollRef.current !== null) {
-            const scrollIntoSticky = effectiveScroll - videoStickyStartScrollRef.current
-            const progress = Math.max(0, Math.min(1, scrollIntoSticky / spacerHeightPx))
-            videoTransitionTargetRef.current = progress
+          mode = 'after'
+          progress = 1
+        } else if (effectiveScroll < stickStartY) {
+          mode = 'before'
+          progress = 0
+          videoPlaceholderHeightRef.current = 0
+        } else if (effectiveScroll >= stickStartY && effectiveScroll <= stickEndY) {
+          mode = 'stuck'
+          progress = Math.max(0, Math.min(1, (effectiveScroll - stickStartY) / spacerHeightPx))
+          if (videoStickyModeRef.current !== 'stuck' && videoWrapper) {
+            videoPlaceholderHeightRef.current = videoWrapper.getBoundingClientRect().height
           }
         } else {
-          videoStickyModeRef.current = 'before'
-          setVideoStickyMode('before')
-          videoStickyStartScrollRef.current = null
-          videoPlaceholderHeightRef.current = 0
-          videoTransitionTargetRef.current = 0
+          mode = 'after'
+          progress = 1
         }
+        videoStickyModeRef.current = mode
+        videoTransitionTargetRef.current = progress
+        setVideoStickyMode(mode)
       }
       // Part 3: sequence02; Part 4: sequence03 (same sticky view)
       const part3StartPx = sequenceStart + part1Height + part2Height
@@ -1455,14 +1430,28 @@ INTELLIGENCE, MADE PHYSICAL
                   Know more
                 </a>
               </div>
-              {/* When stuck: placeholder reserves space so layout doesn't jump; video is fixed and shrinks */}
-              {videoStickyMode === 'stuck' && videoPlaceholderHeightRef.current > 0 && (
-                <div aria-hidden style={{ height: videoPlaceholderHeightRef.current }} />
-              )}
-              {/* Video wrapper: relative in flow until stuck, then fixed so it stays pinned */}
+              {/* Spacer: replaces marginTop so fixed positioning has no margin math */}
+              <div className="h-2 md:h-28 shrink-0" aria-hidden />
+              {/* Sentinel: measure this (not the wrapper) to decide when to stick */}
+              <div ref={videoStickSentinelRef} style={{ height: 1 }} aria-hidden />
+              {/* Placeholder: reserves space when stuck so footer scrolls up; 0 when before/after */}
+              <div
+                aria-hidden
+                style={{
+                  height: (() => {
+                    const base = videoPlaceholderHeightRef.current
+                    const progress = smoothedVideoTransitionProgress
+                    const scale = 1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * progress
+                    if (videoStickyMode === 'before') return 0
+                    if (videoStickyMode === 'stuck' && base > 0) return base * scale
+                    return 0
+                  })(),
+                }}
+              />
+              {/* Video wrapper: relative in flow until stuck, then fixed at VIDEO_STICK_TOP_OFFSET_PX */}
               <div
                 ref={videoStickyWrapperRef}
-                className="w-full flex justify-center items-start mt-2 md:mt-28 bg-white min-h-0 z-10"
+                className="w-full flex justify-center items-start bg-white min-h-0 z-10"
                 style={{
                   position: videoStickyMode === 'stuck' ? 'fixed' : 'relative',
                   top: videoStickyMode === 'stuck' ? VIDEO_STICK_TOP_OFFSET_PX : undefined,
@@ -1481,8 +1470,15 @@ INTELLIGENCE, MADE PHYSICAL
                   borderRadius: `${VIDEO_TRANSITION_BORDER_RADIUS_PX * smoothedVideoTransitionProgress}px`,
                   transform: `scale(${1 - (1 - VIDEO_TRANSITION_SCALE_END) * smoothedVideoTransitionProgress}, 1)`,
                   transformOrigin: 'center top',
-                  // Clip from bottom with rounded bottom edges (round matches top corners)
-                  clipPath: `inset(0 0 ${(1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * smoothedVideoTransitionProgress * 100}% 0 round ${VIDEO_TRANSITION_BORDER_RADIUS_PX * smoothedVideoTransitionProgress}px)`,
+                  ...((videoStickyMode === 'stuck' || videoStickyMode === 'after') && videoPlaceholderHeightRef.current > 0
+                    ? {
+                        height: videoStickyMode === 'stuck'
+                          ? videoPlaceholderHeightRef.current * (1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * smoothedVideoTransitionProgress)
+                          : videoPlaceholderHeightRef.current * VIDEO_TRANSITION_HEIGHT_SCALE_END,
+                      }
+                    : {
+                        aspectRatio: '16/9',
+                      }),
                 }}
               >
                 <div className="relative aspect-video w-full min-h-[280px] sm:min-h-[320px] md:min-h-[420px]">
@@ -1533,7 +1529,7 @@ INTELLIGENCE, MADE PHYSICAL
               </div>
             </div>
             </div>
-            {/* Spacer: scroll room so video height can shrink to 30% with scroll progress; footer below scrolls up with progress */}
+            {/* Spacer: scroll room so video height can shrink to 35% with scroll progress; footer below scrolls up with progress */}
             <div
               className="w-full bg-white"
               style={{ height: `${VIDEO_STICKY_SCROLL_VH}vh` }}
