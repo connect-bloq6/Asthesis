@@ -201,6 +201,7 @@ export default function LandingPage() {
   const systemTextRef = useRef<HTMLDivElement>(null)
   const styleTextRef = useRef<HTMLDivElement>(null)
   const designTextRef = useRef<HTMLDivElement>(null)
+  const designImageRef = useRef<HTMLDivElement>(null)
   const careTextRef = useRef<HTMLDivElement>(null)
   const insideTextRef = useRef<HTMLDivElement>(null)
   const stableVhRef = useRef(800)
@@ -880,6 +881,7 @@ export default function LandingPage() {
       systemTextRef.current?.style.setProperty('--sysY', `${sysOffsetPx}px`)
       styleTextRef.current?.style.setProperty('--styleY', `${styleOffsetPx}px`)
       designTextRef.current?.style.setProperty('--designY', `${designOffsetPx}px`)
+      designImageRef.current?.style.setProperty('--designY', `${designOffsetPx}px`)
       careTextRef.current?.style.setProperty('--careY', `${careOffsetPx}px`)
       insideTextRef.current?.style.setProperty('--insideY', `${insideOffsetPx}px`)
 
@@ -1258,6 +1260,7 @@ export default function LandingPage() {
               {(() => {
                 const designVisible = smoothedPart2Progress > 0
                 return (
+                  <>
                   <div
                     ref={designTextRef}
                     className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
@@ -1316,6 +1319,27 @@ INTELLIGENCE, MADE PHYSICAL
                       </p>
                     </div>
                   </div>
+                  {/* Design image: right side, moves in sync with DESIGN text */}
+                  {/* <div
+                    ref={designImageRef}
+                    className={`absolute z-0 left-10 right-0 lg:left-[35%] lg:right-0 w-full max-w-[95vw] lg:max-w-[65vw] flex items-center justify-center lg:justify-end pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
+                    style={{
+                      top: '50%',
+                      bottom: 'auto',
+                      transform: 'translate3d(0, calc(-50% + var(--designY, 0px)), 0)',
+                      opacity: frameStickyMode === 'before' || !designVisible ? 0 : 1,
+                      willChange: 'transform',
+                      backfaceVisibility: 'hidden' as const,
+                    }}
+                    aria-hidden
+                  >
+                    <img
+                      src="/images/lp.png"
+                      alt=""
+                      className="max-w-full w-full max-h-[80vh] lg:max-h-[90vh] object-contain"
+                    />
+                  </div> */}
+                  </>
                 )
               })()}
               {/* Care: right side; Part 3 bottom→right center (reaches center when Part 3 ends), Part 4 center→top */}

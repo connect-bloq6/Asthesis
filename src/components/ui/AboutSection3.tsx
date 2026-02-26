@@ -82,7 +82,7 @@ export default function AboutSection3() {
           </div>
           <div className="relative w-full max-w-[620px] overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-2xl lg:mx-0 mx-auto aspect-[592/500] min-h-[260px] sm:min-h-[300px] lg:min-h-[400px]">
             <Image
-              src="/images/Container.png"
+              src="/images/About1.png"
               alt="Our story – care and independence"
               fill
               className="object-cover rounded-xl sm:rounded-2xl"
