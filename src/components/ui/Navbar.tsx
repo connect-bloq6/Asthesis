@@ -30,7 +30,7 @@ export default function Navbar({ solid = false }: NavbarProps) {
 
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-50 px-8 py-6 md:px-12 lg:px-16 ${solid ? 'bg-white border-b border-[#E5E7EB]' : 'bg-transparent'}`}>
+      <nav className={`fixed top-0 left-0 right-0 z-50 px-8 py-4 md:px-12 md:py-5 lg:px-16 transition-colors duration-300 ease-out ${solid ? 'bg-white border-b border-[#E5E7EB]' : 'bg-transparent border-b border-transparent'}`}>
         <div className="flex items-center justify-between max-w-[1440px] mx-auto">
           {/* Logo */}
           <Link href="/" className="text-xl md:text-2xl font-semibold text-foreground" onClick={closeMenu}>
@@ -43,7 +43,7 @@ export default function Navbar({ solid = false }: NavbarProps) {
               <li key={item.label}>
                 <Link
                   href={item.href}
-                  className="text-sm font-medium text-foreground hover:opacity-70 transition-opacity"
+                  className="relative text-sm font-medium text-foreground inline-block after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-[2px] after:bg-foreground after:w-0 after:transition-[width] after:duration-300 after:ease-out hover:after:w-full"
                 >
                   {item.label}
                 </Link>

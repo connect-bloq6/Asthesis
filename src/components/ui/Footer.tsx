@@ -220,7 +220,7 @@ export default function Footer() {
         </div>
 
         {/* Social + CTA row */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6 py-8 border-t border-[#1D1D1F]/10">
+        {/* <div className="flex flex-col sm:flex-row items-center justify-between gap-6 py-8 border-t border-[#1D1D1F]/10">
           <div className="flex items-center gap-6">
             <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-[#1D1D1F]/80 hover:text-[#1D1D1F] transition-colors" aria-label="LinkedIn">
               <LinkedInIcon className="w-5 h-5" />
@@ -238,7 +238,7 @@ export default function Footer() {
           >
             Request a Demo
           </Link>
-        </div>
+        </div> */}
 
         {/* Copyright */}
         <div className="pt-6 border-t border-[#1D1D1F]/10 text-center space-y-1">

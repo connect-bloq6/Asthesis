@@ -32,13 +32,13 @@ const PART4_FRAME_EASING = 0.72 // ease frame progress so last frame lands when 
 const FRAME_SCROLL_OUT_VH = 28 // scroll-out phase; shorter = video section appears sooner (frame moves up by same vh as scroll)
 
 // ——— Last section video transition (sticky video, footer scrolls up as video shrinks) ———
-const VIDEO_STICK_TOP_OFFSET_PX = 56 // when stuck, video sits this many px from viewport top (increased distance from top)
+const VIDEO_STICK_TOP_OFFSET_PX = 88 // when stuck, video sits this many px from viewport top
 const VIDEO_STICKY_SCROLL_VH = 100 // vh of scroll while video is sticky (footer appears below during this)
 const VIDEO_TRANSITION_LERP = 0.08 // smooth follow (higher = snappier)
 const VIDEO_TRANSITION_WIDTH_END_PCT = 80 // width at progress 1 (%)
 const VIDEO_TRANSITION_BORDER_RADIUS_PX = 24 // border radius at progress 1
 const VIDEO_TRANSITION_SCALE_END = 0.9 // scale X at progress 1 (1 → 0.9)
-const VIDEO_TRANSITION_HEIGHT_SCALE_END = 0.35 // height at progress 1 (1 → 0.35); frame shrinks to 35% with scroll
+const VIDEO_TRANSITION_HEIGHT_SCALE_END = 0.4375 // height at progress 1 (25% bigger than previous 0.35); frame shrinks to ~44% with scroll
 
 const PART4_SMOOTH_LERP = 0.035 // lower = smoother scroll-driven progress and scale
 const PART4_SCALE_START = 1 // match Part 3 end
@@ -71,6 +71,21 @@ const MAX_SPEED_DESKTOP = 10
 const MAX_SPEED_MOBILE = 7
 const SEEK_EPS_DESKTOP = 0.008
 const SEEK_EPS_MOBILE = 0.012
+
+// Frame-indexed alpha scrub: scroll sets TARGET only; display catches up in ±1 frame steps (no teleport).
+// HTMLVideoElement seeking is keyframe/decoder constrained; true per-frame stepping is only reliable when every
+// frame is independently decodable. Encode shots as all-intra (GOP=1) for deterministic frame-accurate seek.
+// VP9 WebM: ffmpeg -i in.mov -c:v libvpx-vp9 -b:v 0 -crf 20 -g 1 -row-mt 1 -pix_fmt yuva420p -an out.webm
+// iOS HEVC: use keyint/gop=1 in encoder settings where supported.
+const ALPHA_FPS = 30
+const FRAME_DT = 1 / ALPHA_FPS
+const CATCHUP_MAX_FPS_DESKTOP = 180
+const CATCHUP_MAX_FPS_MOBILE = 90
+const CATCHUP_ACCEL_TAU = 0.09
+const STEP_MIN_INTERVAL_MS_DESKTOP = 0
+const STEP_MIN_INTERVAL_MS_MOBILE = 8
+const BOUNDARY_BLEND_FRAMES = 6
+const FRAME_EPS_SEC = 0.45 * FRAME_DT
 
 function daviniciFramePath(index: number): string {
   return `/sequence/davinci${String(DAVINICI_FRAME_START + index).padStart(8, '0')}.png`
@@ -150,6 +165,31 @@ function drawCover(
   ctx.drawImage(source, sx, sy, sWidth, sHeight, 0, 0, dw, dh)
 }
 
+function timeForLocalFrame(localFrame: number): number {
+  return localFrame * FRAME_DT
+}
+
+function localFrameForTime(time: number): number {
+  return Math.round(time / FRAME_DT)
+}
+
+function globalFrameToShotAndLocal(
+  globalFrame: number,
+  cumFrames: [number, number, number, number, number]
+): { shot: 1 | 2 | 3 | 4; localFrame: number } {
+  const total = cumFrames[4]
+  const g = clamp(Math.round(globalFrame), 0, Math.max(0, total - 1))
+  if (g < cumFrames[1]) return { shot: 1, localFrame: g - cumFrames[0] }
+  if (g < cumFrames[2]) return { shot: 2, localFrame: g - cumFrames[1] }
+  if (g < cumFrames[3]) return { shot: 3, localFrame: g - cumFrames[2] }
+  return { shot: 4, localFrame: g - cumFrames[3] }
+}
+
+function shotLocalToGlobal(shot: 1 | 2 | 3 | 4, localFrame: number, cumFrames: [number, number, number, number, number]): number {
+  const maxLocal = Math.max(0, cumFrames[shot] - cumFrames[shot - 1] - 1)
+  return cumFrames[shot - 1] + clamp(localFrame, 0, maxLocal)
+}
+
 function nearestLoadedForward(loaded: Set<number>, target: number, maxIndex: number): number {
   const t = Math.round(target)
   for (let i = Math.min(t, maxIndex); i >= 0; i--) {
@@ -171,6 +211,7 @@ export default function LandingPage() {
   const [showChampagneGradient, setShowChampagneGradient] = useState(false)
   const [gradientTransitionComplete, setGradientTransitionComplete] = useState(false)
   const [heroCrossed, setHeroCrossed] = useState(false)
+  const [navbarSolid, setNavbarSolid] = useState(false)
   const [polygonOpacity, setPolygonOpacity] = useState(0)
   const [sequenceProgress, setSequenceProgress] = useState(0)
   const [part2Progress, setPart2Progress] = useState(0)
@@ -193,6 +234,7 @@ export default function LandingPage() {
   const videoStickSentinelRef = useRef<HTMLDivElement>(null)
   const videoStickyWrapperRef = useRef<HTMLDivElement>(null)
   const videoPlaceholderHeightRef = useRef<number>(0)
+  const videoAfterTopPxRef = useRef(0)
   const videoStickyModeRef = useRef<'before' | 'stuck' | 'after'>('before')
   const videoTransitionTargetRef = useRef(0)
   const smoothedVideoTransitionRef = useRef(0)
@@ -218,6 +260,8 @@ export default function LandingPage() {
   const lastSmoothedPart3StateRef = useRef(0)
   const lastSmoothedPart4StateRef = useRef(0)
   const lastSmoothedVideoStateRef = useRef(0)
+  const lastSmoothedVideoStateTimeMsRef = useRef(0)
+  const lastVideoModeStateRef = useRef<'before' | 'stuck' | 'after'>('before')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const dprRef = useRef(1)
@@ -231,22 +275,51 @@ export default function LandingPage() {
   const dur3Ref = useRef(0)
   const dur4Ref = useRef(0)
   const targetPartRef = useRef<1 | 2 | 3 | 4>(1)
-  const displayPartRef = useRef<1 | 2 | 3 | 4>(1)
-  const targetTimeRef = useRef(0)
-  const displayTimeRef = useRef(0)
-  const pendingSeekRef = useRef<number | null>(null)
-  const lastSeekCommitMsRef = useRef(0)
   const lastTickRef = useRef(0)
-  const seekRafScheduledRef = useRef(false)
-  const isScrubbingRef = useRef(false)
   const drawRafRef = useRef<number | null>(null)
   const vfcHandleRef = useRef<number | null>(null)
   const part4ZoomRef = useRef(1) // mobile-only: zoom applied to video draw, not canvas
+  const lastGoodDrawFrameRef = useRef(-1)
+  const lastGoodDrawShotRef = useRef<1 | 2 | 3 | 4>(1)
+  const lastGoodDrawTimeRef = useRef(0)
+
+  // Frame-indexed timeline: scroll only sets target; display catches up in ±1 frame steps (no teleport)
+  const framesInShotRef = useRef<[number, number, number, number]>([0, 0, 0, 0])
+  const cumFramesRef = useRef<[number, number, number, number, number]>([0, 0, 0, 0, 0])
+  const targetGlobalFrameRef = useRef(0)
+  const displayGlobalFrameFloatRef = useRef(0)
+  const displayGlobalFrameRef = useRef(0)
+  const displayShotRef = useRef<1 | 2 | 3 | 4>(1)
+  const displayLocalFrameRef = useRef(0)
+  const blendActiveRef = useRef(false)
+  const blendAlphaRef = useRef(0)
+  const blendFromShotRef = useRef<1 | 2 | 3 | 4>(1)
+  const blendToShotRef = useRef<1 | 2 | 3 | 4>(1)
+  const lastSeekByShotRef = useRef<[number, number, number, number]>([0, 0, 0, 0])
 
   const getScrollY = useCallback(
     () => (typeof window !== 'undefined' ? window.scrollY || document.documentElement.scrollTop || 0 : 0),
     []
   )
+
+  const getVideoForShot = useCallback((shot: 1 | 2 | 3 | 4) => {
+    return shot === 1 ? v1Ref.current : shot === 2 ? v2Ref.current : shot === 3 ? v3Ref.current : v4Ref.current
+  }, [])
+
+  // Seek video to local frame index (frame-accurate). Throttle on mobile; allow frequent seeks during catch-up.
+  const seekToFrame = useCallback((shot: 1 | 2 | 3 | 4, localFrame: number, nowMs: number, force = false) => {
+    const v = getVideoForShot(shot)
+    if (!v || v.readyState < 2 || (v.duration || 0) <= 0 || v.seeking) return
+    const dur = v.duration
+    const t = clamp(localFrame * FRAME_DT, 0, Math.max(0, dur - FRAME_DT))
+    const cur = v.currentTime || 0
+    if (Math.abs(cur - t) <= FRAME_EPS_SEC && !force) return
+    const minInterval = isMobileRef.current ? STEP_MIN_INTERVAL_MS_MOBILE : STEP_MIN_INTERVAL_MS_DESKTOP
+    const last = lastSeekByShotRef.current[shot - 1]
+    if (!force && nowMs - last < minInterval) return
+    lastSeekByShotRef.current[shot - 1] = nowMs
+    v.currentTime = t
+  }, [getVideoForShot])
 
   useEffect(() => {
     const m = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)')
@@ -372,13 +445,34 @@ export default function LandingPage() {
     }
   }, [gradientTransitionComplete, syncCanvasSize])
 
-  // Alpha videos: load metadata, store duration, warm decoder (muted+playsInline), attach seeked handlers once
+  // Re-measure Care video placeholder base height on resize so it stays consistent
+  useEffect(() => {
+    const onResize = () => {
+      const wrapper = videoStickyWrapperRef.current
+      if (!wrapper) return
+      if (videoPlaceholderHeightRef.current > 0) {
+        videoPlaceholderHeightRef.current = wrapper.getBoundingClientRect().height
+      }
+    }
+    window.addEventListener('resize', onResize)
+    window.visualViewport?.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('resize', onResize)
+      window.visualViewport?.removeEventListener('resize', onResize)
+    }
+  }, [])
+
+  // Alpha videos: load metadata, compute frames per shot (framesInShot = round(duration*ALPHA_FPS)), build cumFrames; warm decoders; pre-seek shot2/3/4 to 0
   useEffect(() => {
     if (!gradientTransitionComplete) return
+    const updateCumFrames = () => {
+      const f = framesInShotRef.current
+      cumFramesRef.current = [0, f[0], f[0] + f[1], f[0] + f[1] + f[2], f[0] + f[1] + f[2] + f[3]]
+    }
     const getActiveVideo = () =>
-      displayPartRef.current === 1 ? v1Ref.current
-        : displayPartRef.current === 2 ? v2Ref.current
-        : displayPartRef.current === 3 ? v3Ref.current
+      displayShotRef.current === 1 ? v1Ref.current
+        : displayShotRef.current === 2 ? v2Ref.current
+        : displayShotRef.current === 3 ? v3Ref.current
         : v4Ref.current
     const onSeeked = (v: HTMLVideoElement) => {
       if (getActiveVideo() !== v || v.readyState < 2) return
@@ -399,18 +493,15 @@ export default function LandingPage() {
           drawCover(ctx, v, rect.w, rect.h)
         }
       }
-      const pending = pendingSeekRef.current
-      if (pending !== null) {
-        const EPS = isMobileRef.current ? 0.03 : 0.02
-        if (Math.abs((v.currentTime || 0) - pending) > EPS && !v.seeking) {
-          v.currentTime = pending
-        }
-      }
     }
     const videos = [v1Ref, v2Ref, v3Ref, v4Ref] as const
     const durRefs = [dur1Ref, dur2Ref, dur3Ref, dur4Ref] as const
-    const warm = (v: HTMLVideoElement, durRef: { current: number }) => {
-      durRef.current = v.duration || 0
+    const warm = (v: HTMLVideoElement, durRef: { current: number }, shotIndex: number) => {
+      const dur = v.duration || 0
+      durRef.current = dur
+      const frames = Math.round(dur * ALPHA_FPS)
+      framesInShotRef.current[shotIndex] = Math.max(1, frames)
+      updateCumFrames()
       v.currentTime = 0
       v.play()
         .then(() => v.pause())
@@ -420,7 +511,12 @@ export default function LandingPage() {
     videos.forEach((ref, i) => {
       const v = ref.current
       if (!v) return
-      const onMeta = () => warm(v, durRefs[i])
+      const onMeta = () => {
+        warm(v, durRefs[i], i)
+        if (i >= 1) {
+          v.currentTime = 0
+        }
+      }
       v.addEventListener('loadedmetadata', onMeta)
       if (v.readyState >= 1) onMeta()
       cleanups.push(() => v.removeEventListener('loadedmetadata', onMeta))
@@ -433,20 +529,20 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!gradientTransitionComplete) return
-    const getActiveVideo = () =>
-      displayPartRef.current === 1 ? v1Ref.current
-        : displayPartRef.current === 2 ? v2Ref.current
-        : displayPartRef.current === 3 ? v3Ref.current
-        : v4Ref.current
+    const getVideoForShot = (shot: 1 | 2 | 3 | 4) =>
+      shot === 1 ? v1Ref.current : shot === 2 ? v2Ref.current : shot === 3 ? v3Ref.current : v4Ref.current
 
     const draw = () => {
-      const v = getActiveVideo()
       const ctx = ctxRef.current
       const rect = canvasRectRef.current
-      if (v && ctx && rect.w > 0 && rect.h > 0 && v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) {
-        ctx.clearRect(0, 0, rect.w, rect.h)
-        ctx.globalCompositeOperation = 'source-over'
-        const zoom = part4ZoomRef.current
+      if (!ctx || rect.w <= 0 || rect.h <= 0) return
+
+      const zoom = part4ZoomRef.current
+      const canDraw = (v: HTMLVideoElement | null) =>
+        !!v && v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0
+
+      const drawVideo = (v: HTMLVideoElement, alpha: number) => {
+        ctx.globalAlpha = alpha
         if (isMobileRef.current && zoom < 1) {
           ctx.save()
           ctx.translate(rect.w / 2, rect.h / 2)
@@ -458,39 +554,72 @@ export default function LandingPage() {
           drawCover(ctx, v, rect.w, rect.h)
         }
       }
+
+      const wantBlend = blendActiveRef.current
+      const vFrom = wantBlend ? getVideoForShot(blendFromShotRef.current) : null
+      const vTo = wantBlend
+        ? getVideoForShot(blendToShotRef.current)
+        : getVideoForShot(displayShotRef.current)
+
+      // Do not clear unless we can draw something (prevents blank flashes during seek)
+      if (wantBlend) {
+        if (!canDraw(vFrom) || !canDraw(vTo)) return
+        ctx.clearRect(0, 0, rect.w, rect.h)
+        ctx.globalCompositeOperation = 'source-over'
+        drawVideo(vFrom!, 1 - blendAlphaRef.current)
+        drawVideo(vTo!, blendAlphaRef.current)
+        lastGoodDrawFrameRef.current = displayGlobalFrameRef.current
+        lastGoodDrawShotRef.current = displayShotRef.current
+        lastGoodDrawTimeRef.current = vTo!.currentTime || 0
+      } else {
+        if (!canDraw(vTo)) return
+        ctx.clearRect(0, 0, rect.w, rect.h)
+        ctx.globalCompositeOperation = 'source-over'
+        drawVideo(vTo!, 1)
+        lastGoodDrawFrameRef.current = displayGlobalFrameRef.current
+        lastGoodDrawShotRef.current = displayShotRef.current
+        lastGoodDrawTimeRef.current = vTo!.currentTime || 0
+      }
+      ctx.globalAlpha = 1
     }
 
-    const vfcLoop = () => {
-      const v = getActiveVideo()
+    const vfcLoop = (v: HTMLVideoElement | null) => {
       if (!v || typeof (v as any).requestVideoFrameCallback !== 'function') {
         vfcHandleRef.current = null
         return
       }
       vfcHandleRef.current = (v as any).requestVideoFrameCallback(() => {
         draw()
-        vfcLoop()
+        vfcLoop(blendActiveRef.current ? getVideoForShot(blendToShotRef.current) : getVideoForShot(displayShotRef.current))
       })
     }
 
-    const rafLoop = () => {
-      if (isScrubbingRef.current) draw()
+    // Start exactly ONE loop: VFC if available, else RAF (avoids double clears/draws)
+    const activeV = blendActiveRef.current ? getVideoForShot(blendToShotRef.current) : getVideoForShot(displayShotRef.current)
+    const hasVFC = !!activeV && typeof (activeV as any).requestVideoFrameCallback === 'function'
+    if (hasVFC) {
+      vfcLoop(activeV)
+    } else {
+      const rafLoop = () => {
+        draw()
+        drawRafRef.current = requestAnimationFrame(rafLoop)
+      }
       drawRafRef.current = requestAnimationFrame(rafLoop)
     }
 
-    const v0 = getActiveVideo()
-    const hasVFC = !!v0 && typeof (v0 as any).requestVideoFrameCallback === 'function'
-    if (hasVFC) vfcLoop()
-    drawRafRef.current = requestAnimationFrame(rafLoop)
-
     return () => {
-      if (drawRafRef.current !== null) cancelAnimationFrame(drawRafRef.current)
-      drawRafRef.current = null
-      const v = getActiveVideo()
-      const h = vfcHandleRef.current
-      if (v && h !== null && typeof (v as any).cancelVideoFrameCallback === 'function') {
-        ;(v as any).cancelVideoFrameCallback(h)
+      if (drawRafRef.current !== null) {
+        cancelAnimationFrame(drawRafRef.current)
+        drawRafRef.current = null
       }
-      vfcHandleRef.current = null
+      const h = vfcHandleRef.current
+      if (h !== null) {
+        const vCancel = blendActiveRef.current ? getVideoForShot(blendToShotRef.current) : getVideoForShot(displayShotRef.current)
+        if (vCancel && typeof (vCancel as any).cancelVideoFrameCallback === 'function') {
+          ;(vCancel as any).cancelVideoFrameCallback(h)
+        }
+        vfcHandleRef.current = null
+      }
     }
   }, [gradientTransitionComplete])
 
@@ -526,20 +655,20 @@ export default function LandingPage() {
     }
 
     const sentinel = videoStickSentinelRef.current
-    const section = careSectionRef.current
+    const stickyContainer = careVideoStickyRef.current
     const wrapper = videoStickyWrapperRef.current
-    if (sentinel && section) {
+    if (sentinel && stickyContainer) {
       const sentinelRect = sentinel.getBoundingClientRect()
-      const sectionRect = section.getBoundingClientRect()
+      const containerRect = stickyContainer.getBoundingClientRect()
       const spacerHeightPx = (VIDEO_STICKY_SCROLL_VH / 100) * vh
       const stickStartY = effectiveScroll + sentinelRect.top - VIDEO_STICK_TOP_OFFSET_PX
       const stickEndY = stickStartY + spacerHeightPx
+      const sentinelDocY = effectiveScroll + sentinelRect.top
+      const containerDocY = effectiveScroll + containerRect.top
+      videoAfterTopPxRef.current = (sentinelDocY - containerDocY) + spacerHeightPx
       let mode: 'before' | 'stuck' | 'after' = 'before'
       let progress = 0
-      if (sectionRect.bottom <= 0) {
-        mode = 'after'
-        progress = 1
-      } else if (effectiveScroll < stickStartY) {
+      if (effectiveScroll < stickStartY) {
         mode = 'before'
         progress = 0
         videoPlaceholderHeightRef.current = 0
@@ -555,6 +684,10 @@ export default function LandingPage() {
       }
       videoStickyModeRef.current = mode
       videoTransitionTargetRef.current = progress
+      if (lastVideoModeStateRef.current !== mode) {
+        lastVideoModeStateRef.current = mode
+        setVideoStickyMode(mode)
+      }
     }
 
     if (effectiveScroll >= part4StartPx) {
@@ -582,6 +715,7 @@ export default function LandingPage() {
       const vh = stableVhRef.current
       const threshold = vh * HERO_HEIGHT_THRESHOLD
       setHeroCrossed(effectiveScroll >= threshold)
+      setNavbarSolid(effectiveScroll >= vh)
       setPolygonOpacity(Math.min(1, effectiveScroll / vh))
       // Part 1: frame sequence forward (86400→86520); Part 2: reverse (86520→86455)
       const sequenceStart = vh
@@ -607,6 +741,11 @@ export default function LandingPage() {
         setSmoothedPart2Progress(0)
         setSequenceProgress(0)
       }
+      // Pause hero video when frame transition starts (user has scrolled into frame section)
+      if (effectiveScroll >= sequenceStart) {
+        const heroVideo = videoRef.current
+        if (heroVideo && !heroVideo.paused) heroVideo.pause()
+      }
       // Scroll-out phase: frame (and inside text) start scrolling up as soon as we reach end of Part 4 (no extra scroll), then move 1:1 with scroll
       const frameSectionContentVh = 100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH
       const scrollOutStartPx = vh + (frameSectionContentVh / 100) * vh
@@ -630,39 +769,6 @@ export default function LandingPage() {
         if (rect.top > 0) setFrameStickyMode('before')
         else if (rect.bottom <= 0 || scrollOutProgress >= 1) setFrameStickyMode('after')
         else setFrameStickyMode('stuck')
-      }
-      // Video: sentinel-based stick; stickStartY/stickEndY from scrollY + sentinel rect
-      const sentinel = videoStickSentinelRef.current
-      const careSection = careSectionRef.current
-      const videoWrapper = videoStickyWrapperRef.current
-      if (sentinel && careSection) {
-        const sentinelRect = sentinel.getBoundingClientRect()
-        const sectionRect = careSection.getBoundingClientRect()
-        const spacerHeightPx = (VIDEO_STICKY_SCROLL_VH / 100) * vh
-        const stickStartY = effectiveScroll + sentinelRect.top - VIDEO_STICK_TOP_OFFSET_PX
-        const stickEndY = stickStartY + spacerHeightPx
-        let mode: 'before' | 'stuck' | 'after' = 'before'
-        let progress = 0
-        if (sectionRect.bottom <= 0) {
-          mode = 'after'
-          progress = 1
-        } else if (effectiveScroll < stickStartY) {
-          mode = 'before'
-          progress = 0
-          videoPlaceholderHeightRef.current = 0
-        } else if (effectiveScroll >= stickStartY && effectiveScroll <= stickEndY) {
-          mode = 'stuck'
-          progress = Math.max(0, Math.min(1, (effectiveScroll - stickStartY) / spacerHeightPx))
-          if (videoStickyModeRef.current !== 'stuck' && videoWrapper) {
-            videoPlaceholderHeightRef.current = videoWrapper.getBoundingClientRect().height
-          }
-        } else {
-          mode = 'after'
-          progress = 1
-        }
-        videoStickyModeRef.current = mode
-        videoTransitionTargetRef.current = progress
-        setVideoStickyMode(mode)
       }
       // Part 3: sequence02; Part 4: sequence03 (same sticky view)
       const part3StartPx = sequenceStart + part1Height + part2Height
@@ -739,98 +845,87 @@ export default function LandingPage() {
       const part3Height = (PART3_SCROLL_VH / 100) * vh
       const part4Start = part3Start + part3Height
       const part4Height = (PART4_SCROLL_VH / 100) * vh
+      const totalPx = part1Height + part2Height + part3Height + part4Height
 
-      let part: 1 | 2 | 3 | 4 = 1
-      let raw = 0
-      if (y < sequenceStart) {
-        part = 1
-        raw = 0
-      } else if (y < part2Start) {
-        part = 1
-        raw = clamp((y - sequenceStart) / part1Height, 0, 1)
-      } else if (y < part3Start) {
-        part = 2
-        raw = clamp((y - part2Start) / part2Height, 0, 1)
-      } else if (y < part4Start) {
-        part = 3
-        raw = clamp((y - part3Start) / part3Height, 0, 1)
+      // Scroll sets TARGET only; display catches up in ±1 frame steps (no teleport)
+      const masterProgress = totalPx > 0 ? clamp((y - sequenceStart) / totalPx, 0, 1) : 0
+      const cumFrames = cumFramesRef.current
+      const totalFrames = cumFrames[4]
+      if (totalFrames > 0) {
+        targetGlobalFrameRef.current = Math.round(masterProgress * (totalFrames - 1))
+      }
+
+      // Catch-up engine: move displayGlobalFrameFloat toward target; step displayGlobalFrame by ±1 (capped)
+      if (totalFrames > 0) {
+        const maxFps = isMobile ? CATCHUP_MAX_FPS_MOBILE : CATCHUP_MAX_FPS_DESKTOP
+        const maxFramesThisTick = Math.max(1, Math.floor(maxFps * dtSec))
+        const target = targetGlobalFrameRef.current
+        const floatVal = displayGlobalFrameFloatRef.current
+        const diff = target - floatVal
+        const a = 1 - Math.exp(-dtSec / CATCHUP_ACCEL_TAU)
+        displayGlobalFrameFloatRef.current = clamp(floatVal + diff * a, 0, totalFrames - 1)
+        const desiredInt = Math.round(displayGlobalFrameFloatRef.current)
+        let steps = 0
+        let current = displayGlobalFrameRef.current
+        while (current !== desiredInt && steps < maxFramesThisTick) {
+          current += desiredInt > current ? 1 : -1
+          current = clamp(current, 0, totalFrames - 1)
+          steps++
+        }
+        displayGlobalFrameRef.current = current
+      }
+
+      const displayGlobal = displayGlobalFrameRef.current
+      const { shot: displayShot, localFrame: displayLocal } = totalFrames > 0
+        ? globalFrameToShotAndLocal(displayGlobal, cumFrames)
+        : { shot: 1 as const, localFrame: 0 }
+      displayShotRef.current = displayShot
+      displayLocalFrameRef.current = displayLocal
+
+      // Boundary blend: within BOUNDARY_BLEND_FRAMES of a boundary, blend from/to shots
+      const B = BOUNDARY_BLEND_FRAMES
+      blendActiveRef.current = false
+      if (totalFrames > 0) {
+        for (let i = 1; i <= 3; i++) {
+          const boundary = cumFrames[i]
+          if (displayGlobal >= boundary - B && displayGlobal < boundary) {
+            blendActiveRef.current = true
+            blendFromShotRef.current = i as 1 | 2 | 3 | 4
+            blendToShotRef.current = (i + 1) as 1 | 2 | 3 | 4
+            blendAlphaRef.current = (displayGlobal - (boundary - B)) / B
+            break
+          }
+          if (displayGlobal >= boundary && displayGlobal < boundary + B) {
+            blendActiveRef.current = true
+            blendFromShotRef.current = (i + 1) as 1 | 2 | 3 | 4
+            blendToShotRef.current = i as 1 | 2 | 3 | 4
+            blendAlphaRef.current = 1 - (displayGlobal - boundary) / B
+            break
+          }
+        }
+      }
+
+      const nowMs = now
+      if (blendActiveRef.current) {
+        const fromShot = blendFromShotRef.current
+        const toShot = blendToShotRef.current
+        const boundary = cumFrames[fromShot] // boundary between fromShot and toShot
+        const fromLast = Math.max(0, cumFrames[fromShot] - cumFrames[fromShot - 1] - 1)
+        const fromLocal = displayGlobal < boundary ? displayGlobal - cumFrames[fromShot - 1] : fromLast
+        const toLocal = displayGlobal >= boundary ? displayGlobal - cumFrames[toShot - 1] : 0
+        seekToFrame(fromShot, Math.round(fromLocal), nowMs, true)
+        seekToFrame(toShot, Math.round(toLocal), nowMs, true)
       } else {
-        part = 4
-        raw = clamp((y - part4Start) / part4Height, 0, 1)
+        seekToFrame(displayShot, displayLocal, nowMs)
       }
 
-      const duration =
-        part === 1 ? dur1Ref.current : part === 2 ? dur2Ref.current : part === 3 ? dur3Ref.current : dur4Ref.current
-      let targetTime = 0
-      if (duration > 0) {
-        targetTime = clamp(raw * duration, 0, Math.max(0, duration - 0.001))
-      }
-      targetPartRef.current = part
-      targetTimeRef.current = targetTime
-
-      if (part !== displayPartRef.current) {
-        displayPartRef.current = part
-        const vNew = part === 1 ? v1Ref.current : part === 2 ? v2Ref.current : part === 3 ? v3Ref.current : v4Ref.current
-        const initTime = vNew?.readyState && vNew.readyState >= 2 ? (vNew.currentTime || 0) : displayTimeRef.current
-        displayTimeRef.current = initTime
-      }
-
-      if (duration > 0) {
-        const FOLLOW_TC = isMobile ? FOLLOW_TC_MOBILE : FOLLOW_TC_DESKTOP
-        const MAX_SPEED = isMobile ? MAX_SPEED_MOBILE : MAX_SPEED_DESKTOP
-        let current = displayTimeRef.current
-        const diff = targetTime - current
-        const maxStep = MAX_SPEED * dtSec
-        const clampedDiff = clamp(diff, -maxStep, maxStep)
-        const followFactor = 1 - Math.exp(-dtSec / FOLLOW_TC)
-        current = current + clampedDiff * followFactor
-        displayTimeRef.current = clamp(current, 0, Math.max(0, duration - 0.001))
-      }
+      ;[v1Ref.current, v2Ref.current, v3Ref.current, v4Ref.current].forEach((v) => {
+        if (v && !v.paused) v.pause()
+      })
 
       lastTickRef.current = now
 
-      const getActiveVideo = () =>
-        displayPartRef.current === 1 ? v1Ref.current
-          : displayPartRef.current === 2 ? v2Ref.current
-          : displayPartRef.current === 3 ? v3Ref.current
-          : v4Ref.current
-
-      const activePart = displayPartRef.current
-      const activeDur = activePart === 1 ? dur1Ref.current : activePart === 2 ? dur2Ref.current : activePart === 3 ? dur3Ref.current : dur4Ref.current
-      const video = getActiveVideo()
-      ;[v1Ref.current, v2Ref.current, v3Ref.current, v4Ref.current].forEach((v) => {
-        if (v && v !== video && !v.paused) v.pause()
-      })
-      if (video && activeDur > 0) {
-        const desired = displayTimeRef.current
-        const EPS = isMobileRef.current ? SEEK_EPS_MOBILE : SEEK_EPS_DESKTOP
-        if (Math.abs((video.currentTime || 0) - desired) > EPS) {
-          pendingSeekRef.current = desired
-          isScrubbingRef.current = true
-
-          if (!seekRafScheduledRef.current) {
-            seekRafScheduledRef.current = true
-            requestAnimationFrame(() => {
-              seekRafScheduledRef.current = false
-              const v = displayPartRef.current === 1 ? v1Ref.current : displayPartRef.current === 2 ? v2Ref.current : displayPartRef.current === 3 ? v3Ref.current : v4Ref.current
-              const t = pendingSeekRef.current
-              if (!v || t === null) return
-              const minInterval = isMobileRef.current ? SEEK_MIN_INTERVAL_MS_MOBILE : SEEK_MIN_INTERVAL_MS_DESKTOP
-              const nowMs = performance.now()
-              if (!v.seeking && nowMs - lastSeekCommitMsRef.current >= minInterval) {
-                lastSeekCommitMsRef.current = nowMs
-                v.currentTime = t
-              }
-            })
-          }
-        } else {
-          isScrubbingRef.current = false
-        }
-      } else {
-        isScrubbingRef.current = false
-      }
-
-      if (DEBUG_FRAME) console.log({ part, raw, targetTime, displayTime: displayTimeRef.current })
+      if (DEBUG_FRAME) console.log({ displayGlobal, displayShot, displayLocal, target: targetGlobalFrameRef.current })
 
       const target3 = part3TargetRef.current
       const current3 = smoothedPart3Ref.current
@@ -850,42 +945,52 @@ export default function LandingPage() {
         lastSmoothedProgressStateTimeRef.current = now
         setSmoothedPart4Progress(next4)
       }
-      // Mobile: apply Part 4 zoom in draw, not on canvas
-      part4ZoomRef.current = isMobileRef.current
-        ? 1 - (1 - PART4_ZOOM_OUT_END) * smoothedPart4Ref.current
-        : 1
-
       const videoTarget = videoTransitionTargetRef.current
       const videoCurrent = smoothedVideoTransitionRef.current
       const videoNext = videoCurrent + (videoTarget - videoCurrent) * smoothFactor
       smoothedVideoTransitionRef.current = videoNext
-      if (shouldUpdateProgress(videoNext, lastSmoothedVideoStateRef)) {
+      const shouldUpdateVideo =
+        Math.abs(videoNext - lastSmoothedVideoStateRef.current) >= SMOOTHED_PROGRESS_THROTTLE_DELTA ||
+        now - lastSmoothedVideoStateTimeMsRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
+      if (shouldUpdateVideo) {
         lastSmoothedVideoStateRef.current = videoNext
-        lastSmoothedProgressStateTimeRef.current = now
+        lastSmoothedVideoStateTimeMsRef.current = now
         setSmoothedVideoTransitionProgress(videoNext)
       }
+      // Pause Care video when frame height starts decreasing; resume when it starts increasing again
+      const careVideo = careVideoRef.current
+      if (careVideo && videoStickyModeRef.current === 'stuck') {
+        if (videoNext > 0.01) {
+          if (!careVideo.paused) careVideo.pause()
+        } else {
+          if (careVideo.paused) careVideo.play().catch(() => {})
+        }
+      }
 
-      // Text offsets: px-based + DPR rounding for iOS jitter fix (no React re-render)
-      const seqProgress = y < sequenceStart ? 0 : y >= part2Start ? 1 : clamp((y - sequenceStart) / part1Height, 0, 1)
-      const sm2 = smoothedPart2Ref.current
-      const sm3 = smoothedPart3Ref.current
-      const sm4 = smoothedPart4Ref.current
-      const sysOffsetPx = roundToDprPx(((seqProgress * SYSTEM_TEXT_SCROLL_VH + sm2 * SYSTEM_TEXT_PART2_VH) / 100) * vh)
+      // Text driven by DISPLAYED frame progress (displayGlobalFrame), not scroll, so text tracks canvas 1:1
+      const cf = cumFramesRef.current
+      const totalF = cf[4]
+      const seqProgress = totalF > 0 && cf[1] > 0 ? clamp(displayGlobal / cf[1], 0, 1) : 0
+      const p2Norm = totalF > 0 && cf[2] > cf[1] ? (displayGlobal < cf[1] ? 0 : displayGlobal >= cf[2] ? 1 : (displayGlobal - cf[1]) / (cf[2] - cf[1])) : 0
+      const p3Norm = totalF > 0 && cf[3] > cf[2] ? (displayGlobal < cf[2] ? 0 : displayGlobal >= cf[3] ? 1 : (displayGlobal - cf[2]) / (cf[3] - cf[2])) : 0
+      const p4Norm = totalF > 0 && cf[4] > cf[3] ? (displayGlobal < cf[3] ? 0 : (displayGlobal - cf[3]) / (cf[4] - cf[3])) : 0
+      const sysOffsetPx = roundToDprPx(((seqProgress * SYSTEM_TEXT_SCROLL_VH + p2Norm * SYSTEM_TEXT_PART2_VH) / 100) * vh)
       const rawStyle = Math.max(0, (seqProgress - STYLE_TEXT_DELAY) / (1 - STYLE_TEXT_DELAY))
       const styleProgress = Math.pow(rawStyle, STYLE_TEXT_EASING)
-      const styleOffsetPx = roundToDprPx((((1 - styleProgress) * 85 - sm2 * STYLE_TEXT_PART2_VH) / 100) * vh)
-      const designVisible = sm2 > 0
+      const styleOffsetPx = roundToDprPx((((1 - styleProgress) * 85 - p2Norm * STYLE_TEXT_PART2_VH) / 100) * vh)
+      const designVisible = p2Norm > 0
       const designOffsetPx = roundToDprPx(
-        ((designVisible ? DESIGN_FROM_BOTTOM_VH - DESIGN_FROM_BOTTOM_VH * sm2 - DESIGN_SCROLL_UP_VH * sm3 : DESIGN_FROM_BOTTOM_VH) + DESIGN_VERTICAL_OFFSET_VH) / 100 * vh
+        ((designVisible ? DESIGN_FROM_BOTTOM_VH - DESIGN_FROM_BOTTOM_VH * p2Norm - DESIGN_SCROLL_UP_VH * p3Norm : DESIGN_FROM_BOTTOM_VH) + DESIGN_VERTICAL_OFFSET_VH) / 100 * vh
       )
-      const careVisible = sm3 > 0
+      const careVisible = p3Norm > 0
       const careOffsetPx = roundToDprPx(
-        ((careVisible ? CARE_FROM_BOTTOM_VH - CARE_FROM_BOTTOM_VH * sm3 - CARE_SCROLL_UP_VH * sm4 : CARE_FROM_BOTTOM_VH) + CARE_VERTICAL_OFFSET_VH) / 100 * vh
+        ((careVisible ? CARE_FROM_BOTTOM_VH - CARE_FROM_BOTTOM_VH * p3Norm - CARE_SCROLL_UP_VH * p4Norm : CARE_FROM_BOTTOM_VH) + CARE_VERTICAL_OFFSET_VH) / 100 * vh
       )
-      const insideVisible = sm4 > 0
+      const insideVisible = p4Norm > 0
       const insideOffsetPx = roundToDprPx(
-        (((insideVisible ? INSIDE_FROM_BOTTOM_VH - INSIDE_FROM_BOTTOM_VH * sm4 : INSIDE_FROM_BOTTOM_VH) + INSIDE_VERTICAL_OFFSET_VH) / 100) * vh
+        (((insideVisible ? INSIDE_FROM_BOTTOM_VH - INSIDE_FROM_BOTTOM_VH * p4Norm : INSIDE_FROM_BOTTOM_VH) + INSIDE_VERTICAL_OFFSET_VH) / 100) * vh
       )
+      part4ZoomRef.current = isMobileRef.current ? 1 - (1 - PART4_ZOOM_OUT_END) * p4Norm : 1
       systemTextRef.current?.style.setProperty('--sysY', `${sysOffsetPx}px`)
       styleTextRef.current?.style.setProperty('--styleY', `${styleOffsetPx}px`)
       designTextRef.current?.style.setProperty('--designY', `${designOffsetPx}px`)
@@ -897,7 +1002,7 @@ export default function LandingPage() {
     }
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [gradientTransitionComplete, updateTargetsFromScroll])
+  }, [gradientTransitionComplete, updateTargetsFromScroll, getScrollY, seekToFrame])
 
   return (
     <>
@@ -916,8 +1021,8 @@ export default function LandingPage() {
         }}
         className={`relative min-h-screen bg-white transition-opacity duration-700 border-0 border-none outline-none ${isLoading ? 'opacity-0' : 'opacity-100'}`}
       >
-        {/* Navigation */}
-        <Navbar />
+        {/* Navigation – transparent over hero, white after scrolling past hero */}
+        <Navbar solid={navbarSolid} />
 
         {/* Corner plus icons – below navbar, four corners; rotate when hero crossed */}
         {!isLoading && (
@@ -1008,7 +1113,7 @@ export default function LandingPage() {
                     </div>
                     <video
                       ref={videoRef}
-                      src={typeof navigator !== 'undefined' && isIOS() ? '/videos/hero_alpha_ios.mp4' : '/videos/Asthesis_Intro_video.webm'}
+                      src={typeof navigator !== 'undefined' && isIOS() ? '/videos/hero_alpha_ios_cut.mp4' : '/videos/Asthesis_Intro_video_cut.webm'}
                       className="relative z-10 w-full h-full object-contain"
                       playsInline
                       muted
@@ -1124,7 +1229,7 @@ export default function LandingPage() {
               {/* System text: fixed at left center; comes up with frame 1, then scrolls up as sequence runs */}
               <div
                 ref={systemTextRef}
-                className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-4xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
+                className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-4xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none transition-none`}
                 style={{
                   top: '50%',
                   bottom: 'auto',
@@ -1207,7 +1312,7 @@ export default function LandingPage() {
               {(() => (
                   <div
                     ref={styleTextRef}
-                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-3xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
+                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-3xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-none`}
                     style={{
                       top: '50%',
                       bottom: 'auto',
@@ -1271,7 +1376,7 @@ export default function LandingPage() {
                   <>
                   <div
                     ref={designTextRef}
-                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
+                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-0 lg:right-auto lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-12 pointer-events-none transition-none`}
                     style={{
                       top: '50%',
                       bottom: 'auto',
@@ -1330,7 +1435,7 @@ INTELLIGENCE, MADE PHYSICAL
                   {/* Design image: right side, moves in sync with DESIGN text */}
                   {/* <div
                     ref={designImageRef}
-                    className={`absolute z-0 left-10 right-0 lg:left-[35%] lg:right-0 w-full max-w-[95vw] lg:max-w-[65vw] flex items-center justify-center lg:justify-end pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
+                    className={`absolute z-0 left-10 right-0 lg:left-[35%] lg:right-0 w-full max-w-[95vw] lg:max-w-[65vw] flex items-center justify-center lg:justify-end pointer-events-none transition-none`}
                     style={{
                       top: '50%',
                       bottom: 'auto',
@@ -1356,7 +1461,7 @@ INTELLIGENCE, MADE PHYSICAL
                 return (
                   <div
                     ref={careTextRef}
-                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
+                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-none`}
                     style={{
                       top: '50%',
                       bottom: 'auto',
@@ -1420,7 +1525,7 @@ INTELLIGENCE, MADE PHYSICAL
                 return (
                   <div
                     ref={insideTextRef}
-                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none ${isIOS() ? 'transition-none' : 'transition-all duration-150 ease-out'}`}
+                    className={`absolute z-20 w-full max-w-full left-4 right-4 lg:left-auto lg:right-8 lg:max-w-2xl pl-0 pr-8 md:pl-0 md:pr-8 lg:px-8 pointer-events-none transition-none`}
                     style={{
                       top: '50%',
                       bottom: 'auto',
@@ -1485,7 +1590,7 @@ INTELLIGENCE, MADE PHYSICAL
         {/* After frames: heading scrolls away; video sticks via JS fixed (hysteresis = no blink) and shrinks with scroll */}
         {gradientTransitionComplete && (
           <section ref={careSectionRef} className="relative w-full min-h-screen bg-white border-0 border-none flex flex-col items-center justify-start px-4 md:px-8 lg:px-12 pt-12 pb-0 text-center overflow-visible z-[6]">
-            <div ref={careVideoStickyRef} className="w-full flex flex-col items-center bg-white pt-12">
+            <div ref={careVideoStickyRef} className="relative w-full flex flex-col items-center bg-white pt-12">
               {/* Heading + Know more: in flow so they appear as section scrolls over the frame (no fixed pop) */}
               <div className="max-w-2xl mx-auto w-full">
                 <h2
@@ -1523,18 +1628,27 @@ INTELLIGENCE, MADE PHYSICAL
                     const progress = smoothedVideoTransitionProgress
                     const scale = 1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * progress
                     if (videoStickyMode === 'before') return 0
-                    if (videoStickyMode === 'stuck' && base > 0) return base * scale
-                    return 0
+                    if (base <= 0) return 0
+                    if (videoStickyMode === 'stuck') return base * scale
+                    return base * VIDEO_TRANSITION_HEIGHT_SCALE_END
                   })(),
                 }}
               />
-              {/* Video wrapper: relative in flow until stuck, then fixed at VIDEO_STICK_TOP_OFFSET_PX */}
+              {/* Video wrapper: relative before, fixed while stuck, absolute pinned at end in 'after' */}
               <div
                 ref={videoStickyWrapperRef}
                 className="w-full flex justify-center items-start bg-white min-h-0 z-10"
                 style={{
-                  position: videoStickyMode === 'stuck' ? 'fixed' : 'relative',
-                  top: videoStickyMode === 'stuck' ? VIDEO_STICK_TOP_OFFSET_PX : undefined,
+                  position: videoStickyMode === 'stuck'
+                    ? 'fixed'
+                    : videoStickyMode === 'after'
+                      ? 'absolute'
+                      : 'relative',
+                  top: videoStickyMode === 'stuck'
+                    ? VIDEO_STICK_TOP_OFFSET_PX
+                    : videoStickyMode === 'after'
+                      ? videoAfterTopPxRef.current
+                      : undefined,
                   left: videoStickyMode === 'stuck' ? 0 : undefined,
                   right: videoStickyMode === 'stuck' ? 0 : undefined,
                   width: videoStickyMode === 'stuck' ? '100%' : undefined,
@@ -1569,6 +1683,7 @@ INTELLIGENCE, MADE PHYSICAL
                     playsInline
                     muted
                     loop
+                    autoPlay
                   />
                   <div className="absolute inset-0 flex flex-col pointer-events-none">
                     {/* ASTHESIS: grows and moves to centre of visible area as video transition progress increases */}
