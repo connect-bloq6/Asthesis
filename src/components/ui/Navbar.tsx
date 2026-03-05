@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 const navItems = [
   { label: 'Homepage', href: '/' },
@@ -33,8 +34,15 @@ export default function Navbar({ solid = false }: NavbarProps) {
       <nav className={`fixed top-0 left-0 right-0 z-50 px-8 py-4 md:px-12 md:py-5 lg:px-16 transition-colors duration-300 ease-out ${solid ? 'bg-white border-b border-[#E5E7EB]' : 'bg-transparent border-b border-transparent'}`}>
         <div className="flex items-center justify-between max-w-[1440px] mx-auto">
           {/* Logo */}
-          <Link href="/" className="text-xl md:text-2xl font-semibold text-foreground" onClick={closeMenu}>
-            Asthesis
+          <Link href="/" className="flex items-center gap-3 shrink-0 text-xl md:text-2xl font-semibold text-foreground" onClick={closeMenu} aria-label="Asthesis home">
+            <Image
+              src="/images/Ast_logo_icon.png"
+              alt="Asthesis"
+              width={36}
+              height={36}
+              className="h-8 w-8 md:h-9 md:w-9 object-contain"
+            />
+            <span>Asthesis</span>
           </Link>
 
           {/* Navigation Links - Hidden on mobile */}
