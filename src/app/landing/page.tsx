@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import Navbar from '@/components/ui/Navbar'
 import Footer from '@/components/ui/Footer'
 import LoadingScreen from '@/components/ui/LoadingScreen'
@@ -32,8 +32,16 @@ const PART4_FRAME_EASING = 0.72 // ease frame progress so last frame lands when 
 const FRAME_SCROLL_OUT_VH = 28 // scroll-out phase; shorter = video section appears sooner (frame moves up by same vh as scroll)
 
 // ——— Last section video transition (sticky video, footer scrolls up as video shrinks) ———
-const VIDEO_STICK_TOP_OFFSET_PX = 88 // when stuck, video sits this many px from viewport top
-const VIDEO_STICKY_SCROLL_VH = 100 // vh of scroll while video is sticky (footer appears below during this)
+// Minimal clearance below fixed navbar (~py-5 + logo); large values create a visible white band above the card when stuck
+const VIDEO_STICK_TOP_OFFSET_PX = 72
+/** Desktop: full viewport of scroll for sticky shrink + footer reveal. */
+const VIDEO_STICKY_SCROLL_VH_DESKTOP = 100
+/** Mobile: shorter spacer — same progress curve over less scroll so footer sits closer to the video. */
+const VIDEO_STICKY_SCROLL_VH_MOBILE = 42
+/** Hysteresis (px) so frame sticky mode does not flicker at threshold crossings. */
+const FRAME_STICKY_HYSTERESIS_PX = 2
+/** Hysteresis (px) for final video sticky phase boundaries. */
+const VIDEO_STICKY_HYSTERESIS_PX = 2
 const VIDEO_TRANSITION_LERP = 0.08 // smooth follow (higher = snappier)
 const VIDEO_TRANSITION_WIDTH_END_PCT = 80 // width at progress 1 (%)
 const VIDEO_TRANSITION_BORDER_RADIUS_PX = 24 // border radius at progress 1
@@ -235,8 +243,14 @@ export default function LandingPage() {
   const careVideoRef = useRef<HTMLVideoElement>(null)
   const videoStickSentinelRef = useRef<HTMLDivElement>(null)
   const videoStickyWrapperRef = useRef<HTMLDivElement>(null)
+  /** Visible black video card (for placeholder height = card, not outer wrapper). */
+  const videoStickyCardRef = useRef<HTMLDivElement>(null)
   const videoPlaceholderHeightRef = useRef<number>(0)
   const videoAfterTopPxRef = useRef(0)
+  /** Document scroll Y where care video sticky phase starts (measured once per layout). */
+  const videoStickStartYRef = useRef(0)
+  /** Document scroll Y where care video sticky phase ends. */
+  const videoStickEndYRef = useRef(0)
   const videoStickyModeRef = useRef<'before' | 'stuck' | 'after'>('before')
   const videoTransitionTargetRef = useRef(0)
   const smoothedVideoTransitionRef = useRef(0)
@@ -247,7 +261,6 @@ export default function LandingPage() {
   const smoothedPart4Ref = useRef(0)
   const part4TargetRef = useRef(0)
   const lastTickTimeRef = useRef<number>(0)
-  const scrollWhenInsideAtCenterRef = useRef<number | null>(null)
   const isMobileRef = useRef(false)
   const isIOSRef = useRef(false)
   const systemTextRef = useRef<HTMLDivElement>(null)
@@ -257,12 +270,14 @@ export default function LandingPage() {
   const careTextRef = useRef<HTMLDivElement>(null)
   const insideTextRef = useRef<HTMLDivElement>(null)
   const stableVhRef = useRef(800)
-  const lastSmoothedProgressStateTimeRef = useRef(0)
   const lastSmoothedPart2StateRef = useRef(0)
   const lastSmoothedPart3StateRef = useRef(0)
   const lastSmoothedPart4StateRef = useRef(0)
   const lastSmoothedVideoStateRef = useRef(0)
-  const lastSmoothedVideoStateTimeMsRef = useRef(0)
+  const lastSmoothedPart2TimeRef = useRef(0)
+  const lastSmoothedPart3TimeRef = useRef(0)
+  const lastSmoothedPart4TimeRef = useRef(0)
+  const lastSmoothedVideoTimeRef = useRef(0)
   const lastVideoModeStateRef = useRef<'before' | 'stuck' | 'after'>('before')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
@@ -447,13 +462,15 @@ export default function LandingPage() {
     }
   }, [gradientTransitionComplete, syncCanvasSize])
 
-  // Re-measure Care video placeholder base height on resize so it stays consistent
+  // Re-measure Care video placeholder from visible card on resize so it stays consistent
   useEffect(() => {
     const onResize = () => {
+      const card = videoStickyCardRef.current
       const wrapper = videoStickyWrapperRef.current
-      if (!wrapper) return
+      const el = card ?? wrapper
+      if (!el) return
       if (videoPlaceholderHeightRef.current > 0) {
-        videoPlaceholderHeightRef.current = wrapper.getBoundingClientRect().height
+        videoPlaceholderHeightRef.current = el.getBoundingClientRect().height
       }
     }
     window.addEventListener('resize', onResize)
@@ -625,6 +642,41 @@ export default function LandingPage() {
     }
   }, [gradientTransitionComplete])
 
+  /** Snapshot sentinel vs container in document space once per layout; avoids live rect drift while video is fixed. */
+  const measureVideoStickyBounds = useCallback(() => {
+    const sentinel = videoStickSentinelRef.current
+    const stickyContainer = careVideoStickyRef.current
+    if (!sentinel || !stickyContainer) return
+    const scrollY = getScrollY()
+    const vh = stableVhRef.current
+    const scrollVh = isDesktopViewport ? VIDEO_STICKY_SCROLL_VH_DESKTOP : VIDEO_STICKY_SCROLL_VH_MOBILE
+    const spacerHeightPx = (scrollVh / 100) * vh
+    const sentinelRect = sentinel.getBoundingClientRect()
+    const containerRect = stickyContainer.getBoundingClientRect()
+    const sentinelDocY = scrollY + sentinelRect.top
+    const containerDocY = scrollY + containerRect.top
+    videoStickStartYRef.current = sentinelDocY - VIDEO_STICK_TOP_OFFSET_PX
+    videoStickEndYRef.current = videoStickStartYRef.current + spacerHeightPx
+    // Pin “after” card top to flow position at end of sticky scroll (sentinel marks top of video slot)
+    videoAfterTopPxRef.current = sentinelDocY - containerDocY + spacerHeightPx
+  }, [getScrollY, isDesktopViewport])
+
+  useLayoutEffect(() => {
+    if (!gradientTransitionComplete) return
+    const run = () => measureVideoStickyBounds()
+    run()
+    const raf = requestAnimationFrame(() => measureVideoStickyBounds())
+    window.addEventListener('resize', run)
+    window.addEventListener('orientationchange', run)
+    window.visualViewport?.addEventListener('resize', run)
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', run)
+      window.removeEventListener('orientationchange', run)
+      window.visualViewport?.removeEventListener('resize', run)
+    }
+  }, [gradientTransitionComplete, measureVideoStickyBounds])
+
   // Update only target refs from current scroll position (no setState). Single scroll source (window) + stable vh for deterministic mobile behavior.
   const updateTargetsFromScroll = useCallback(() => {
     const effectiveScroll = getScrollY()
@@ -647,42 +699,35 @@ export default function LandingPage() {
       part2TargetRef.current = 0
     }
 
-    const frameSectionContentVh = 100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH
-    const scrollOutStartPx = vh + (frameSectionContentVh / 100) * vh
-    const scrollOutHeightPx = (FRAME_SCROLL_OUT_VH / 100) * vh
-    if (effectiveScroll >= scrollOutStartPx) {
-      if (scrollWhenInsideAtCenterRef.current === null) scrollWhenInsideAtCenterRef.current = scrollOutStartPx
-    } else {
-      scrollWhenInsideAtCenterRef.current = null
+    let stickStart = videoStickStartYRef.current
+    let stickEnd = videoStickEndYRef.current
+    let stickRange = stickEnd - stickStart
+    if (stickRange <= 1) {
+      measureVideoStickyBounds()
+      stickStart = videoStickStartYRef.current
+      stickEnd = videoStickEndYRef.current
+      stickRange = stickEnd - stickStart
     }
-
-    const sentinel = videoStickSentinelRef.current
-    const stickyContainer = careVideoStickyRef.current
     const wrapper = videoStickyWrapperRef.current
-    if (sentinel && stickyContainer) {
-      const sentinelRect = sentinel.getBoundingClientRect()
-      const containerRect = stickyContainer.getBoundingClientRect()
-      const spacerHeightPx = (VIDEO_STICKY_SCROLL_VH / 100) * vh
-      const stickStartY = effectiveScroll + sentinelRect.top - VIDEO_STICK_TOP_OFFSET_PX
-      const stickEndY = stickStartY + spacerHeightPx
-      const sentinelDocY = effectiveScroll + sentinelRect.top
-      const containerDocY = effectiveScroll + containerRect.top
-      videoAfterTopPxRef.current = (sentinelDocY - containerDocY) + spacerHeightPx
+    const card = videoStickyCardRef.current
+    const hysV = VIDEO_STICKY_HYSTERESIS_PX
+    if (stickRange > 1) {
       let mode: 'before' | 'stuck' | 'after' = 'before'
       let progress = 0
-      if (effectiveScroll < stickStartY) {
+      if (effectiveScroll < stickStart - hysV) {
         mode = 'before'
         progress = 0
         videoPlaceholderHeightRef.current = 0
-      } else if (effectiveScroll >= stickStartY && effectiveScroll <= stickEndY) {
-        mode = 'stuck'
-        progress = Math.max(0, Math.min(1, (effectiveScroll - stickStartY) / spacerHeightPx))
-        if (videoStickyModeRef.current !== 'stuck' && wrapper) {
-          videoPlaceholderHeightRef.current = wrapper.getBoundingClientRect().height
-        }
-      } else {
+      } else if (effectiveScroll > stickEnd + hysV) {
         mode = 'after'
         progress = 1
+      } else {
+        mode = 'stuck'
+        progress = clamp((effectiveScroll - stickStart) / stickRange, 0, 1)
+        if (videoStickyModeRef.current !== 'stuck') {
+          const el = card ?? wrapper
+          if (el) videoPlaceholderHeightRef.current = el.getBoundingClientRect().height
+        }
       }
       videoStickyModeRef.current = mode
       videoTransitionTargetRef.current = progress
@@ -705,7 +750,7 @@ export default function LandingPage() {
       part4TargetRef.current = 0
       smoothedPart4Ref.current = 0
     }
-  }, [getScrollY])
+  }, [getScrollY, measureVideoStickyBounds])
 
   // Corner crosses + layout state from scroll. Single scroll source (window) + stable vh.
   useEffect(() => {
@@ -752,26 +797,17 @@ export default function LandingPage() {
       const frameSectionContentVh = 100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH
       const scrollOutStartPx = vh + (frameSectionContentVh / 100) * vh
       const scrollOutHeightPx = (FRAME_SCROLL_OUT_VH / 100) * vh
-      let scrollOutProgress = 0
-      if (effectiveScroll >= scrollOutStartPx) {
-        if (scrollWhenInsideAtCenterRef.current === null) {
-          scrollWhenInsideAtCenterRef.current = scrollOutStartPx
-        }
-        const scrollOutPx = Math.min(scrollOutHeightPx, effectiveScroll - scrollWhenInsideAtCenterRef.current)
-        scrollOutProgress = Math.min(1, scrollOutPx / scrollOutHeightPx)
-        setFrameScrollOutProgress(scrollOutProgress)
-      } else {
-        setFrameScrollOutProgress(0)
-        scrollWhenInsideAtCenterRef.current = null
-      }
-      // Sticky frame: before (entering), stuck (fully in view), after (scrolled past). Switch to after as soon as scroll-out completes to avoid extra scroll + jump
-      const section = frameSectionRef.current
-      if (section) {
-        const rect = section.getBoundingClientRect()
-        if (rect.top > 0) setFrameStickyMode('before')
-        else if (rect.bottom <= 0 || scrollOutProgress >= 1) setFrameStickyMode('after')
-        else setFrameStickyMode('stuck')
-      }
+      const scrollOutEndPx = scrollOutStartPx + scrollOutHeightPx
+      const scrollOutProgress =
+        effectiveScroll >= scrollOutStartPx
+          ? clamp((effectiveScroll - scrollOutStartPx) / scrollOutHeightPx, 0, 1)
+          : 0
+      setFrameScrollOutProgress(scrollOutProgress)
+      // Frame sticky: pure scroll thresholds (no moving-section rect) + hysteresis for stable reverse scroll
+      const hysF = FRAME_STICKY_HYSTERESIS_PX
+      if (effectiveScroll < sequenceStart - hysF) setFrameStickyMode('before')
+      else if (effectiveScroll > scrollOutEndPx + hysF) setFrameStickyMode('after')
+      else setFrameStickyMode('stuck')
       // Part 3: sequence02; Part 4: sequence03 (same sticky view)
       const part3StartPx = sequenceStart + part1Height + part2Height
       const part3HeightPx = (PART3_SCROLL_VH / 100) * vh
@@ -818,23 +854,26 @@ export default function LandingPage() {
       const isMobile = isMobileRef.current
       const smoothFactor = 1 - Math.exp(-dtSec / (isMobile ? SMOOTHING_TIME_CONSTANT_MOBILE : SMOOTHING_TIME_CONSTANT))
 
-      const shouldUpdateProgress = (next: number, lastRef: { current: number }) =>
-        Math.abs(next - lastRef.current) >= SMOOTHED_PROGRESS_THROTTLE_DELTA ||
-        now - lastSmoothedProgressStateTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
+      const shouldUpdatePart2 = (next: number) =>
+        Math.abs(next - lastSmoothedPart2StateRef.current) >= SMOOTHED_PROGRESS_THROTTLE_DELTA ||
+        now - lastSmoothedPart2TimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
+      const shouldUpdatePart3 = (next: number) =>
+        Math.abs(next - lastSmoothedPart3StateRef.current) >= SMOOTHED_PROGRESS_THROTTLE_DELTA ||
+        now - lastSmoothedPart3TimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
+      const shouldUpdatePart4 = (next: number) =>
+        Math.abs(next - lastSmoothedPart4StateRef.current) >= SMOOTHED_PROGRESS_THROTTLE_DELTA ||
+        now - lastSmoothedPart4TimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
 
       if (part2TargetRef.current > 0) {
-        // Part 2: smooth progress for overlay text (sequenceProgress + smoothedPart2Progress)
         const target2 = part2TargetRef.current
         const current2 = smoothedPart2Ref.current
         const next2 = current2 + (target2 - current2) * smoothFactor
         smoothedPart2Ref.current = next2
-        if (shouldUpdateProgress(next2, lastSmoothedPart2StateRef)) {
+        if (shouldUpdatePart2(next2)) {
           lastSmoothedPart2StateRef.current = next2
-          lastSmoothedProgressStateTimeRef.current = now
+          lastSmoothedPart2TimeRef.current = now
           setSmoothedPart2Progress(next2)
         }
-      } else {
-        // Part 1: no frame state; video scrub drives Part1/2 display
       }
 
       const y = getScrollY()
@@ -933,18 +972,18 @@ export default function LandingPage() {
       const current3 = smoothedPart3Ref.current
       const next3 = current3 + (target3 - current3) * smoothFactor
       smoothedPart3Ref.current = next3
-      if (shouldUpdateProgress(next3, lastSmoothedPart3StateRef)) {
+      if (shouldUpdatePart3(next3)) {
         lastSmoothedPart3StateRef.current = next3
-        lastSmoothedProgressStateTimeRef.current = now
+        lastSmoothedPart3TimeRef.current = now
         setSmoothedPart3Progress(next3)
       }
       const target4 = part4TargetRef.current
       const current4 = smoothedPart4Ref.current
       const next4 = current4 + (target4 - current4) * smoothFactor
       smoothedPart4Ref.current = next4
-      if (shouldUpdateProgress(next4, lastSmoothedPart4StateRef)) {
+      if (shouldUpdatePart4(next4)) {
         lastSmoothedPart4StateRef.current = next4
-        lastSmoothedProgressStateTimeRef.current = now
+        lastSmoothedPart4TimeRef.current = now
         setSmoothedPart4Progress(next4)
       }
       const videoTarget = videoTransitionTargetRef.current
@@ -953,10 +992,10 @@ export default function LandingPage() {
       smoothedVideoTransitionRef.current = videoNext
       const shouldUpdateVideo =
         Math.abs(videoNext - lastSmoothedVideoStateRef.current) >= SMOOTHED_PROGRESS_THROTTLE_DELTA ||
-        now - lastSmoothedVideoStateTimeMsRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
+        now - lastSmoothedVideoTimeRef.current >= SMOOTHED_PROGRESS_THROTTLE_MS
       if (shouldUpdateVideo) {
         lastSmoothedVideoStateRef.current = videoNext
-        lastSmoothedVideoStateTimeMsRef.current = now
+        lastSmoothedVideoTimeRef.current = now
         setSmoothedVideoTransitionProgress(videoNext)
       }
       // Pause Care video when box shrinks to 50% or below; resume when scrolling up and frame reaches 50% again
@@ -1005,6 +1044,11 @@ export default function LandingPage() {
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
   }, [gradientTransitionComplete, updateTargetsFromScroll, getScrollY, seekToFrame])
+
+  /** Stable scroll runway under the final video (required before sticky can start). Mobile = smaller vh, never tied to sticky mode. */
+  const videoFooterBottomSpacerVh = isDesktopViewport
+    ? VIDEO_STICKY_SCROLL_VH_DESKTOP
+    : VIDEO_STICKY_SCROLL_VH_MOBILE
 
   return (
     <>
@@ -1272,7 +1316,7 @@ export default function LandingPage() {
                     A COMPLETE WELFARE INTELLIGENCE SYSTEM
                   </h2>
                   <p
-                    className="mb-4 max-w-2xl mx-auto lg:mx-0 text-center lg:text-left"
+                    className="mb-4 w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-xl lg:max-w-2xl mx-auto lg:mx-0 text-center lg:text-left"
                     style={{
                       fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                       fontWeight: 400,
@@ -1282,9 +1326,9 @@ export default function LandingPage() {
                       color: '#6F6F6F',
                     }}
                   >
-                    Asthesis goes beyond emergency response. It continuously learns, adapts, and responds to subtle changes in daily life — helping protect people before situations escalate.
+                    Asthesis goes beyond emergency response. It continuously learns, adapts, and responds to subtle changes in daily life helping protect people before situations escalate.
                   </p>
-                  <ul className="space-y-2 list-none pl-0 flex flex-col items-center lg:items-start">
+                  <ul className="space-y-2 list-none pl-0 flex flex-col items-center lg:items-start w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-xl lg:max-w-2xl mx-auto lg:mx-0">
                     {[
                       'Wellness & behavior insights',
                       'Safety & risk monitoring',
@@ -1319,7 +1363,10 @@ export default function LandingPage() {
                       top: '50%',
                       bottom: 'auto',
                       transform: 'translate3d(0, calc(-50% + var(--styleY, 0px)), 0)',
-                      opacity: frameStickyMode === 'before' ? 0 : 1,
+                      opacity:
+                        frameStickyMode !== 'before' || sequenceProgress > 0.02 || smoothedPart2Progress > 0.02
+                          ? 1
+                          : 0,
                       willChange: 'transform',
                       backfaceVisibility: 'hidden' as const,
                       WebkitFontSmoothing: 'antialiased' as const,
@@ -1356,7 +1403,7 @@ export default function LandingPage() {
                         AWARENESS WITHOUT SURVEILLANCE
                       </h2>
                       <p
-                        className="mb-6 text-center lg:text-right"
+                        className="mb-6 w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-lg lg:max-w-2xl mx-auto lg:mx-0 lg:ml-auto text-center lg:text-right"
                         style={{
                           fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                           fontWeight: 400,
@@ -1366,7 +1413,7 @@ export default function LandingPage() {
                           color: '#6F6F6F',
                         }}
                       >
-                        Asthesis understands patterns, not people. By observing rhythms of daily life — movement, presence, and environmental context — it builds an understanding of what is normal, and recognizes when something changes.
+                        Asthesis understands patterns, not people. By observing patterns of daily life including movement, presence, and environmental context. It builds an understanding of what is normal, and recognizes when something changes.
                       </p>
                     </div>
                   </div>
@@ -1374,6 +1421,8 @@ export default function LandingPage() {
               {/* Design: left side; Part 2: bottom to center; Part 3: center to top (scroll off) */}
               {(() => {
                 const designVisible = smoothedPart2Progress > 0
+                const designShow =
+                  designVisible && (frameStickyMode !== 'before' || smoothedPart2Progress > 0.02)
                 return (
                   <>
                   <div
@@ -1383,7 +1432,7 @@ export default function LandingPage() {
                       top: '50%',
                       bottom: 'auto',
                       transform: 'translate3d(0, calc(-50% + var(--designY, 0px)), 0)',
-                      opacity: frameStickyMode === 'before' || !designVisible ? 0 : 1,
+                      opacity: designShow ? 1 : 0,
                       willChange: 'transform',
                       backfaceVisibility: 'hidden' as const,
                       WebkitFontSmoothing: 'antialiased' as const,
@@ -1420,7 +1469,7 @@ export default function LandingPage() {
 INTELLIGENCE, MADE PHYSICAL
                         </h2>
                         <p
-                          className="max-w-full lg:max-w-md mx-auto lg:mx-0 text-center lg:text-left"
+                          className="w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-md lg:max-w-md mx-auto lg:mx-0 text-center lg:text-left"
                         style={{
                           fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                           fontWeight: 400,
@@ -1430,7 +1479,18 @@ INTELLIGENCE, MADE PHYSICAL
                           color: '#6F6F6F',
                         }}
                       >
-                        Asthesis is designed to belong in the home — not in a clinic. With a minimal, refined form, a soft-glow display, and a precision dial that adjusts volume or sends assistance with a press, every detail is purposeful. Calm, sculpted, and unobtrusive — it blends naturally into daily life, delivering reassurance without feeling clinical.
+                        Asthesis is designed to belong in the home not in a clinic. With a minimal, refined form, a soft-glow display, and a precision dial that adjusts volume or sends assistance with a press, every detail is purposeful. </p>
+                         <p
+                           className="w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-md lg:max-w-md mx-auto lg:mx-0 text-center lg:text-left"
+                           style={{
+                             fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                             fontWeight: 400,
+                             fontSize: 'clamp(11px, 2.2vw, 13px)',
+                             lineHeight: 'clamp(16px, 3vw, 20px)',
+                             letterSpacing: '0px',
+                             color: '#6F6F6F',
+                           }}
+                          > Calm, sculpted, and unobtrusive. It blends naturally into daily life, delivering reassurance without feeling clinical.
                       </p>
                     </div>
                   </div>
@@ -1460,6 +1520,8 @@ INTELLIGENCE, MADE PHYSICAL
               {/* Care: right side; Part 3 bottom→right center (reaches center when Part 3 ends), Part 4 center→top */}
               {(() => {
                 const careVisible = smoothedPart3Progress > 0
+                const careShow =
+                  careVisible && (frameStickyMode !== 'before' || smoothedPart3Progress > 0.02)
                 return (
                   <div
                     ref={careTextRef}
@@ -1468,7 +1530,7 @@ INTELLIGENCE, MADE PHYSICAL
                       top: '50%',
                       bottom: 'auto',
                       transform: 'translate3d(0, calc(-50% + var(--careY, 0px)), 0)',
-                      opacity: frameStickyMode === 'before' || !careVisible ? 0 : 1,
+                      opacity: careShow ? 1 : 0,
                       willChange: 'transform',
                       backfaceVisibility: 'hidden' as const,
                       WebkitFontSmoothing: 'antialiased' as const,
@@ -1505,7 +1567,7 @@ INTELLIGENCE, MADE PHYSICAL
                         DESIGNED TO BE PRESENT
                       </h2>
                       <p
-                        className="max-w-full lg:max-w-md mx-auto lg:mx-0 lg:ml-auto text-center lg:text-right"
+                        className="w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-md lg:max-w-md mx-auto lg:mx-0 lg:ml-auto text-center lg:text-right"
                         style={{
                           fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                           fontWeight: 400,
@@ -1515,7 +1577,7 @@ INTELLIGENCE, MADE PHYSICAL
                           color: '#6F6F6F',
                         }}
                       >
-                        Asthesis is built around a simple belief — care should feel constant, not intrusive. By learning daily rhythms, supporting natural interactions, and responding when something feels different, it becomes a steady presence in the home. Quiet when everything is well. Ready the moment it&apos;s needed.
+                        Asthesis is built around a simple belief. Care should feel constant, not intrusive. By learning daily rhythms, supporting natural interactions, and responding when something feels different, it becomes a steady presence in the home. Quiet when everything is well. Ready the moment it&apos;s needed.
                       </p>
                     </div>
                   </div>
@@ -1524,6 +1586,11 @@ INTELLIGENCE, MADE PHYSICAL
               {/* Inside Asthesis: right side; Part 4 bottom→right center (no delay, same as design/care) */}
               {(() => {
                 const insideVisible = smoothedPart4Progress > 0
+                const insideShow =
+                  insideVisible &&
+                  (frameStickyMode !== 'before' ||
+                    smoothedPart4Progress > 0.02 ||
+                    frameScrollOutProgress > 0.02)
                 return (
                   <div
                     ref={insideTextRef}
@@ -1532,7 +1599,7 @@ INTELLIGENCE, MADE PHYSICAL
                       top: '50%',
                       bottom: 'auto',
                       transform: 'translate3d(0, calc(-50% + var(--insideY, 0px)), 0)',
-                      opacity: frameStickyMode === 'before' || !insideVisible ? 0 : 1,
+                      opacity: insideShow ? 1 : 0,
                       willChange: 'transform',
                       backfaceVisibility: 'hidden' as const,
                       WebkitFontSmoothing: 'antialiased' as const,
@@ -1569,7 +1636,7 @@ INTELLIGENCE, MADE PHYSICAL
                         EVERY LAYER MATTERS
                       </h2>
                       <p
-                        className="max-w-full lg:max-w-md mx-auto lg:mx-0 lg:ml-auto text-center lg:text-right"
+                        className="w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-md lg:max-w-md mx-auto lg:mx-0 lg:ml-auto text-center lg:text-right"
                         style={{
                           fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                           fontWeight: 400,
@@ -1579,7 +1646,7 @@ INTELLIGENCE, MADE PHYSICAL
                           color: '#6F6F6F',
                         }}
                       >
-                        A precision-built system combining dedicated AI processing, integrated sensors, secure connectivity, and resilient power — working quietly in the background to deliver constant, dependable protection.
+                        A precision-built system combining dedicated AI processing, integrated sensors, secure connectivity, and resilient power working quietly in the background to deliver constant, dependable protection.
                       </p>
                     </div>
                   </div>
@@ -1617,9 +1684,9 @@ INTELLIGENCE, MADE PHYSICAL
                   Know more
                 </a>
               </div>
-              {/* Spacer: replaces marginTop so fixed positioning has no margin math */}
-              <div className="h-2 md:h-28 shrink-0" aria-hidden />
-              {/* Sentinel: measure this (not the wrapper) to decide when to stick */}
+              {/* Tight gap under CTA; post-video scroll room is viewport-specific (desktop vs mobile vh) */}
+              <div className="h-4 md:h-5 shrink-0" aria-hidden />
+              {/* Sentinel: top edge of video slot — when it reaches navbar offset, card sticks */}
               <div ref={videoStickSentinelRef} style={{ height: 1 }} aria-hidden />
               {/* Placeholder: reserves space when stuck so footer scrolls up; 0 when before/after */}
               <div
@@ -1657,6 +1724,7 @@ INTELLIGENCE, MADE PHYSICAL
                 }}
               >
               <div
+                ref={videoStickyCardRef}
                 className="w-full max-w-7xl mx-auto overflow-hidden border border-white/30 bg-[#1a1a1a] shadow-xl will-change-transform"
                 style={{
                   boxShadow: '0 0 0 1px rgba(255,255,255,0.2)',
@@ -1718,7 +1786,7 @@ INTELLIGENCE, MADE PHYSICAL
                           textShadow: '0 0 12px rgba(0,0,0,0.5)',
                         }}
                       >
-                        LOVE BY ALL.
+                        SENSING WHAT MATTERS
                       </span>
                     </div>
                   </div>
@@ -1726,10 +1794,10 @@ INTELLIGENCE, MADE PHYSICAL
               </div>
             </div>
             </div>
-            {/* Spacer: scroll room so video height can shrink to 35% with scroll progress; footer below scrolls up with progress */}
+            {/* Bottom track: same structural role on mobile + desktop; height differs by breakpoint only */}
             <div
-              className="w-full bg-white"
-              style={{ height: `${VIDEO_STICKY_SCROLL_VH}vh` }}
+              className="w-full bg-white shrink-0"
+              style={{ height: `${videoFooterBottomSpacerVh}vh` }}
               aria-hidden
             />
             {/* Footer appears just below video; z-20 so it shows above the sticky video (z-10) */}

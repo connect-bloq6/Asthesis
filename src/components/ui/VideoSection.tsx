@@ -84,7 +84,7 @@ export default function VideoSection() {
           {/* Bottom Right Text - LOVE BY ALL. */}
           <div className="absolute bottom-6 md:bottom-10 right-6 md:right-10">
             <p className="text-white text-sm sm:text-base md:text-lg lg:text-xl font-semibold tracking-wide">
-              LOVE BY ALL.
+              SENSING WHAT MATTERS
             </p>
           </div>
 
