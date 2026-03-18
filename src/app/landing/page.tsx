@@ -39,6 +39,8 @@ const VIDEO_TRANSITION_WIDTH_END_PCT = 80 // width at progress 1 (%)
 const VIDEO_TRANSITION_BORDER_RADIUS_PX = 24 // border radius at progress 1
 const VIDEO_TRANSITION_SCALE_END = 0.9 // scale X at progress 1 (1 → 0.9)
 const VIDEO_TRANSITION_HEIGHT_SCALE_END = 0.4375 // height at progress 1 (25% bigger than previous 0.35); frame shrinks to ~44% with scroll
+// Progress at which box height = 50% (scale 0.5). Pause when past this; resume when back at or above this when scrolling up.
+const VIDEO_TRANSITION_PROGRESS_AT_50_PCT = (1 - 0.5) / (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) // ≈ 0.889
 
 const PART4_SMOOTH_LERP = 0.035 // lower = smoother scroll-driven progress and scale
 const PART4_SCALE_START = 1 // match Part 3 end
@@ -957,10 +959,10 @@ export default function LandingPage() {
         lastSmoothedVideoStateTimeMsRef.current = now
         setSmoothedVideoTransitionProgress(videoNext)
       }
-      // Pause Care video when frame height starts decreasing; resume when it starts increasing again
+      // Pause Care video when box shrinks to 50% or below; resume when scrolling up and frame reaches 50% again
       const careVideo = careVideoRef.current
       if (careVideo && videoStickyModeRef.current === 'stuck') {
-        if (videoNext > 0.01) {
+        if (videoNext >= VIDEO_TRANSITION_PROGRESS_AT_50_PCT) {
           if (!careVideo.paused) careVideo.pause()
         } else {
           if (careVideo.paused) careVideo.play().catch(() => {})
