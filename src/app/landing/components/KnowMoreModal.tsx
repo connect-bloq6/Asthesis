@@ -5,12 +5,9 @@ import { createPortal } from 'react-dom'
 import Image from 'next/image'
 
 const KNOW_MORE_FEATURE_IMAGES = {
-  patterns:
-    'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?auto=format&fit=crop&q=80&w=1600',
-  connectedCare:
-    'https://images.unsplash.com/photo-1596524430615-b46475ddff6e?auto=format&fit=crop&q=80&w=1600',
-  privacy:
-    'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&q=80&w=1600',
+  patterns: '/images/pop-up-3.png',
+  connectedCare: '/images/pop-up-1.png',
+  privacy: '/images/pop-up-2.png',
 } as const
 
 const knowMoreImageSizes =
