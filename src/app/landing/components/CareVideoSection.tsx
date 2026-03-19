@@ -144,8 +144,18 @@ export function CareVideoSection({ refs, videoAfterTopPxRef, videoStickyMode, is
           </div>
         </div>
       </div>
-      <div className="w-full bg-white shrink-0" style={{ height: `${spacerVh}vh` }} aria-hidden />
-      <div className="relative z-20 w-full">
+      <div
+        className="w-full bg-white shrink-0"
+        style={{
+          height: `${spacerVh}vh`,
+          minHeight: isDesktopViewport ? undefined : 280,
+        }}
+        aria-hidden
+      />
+      <div
+        className="relative z-20 w-full"
+        style={isDesktopViewport ? undefined : { paddingBottom: 24 }}
+      >
         <Footer />
       </div>
     </section>

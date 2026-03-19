@@ -44,6 +44,7 @@ import {
   VIDEO_TRANSITION_SCALE_END,
   VIDEO_TRANSITION_WIDTH_END_PCT,
   FRAME_EPS_SEC,
+  MOBILE_VIDEO_PROGRESS_WRITE_THROTTLE,
 } from '../constants'
 import { drawCover, globalFrameToShotAndLocal } from '../alphaVideo'
 import {
@@ -109,6 +110,7 @@ export function useLandingScrollTimeline(
   const smoothedVideoTransitionRef = useRef(0)
   const videoCardBaseHeightRef = useRef(0)
   const prevVideoModeRef = useRef<'before' | 'stuck' | 'after'>('before')
+  const lastWrittenVideoProgressRef = useRef(-1)
 
   const systemTextRef = useRef<HTMLDivElement>(null)
   const styleTextRef = useRef<HTMLDivElement>(null)
@@ -493,7 +495,9 @@ export function useLandingScrollTimeline(
           vMode = 'stuck'
           vProgress = clamp((y - stickStart) / stickRange, 0, 1)
           if (prevVideoModeRef.current !== 'stuck' && card) {
-            videoCardBaseHeightRef.current = card.getBoundingClientRect().height
+            const rectH = card.getBoundingClientRect().height
+            videoCardBaseHeightRef.current =
+              rectH > 60 ? rectH : (card.offsetWidth || 0) * (9 / 16)
           }
         }
         videoTransitionTargetRef.current = vProgress
@@ -502,7 +506,11 @@ export function useLandingScrollTimeline(
           if (vMode === 'after' || vMode === 'before') {
             smoothedVideoTransitionRef.current = vProgress
           } else if (vMode === 'stuck') {
-            if (card) videoCardBaseHeightRef.current = card.getBoundingClientRect().height
+            if (card) {
+              const rectH = card.getBoundingClientRect().height
+              videoCardBaseHeightRef.current =
+                rectH > 60 ? rectH : (card.offsetWidth || 0) * (9 / 16)
+            }
             smoothedVideoTransitionRef.current = vProgress
           }
           prevVideoModeRef.current = vMode
@@ -689,45 +697,56 @@ export function useLandingScrollTimeline(
       const cardEl = videoStickyCardRef.current
       const mode = videoStickyModeRef.current
 
-      if (phEl) {
-        if (mode === 'before' || baseH <= 0) {
-          phEl.style.height = '0px'
-        } else if (mode === 'stuck') {
-          phEl.style.height = `${baseH * (1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * vp)}px`
-        } else {
-          phEl.style.height = `${baseH * VIDEO_TRANSITION_HEIGHT_SCALE_END}px`
-        }
-      }
+      const shouldWriteVideoStyles =
+        !isMobile ||
+        mode !== 'stuck' ||
+        lastWrittenVideoProgressRef.current < 0 ||
+        Math.abs(vp - lastWrittenVideoProgressRef.current) >= MOBILE_VIDEO_PROGRESS_WRITE_THROTTLE
 
-      if (cardEl) {
-        if (mode === 'before') {
-          cardEl.style.width = ''
-          cardEl.style.marginLeft = ''
-          cardEl.style.marginRight = ''
-          cardEl.style.borderRadius = ''
-          cardEl.style.transform = ''
-          cardEl.style.transformOrigin = ''
-          cardEl.style.height = ''
-          cardEl.style.aspectRatio = ''
-        } else {
-          const wPct = 100 - (100 - VIDEO_TRANSITION_WIDTH_END_PCT) * vp
-          cardEl.style.width = `${wPct}%`
-          cardEl.style.marginLeft = 'auto'
-          cardEl.style.marginRight = 'auto'
-          cardEl.style.borderRadius = `${VIDEO_TRANSITION_BORDER_RADIUS_PX * vp}px`
-          cardEl.style.transform = `scale(${1 - (1 - VIDEO_TRANSITION_SCALE_END) * vp}, 1)`
-          cardEl.style.transformOrigin = 'center top'
-          if (baseH > 0) {
-            cardEl.style.height = `${baseH * (mode === 'stuck' ? 1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * vp : VIDEO_TRANSITION_HEIGHT_SCALE_END)}px`
-            cardEl.style.aspectRatio = ''
+      if (mode === 'before') lastWrittenVideoProgressRef.current = -1
+
+      if (shouldWriteVideoStyles) {
+        lastWrittenVideoProgressRef.current = vp
+        if (phEl) {
+          if (mode === 'before' || baseH <= 0) {
+            phEl.style.height = '0px'
+          } else if (mode === 'stuck') {
+            phEl.style.height = `${baseH * (1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * vp)}px`
+          } else {
+            phEl.style.height = `${baseH * VIDEO_TRANSITION_HEIGHT_SCALE_END}px`
           }
         }
-      }
 
-      const brand = careVideoBrandingRef.current
-      if (brand) {
-        brand.style.top = `${8 + 7 * vp}%`
-        brand.style.transform = `translate(-50%, -50%) scale(${1 + 0.85 * vp})`
+        if (cardEl) {
+          if (mode === 'before') {
+            cardEl.style.width = ''
+            cardEl.style.marginLeft = ''
+            cardEl.style.marginRight = ''
+            cardEl.style.borderRadius = ''
+            cardEl.style.transform = ''
+            cardEl.style.transformOrigin = ''
+            cardEl.style.height = ''
+            cardEl.style.aspectRatio = ''
+          } else {
+            const wPct = 100 - (100 - VIDEO_TRANSITION_WIDTH_END_PCT) * vp
+            cardEl.style.width = `${wPct}%`
+            cardEl.style.marginLeft = 'auto'
+            cardEl.style.marginRight = 'auto'
+            cardEl.style.borderRadius = `${VIDEO_TRANSITION_BORDER_RADIUS_PX * vp}px`
+            cardEl.style.transform = `scale(${1 - (1 - VIDEO_TRANSITION_SCALE_END) * vp}, 1)`
+            cardEl.style.transformOrigin = 'center top'
+            if (baseH > 0) {
+              cardEl.style.height = `${baseH * (mode === 'stuck' ? 1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * vp : VIDEO_TRANSITION_HEIGHT_SCALE_END)}px`
+              cardEl.style.aspectRatio = ''
+            }
+          }
+        }
+
+        const brand = careVideoBrandingRef.current
+        if (brand) {
+          brand.style.top = `${8 + 7 * vp}%`
+          brand.style.transform = `translate(-50%, -50%) scale(${1 + 0.85 * vp})`
+        }
       }
 
       rafId = requestAnimationFrame(tick)

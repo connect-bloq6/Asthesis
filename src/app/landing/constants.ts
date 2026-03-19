@@ -16,7 +16,8 @@ export const FRAME_SCROLL_OUT_VH = 28
 
 export const VIDEO_STICK_TOP_OFFSET_PX = 72
 export const VIDEO_STICKY_SCROLL_VH_DESKTOP = 100
-export const VIDEO_STICKY_SCROLL_VH_MOBILE = 42
+/** Larger span on mobile so transition completes and footer handoff is clean (no snap/trap). */
+export const VIDEO_STICKY_SCROLL_VH_MOBILE = 58
 /** Hysteresis (px) so frame sticky mode does not flicker at threshold crossings. */
 export const FRAME_STICKY_HYSTERESIS_PX = 2
 export const VIDEO_STICKY_HYSTERESIS_PX = 2
@@ -43,17 +44,20 @@ export const INSIDE_FROM_BOTTOM_VH = 95
 export const INSIDE_VERTICAL_OFFSET_VH = 2
 
 export const SMOOTHING_TIME_CONSTANT = 0.06
-export const SMOOTHING_TIME_CONSTANT_MOBILE = 0.06
+/** Slower follow on mobile for smoother scroll perception and less jitter. */
+export const SMOOTHING_TIME_CONSTANT_MOBILE = 0.11
 export const SMOOTHED_PROGRESS_THROTTLE_DELTA = 0.002
 export const SMOOTHED_PROGRESS_THROTTLE_MS = 80
 
 export const ALPHA_FPS = 30
 export const FRAME_DT = 1 / ALPHA_FPS
 export const CATCHUP_MAX_FPS_DESKTOP = 180
-export const CATCHUP_MAX_FPS_MOBILE = 90
+export const CATCHUP_MAX_FPS_MOBILE = 60
 export const CATCHUP_ACCEL_TAU = 0.09
 export const STEP_MIN_INTERVAL_MS_DESKTOP = 0
-export const STEP_MIN_INTERVAL_MS_MOBILE = 8
+export const STEP_MIN_INTERVAL_MS_MOBILE = 14
+/** On mobile, skip care-video DOM writes when progress delta is below this (reduces jank). */
+export const MOBILE_VIDEO_PROGRESS_WRITE_THROTTLE = 0.012
 export const BOUNDARY_BLEND_FRAMES = 6
 export const FRAME_EPS_SEC = 0.45 * FRAME_DT
 
