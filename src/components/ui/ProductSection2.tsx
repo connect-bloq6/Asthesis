@@ -53,7 +53,7 @@ export default function ProductSection2() {
                 overflowWrap: 'normal',
               }}
             >
-              Asthesis blends seamlessly into everyday spaces. It looks like a calm home object — not a medical instrument — while quietly delivering powerful safety and wellness intelligence in the background.
+              Asthesis blends seamlessly into everyday spaces. It looks like a calm home object — not a medical instrument — while quietly delivering powerful safety insight for preventative and anticipatory care in the background.
             </p>
             {/* Three feature blocks – vertically in the middle of the space, not at bottom */}
             <div className="flex flex-wrap gap-x-10 gap-y-8 sm:gap-x-14 sm:gap-y-10 pt-10 sm:pt-12 lg:pt-0 lg:flex-1 lg:flex lg:items-center">

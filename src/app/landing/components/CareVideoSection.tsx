@@ -20,6 +20,7 @@ type RefBundle = {
   videoStickyCardRef: RefObject<HTMLDivElement | null>
   videoPlaceholderRef: RefObject<HTMLDivElement | null>
   careVideoBrandingRef: RefObject<HTMLDivElement | null>
+  careVideoSensingRef: RefObject<HTMLSpanElement | null>
   careVideoRef: RefObject<HTMLVideoElement | null>
 }
 
@@ -40,6 +41,7 @@ export function CareVideoSection({ refs, videoAfterTopPxRef, videoStickyMode, is
     videoStickyCardRef,
     videoPlaceholderRef,
     careVideoBrandingRef,
+    careVideoSensingRef,
     careVideoRef,
   } = refs
 
@@ -60,7 +62,7 @@ export function CareVideoSection({ refs, videoAfterTopPxRef, videoStickyMode, is
               lineHeight: 1.2,
             }}
           >
-            The Intelligent Care You Deserve
+            Proactive, person-centred care at home
           </h2>
           <button
             type="button"
@@ -129,6 +131,7 @@ export function CareVideoSection({ refs, videoAfterTopPxRef, videoStickyMode, is
                 <div className="flex-1" />
                 <div className="flex justify-end pr-4 pb-4 md:pr-6 md:pb-6">
                   <span
+                    ref={careVideoSensingRef as React.LegacyRef<HTMLSpanElement>}
                     className="text-white font-semibold tracking-wide uppercase"
                     style={{
                       fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',

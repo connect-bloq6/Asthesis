@@ -51,7 +51,7 @@ export default function ImpactSection3() {
                 lineHeight: '1.65',
               }}
             >
-              As populations age and families become more distributed, traditional care systems struggle to keep pace. Many rely on emergency buttons, scheduled check-ins, or constant supervision — systems that act only after something has already gone wrong. In most cases, the warning signs were present long before the emergency.
+              As demand for home-based care grows and support networks become more distributed, traditional care systems struggle to keep pace. Many rely on emergency buttons, scheduled check-ins, or constant supervision — systems that act only after something has already gone wrong. In most cases, the warning signs were present long before the emergency.
             </p>
           </div>
         </div>

@@ -39,9 +39,22 @@ export default function AboutSection3() {
                 color: '#101828',
               }}
             >
-              It started with a phone call no family should have to receive.
+              Building technology enabled care that supports independence, dignity and earlier intervention
             </h2>
             <div className="space-y-5 max-w-[587px]">
+
+            <p
+                style={{
+                  fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                  fontWeight: 400,
+                  fontSize: '16px',
+                  lineHeight: '27.2px',
+                  letterSpacing: '0px',
+                  color: '#4A5565',
+                }}
+              >
+Asthesis was created to address a clear challenge in health and social care: too often, changes in wellbeing go unnoticed until a person reaches crisis point. We are building a new generation of technology enabled care that helps identify risk earlier, supports people to remain safely at home, and enables more responsive care around the individual.
+              </p>
               <p
                 style={{
                   fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
@@ -52,9 +65,21 @@ export default function AboutSection3() {
                   color: '#4A5565',
                 }}
               >
-                Our founder&apos;s grandmother had fallen at home. She lay there for hours before anyone knew. By the time help arrived, what could have been a minor incident had become a medical emergency.
-              </p>
-              <p
+                A two-year-old boy was found lifeless beside his father—days after his father had suffered a fatal heart attack at home. There is a likelihood the child might still be alive if his father had survived. What followed was not a sudden event, but a quiet unfolding—missed visits, unanswered messages, and a door that remained closed while, inside, the child was left alone without care or help.
+</p>
+
+<p
+                style={{
+                  fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                  fontWeight: 400,
+                  fontSize: '16px',
+                  lineHeight: '27.2px',
+                  letterSpacing: '0px',
+                  color: '#4A5565',
+                }}
+              >
+This tragedy reveals something deeper: how fragile independence can become without continuous awareness. Emergencies don’t always happen loudly—sometimes they happen in silence, behind closed doors. And in those moments, the difference between life and loss is not just response, but timely awareness.    </p>
+              {/* <p
                 style={{
                   fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                   fontWeight: 400,
@@ -65,7 +90,7 @@ export default function AboutSection3() {
                 }}
               >
                 That moment changed everything. Not because of the injury, but because of what it revealed: the gap between wanting to live independently and having the safety net to do so with confidence.
-              </p>
+              </p> */}
               <p
                 style={{
                   fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
@@ -76,7 +101,20 @@ export default function AboutSection3() {
                   color: '#4A5565',
                 }}
               >
-                We founded Asthesis to close that gap—with technology that respects privacy, preserves autonomy, and provides families with the reassurance they desperately need.
+
+Asthesis began with a simple but urgent question: how can we help people live well at home without compromising privacy, autonomy or quality of life?</p>
+<p
+                style={{
+                  fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                  fontWeight: 400,
+                  fontSize: '16px',
+                  lineHeight: '27.2px',
+                  letterSpacing: '0px',
+                  color: '#4A5565',
+                }}
+              >
+That question shaped our approach from day one. We are developing home-based technology that can identify subtle changes in routine, movement, and activity—supporting preventative and anticipatory care for people at risk of deterioration and home-first care models.
+
               </p>
             </div>
           </div>

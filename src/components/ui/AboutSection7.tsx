@@ -4,8 +4,7 @@ import Link from 'next/link'
 
 /**
  * About page – Section 7: CTA hero
- * Centered heading (wraps: "The future of care is calm," / "kind, and intelligent."),
- * description in two lines, two neat pill buttons with clear text size.
+ * Centered heading, body copy, two neat pill buttons with clear text size.
  */
 
 const mainHeadingStyle = {
@@ -39,16 +38,13 @@ export default function AboutSection7() {
             className="mx-auto mb-6 sm:mb-8"
             style={mainHeadingStyle}
           >
-            The future of care is calm, kind, and intelligent.
+           The future of care is proactive, personalised and home-centred.
           </h2>
-          {/* Description: 2 lines on desktop (br visible sm+); natural wrap on mobile */}
           <p
             className="mx-auto mb-10 sm:mb-12 max-w-[800px] w-full"
             style={bodyStyle}
           >
-            We&apos;re building a world where aging doesn&apos;t mean losing independence, where families don&apos;t
-            <br className="hidden sm:block" />
-            live in fear, and where technology serves humanity with grace and respect.
+            We believe technology enabled care should help systems intervene earlier, support people more appropriately, and protect independence for longer.
           </p>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-5">
             <Link

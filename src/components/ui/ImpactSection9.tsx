@@ -12,19 +12,19 @@ const FEATURES = [
     icon: '/images/msg.png',
     title: 'Preventing Silent Emergencies',
     description:
-      'By detecting subtle changes in daily patterns, Asthesis identifies risks before they become crises — allowing families and caregivers to intervene early, thoughtfully, and with dignity.',
+      'By detecting subtle changes in daily patterns, Asthesis supports proactive identification of risk and prioritisation of review — enabling early intervention and escalation based on emerging risk for individuals, carers, providers, local authorities and NHS commissioners.',
   },
   {
     icon: '/images/like.png',
-    title: 'Supporting Families',
+    title: 'Support across the care pathway',
     description:
-      "Distance doesn't have to mean disconnection. Asthesis gives families calm reassurance without requiring constant check-ins or invasive monitoring, strengthening relationships through respect and trust.",
+      "Distance doesn't have to mean disconnection. Asthesis delivers support for proactive, person-centred care at home for individuals, carers, providers, local authorities and NHS commissioners — without constant check-ins or invasive monitoring, and with relationships built on respect and trust.",
   },
   {
     icon: '/images/heart.png',
     title: 'Strengthening Care Systems',
     description:
-      'Healthcare and social care organisations can shift from reactive response to proactive support — allocating resources more effectively and improving outcomes while respecting individual autonomy.',
+      'Healthcare and social care organisations can shift from reactive response to proactive support — enabling targeted, person-centred intervention and smarter use of workforce capacity while respecting individual autonomy.',
   },
 ]
 
@@ -79,7 +79,7 @@ export default function ImpactSection9() {
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 pb-10 sm:pb-16 md:pb-24">
         <div className="relative w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl max-w-[1232px] aspect-[4/3] sm:aspect-[1232/600] min-h-[200px] sm:min-h-[280px] max-h-[420px] sm:max-h-[480px] lg:max-h-[520px] mx-auto">
           <Image
-            src="/images/men.png"
+            src="/images/impact_l.png"
             alt=""
             fill
             className="object-cover object-center"

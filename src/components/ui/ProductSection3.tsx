@@ -27,7 +27,7 @@ export default function ProductSection3() {
             fontWeight: 400,
           }}
         >
-          Asthesis doesn&apos;t wait for emergencies. It understands patterns, context, and subtle change — then acts when it matters.
+          Asthesis doesn&apos;t wait for emergencies. It understands patterns, context, and subtle change—supporting proactive identification of risk and early intervention when it matters.
         </p>
       </div>
     </section>

@@ -78,6 +78,9 @@ export function FrameSequenceSection({
     insideTextRef,
   } = refs
 
+  const isSafari =
+    typeof window !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+
   const sectionVh =
     100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH + FRAME_SCROLL_OUT_VH
 
@@ -134,17 +137,88 @@ export function FrameSequenceSection({
         <div className="relative z-10 w-full max-w-[100vw] overflow-hidden border-0 border-none pointer-events-none aspect-square sm:aspect-square md:aspect-video lg:aspect-auto lg:w-full lg:h-full lg:max-w-none lg:min-w-full">
           {(() => {
             const isMobile = !isDesktopViewport
-            const useMp4 = alphaPlaybackMode === 'mp4'
+
+            // Safari → MP4, others → follow alphaPlaybackMode
+            const useMp4 = alphaPlaybackMode === 'mp4' || isSafari
+
             const ext = useMp4 ? 'mp4' : 'webm'
+
+            // Resolution selection
             const res = isMobile ? '540p' : '720p'
-            const suffix = useMp4 ? `_alpha_ios_${res}` : `_alpha_${res}`
+
+            // IMPORTANT: Asset family logic (decoupled from format)
+            let suffix = ''
+
+            if (useMp4) {
+              if (isMobile) {
+                // Mobile Safari / iOS MP4
+                suffix = `_alpha_ios_${res}`
+              } else {
+                // Desktop Safari → 720p MP4 assets
+                suffix = `_alpha_${res}`
+              }
+            } else {
+              // WebM browsers
+              suffix = `_alpha_${res}`
+            }
+
             const preload = useMp4 ? 'auto' : 'metadata'
+
+            if (process.env.NODE_ENV === 'development') {
+              console.log('Frame source debug:', {
+                isSafari,
+                isMobile,
+                isDesktopViewport,
+                useMp4,
+                ext,
+                res,
+                suffix,
+                example: `/videos/alpha/shot1${suffix}.${ext}`,
+              })
+            }
+
             return (
               <>
-                <video ref={legacyVideoRef(v1Ref)} src={`/videos/alpha/shot1${suffix}.${ext}`} muted playsInline disablePictureInPicture preload={preload} style={{ display: 'none' }} />
-                <video ref={legacyVideoRef(v2Ref)} src={`/videos/alpha/shot2${suffix}.${ext}`} muted playsInline disablePictureInPicture preload={preload} style={{ display: 'none' }} />
-                <video ref={legacyVideoRef(v3Ref)} src={`/videos/alpha/shot3${suffix}.${ext}`} muted playsInline disablePictureInPicture preload={preload} style={{ display: 'none' }} />
-                <video ref={legacyVideoRef(v4Ref)} src={`/videos/alpha/shot4${suffix}.${ext}`} muted playsInline disablePictureInPicture preload={preload} style={{ display: 'none' }} />
+                <video
+                  ref={legacyVideoRef(v1Ref)}
+                  src={`/videos/alpha/shot1${suffix}.${ext}`}
+                  onError={() => console.error('Failed:', `/videos/alpha/shot1${suffix}.${ext}`)}
+                  muted
+                  playsInline
+                  disablePictureInPicture
+                  preload={preload}
+                  style={{ display: 'none' }}
+                />
+                <video
+                  ref={legacyVideoRef(v2Ref)}
+                  src={`/videos/alpha/shot2${suffix}.${ext}`}
+                  onError={() => console.error('Failed:', `/videos/alpha/shot2${suffix}.${ext}`)}
+                  muted
+                  playsInline
+                  disablePictureInPicture
+                  preload={preload}
+                  style={{ display: 'none' }}
+                />
+                <video
+                  ref={legacyVideoRef(v3Ref)}
+                  src={`/videos/alpha/shot3${suffix}.${ext}`}
+                  onError={() => console.error('Failed:', `/videos/alpha/shot3${suffix}.${ext}`)}
+                  muted
+                  playsInline
+                  disablePictureInPicture
+                  preload={preload}
+                  style={{ display: 'none' }}
+                />
+                <video
+                  ref={legacyVideoRef(v4Ref)}
+                  src={`/videos/alpha/shot4${suffix}.${ext}`}
+                  onError={() => console.error('Failed:', `/videos/alpha/shot4${suffix}.${ext}`)}
+                  muted
+                  playsInline
+                  disablePictureInPicture
+                  preload={preload}
+                  style={{ display: 'none' }}
+                />
               </>
             )
           })()}
@@ -214,10 +288,28 @@ export function FrameSequenceSection({
                 color: '#6F6F6F',
               }}
             >
-              Asthesis goes beyond emergency response. It continuously learns, adapts, and responds to subtle changes in daily life helping protect people before situations escalate.
+              Asthesis is AI-enabled technology enabled care (TEC): an AI-powered home monitoring device that helps health and care systems move from reactive response to proactive, person-centred support. It continuously learns daily patterns of routine, mobility and wellbeing, so changes can be identified early to enable safer independent living, preventative and anticipatory care for people at risk of deterioration, and timely intervention.
+            </p>
+            <p
+              className="mb-4 w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-xl lg:max-w-2xl mx-auto lg:mx-0 text-center lg:text-left"
+              style={{
+                fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                fontWeight: 400,
+                fontSize: 'clamp(12px, 2.5vw, 14px)',
+                lineHeight: 'clamp(18px, 3.5vw, 22px)',
+                letterSpacing: '0px',
+                color: '#6F6F6F',
+              }}
+            >
+              Designed as non-intrusive ambient monitoring in the home, Asthesis delivers privacy-preserving remote monitoring without cameras or wearables—supporting independent living and home-first care models, with insight that strengthens preventative care pathways for people at risk of deterioration.
             </p>
             <ul className="space-y-2 list-none pl-0 flex flex-col items-center lg:items-start w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-xl lg:max-w-2xl mx-auto lg:mx-0">
-              {['Wellness & behavior insights', 'Safety & risk monitoring', 'Mobility & environmental awareness', 'Intelligent response & alerts'].map((item, index) => (
+              {[
+                'Earlier identification of changes in mobility, routine and activity',
+                'More confident support for independent living',
+                'Better targeted intervention through technology enabled care',
+                'Reassurance for individuals, carers, providers, local authorities and NHS commissioners—without intrusive surveillance',
+              ].map((item, index) => (
                 <li
                   key={index}
                   className="flex items-start justify-center lg:justify-start"
@@ -336,7 +428,7 @@ export function FrameSequenceSection({
                 color: '#1D1D1F',
               }}
             >
-              INTELLIGENCE, MADE PHYSICAL
+              DESIGNED FOR MODERN CARE DELIVERY
             </h2>
             <p
               className="w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-md lg:max-w-md mx-auto lg:mx-0 text-center lg:text-left"
@@ -349,20 +441,7 @@ export function FrameSequenceSection({
                 color: '#6F6F6F',
               }}
             >
-              Asthesis is designed to belong in the home not in a clinic. With a minimal, refined form, a soft-glow display, and a precision dial that adjusts volume or sends assistance with a press, every detail is purposeful.{' '}
-            </p>
-            <p
-              className="w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-md lg:max-w-md mx-auto lg:mx-0 text-center lg:text-left"
-              style={{
-                fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
-                fontWeight: 400,
-                fontSize: 'clamp(11px, 2.2vw, 13px)',
-                lineHeight: 'clamp(16px, 3vw, 20px)',
-                letterSpacing: '0px',
-                color: '#6F6F6F',
-              }}
-            >
-              Calm, sculpted, and unobtrusive. It blends naturally into daily life, delivering reassurance without feeling clinical.
+              Asthesis combines ambient sensing, on-device intelligence and continuous monitoring in a format designed for the home. It supports preventative and anticipatory care while respecting dignity, autonomy and privacy.
             </p>
           </div>
         </div>

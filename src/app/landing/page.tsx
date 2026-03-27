@@ -111,7 +111,7 @@ export default function LandingPage() {
         {!isLoading && (
           <div className="fixed inset-0 pointer-events-none z-40" aria-hidden>
             <div
-              className="absolute left-6 top-[5.5rem] w-[16.8px] h-[16.8px] text-black transition-transform duration-300 ease-out"
+              className="absolute left-6 top-[6.5rem] w-[16.8px] h-[16.8px] text-black transition-transform duration-300 ease-out"
               style={{ transform: rest.heroCrossed ? 'rotate(45deg)' : 'rotate(0deg)' }}
             >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" className="w-full h-full">
@@ -119,7 +119,7 @@ export default function LandingPage() {
               </svg>
             </div>
             <div
-              className="absolute right-6 top-[5.5rem] w-[16.8px] h-[16.8px] text-black transition-transform duration-300 ease-out"
+              className="absolute right-6 top-[6.5rem] w-[16.8px] h-[16.8px] text-black transition-transform duration-300 ease-out"
               style={{ transform: rest.heroCrossed ? 'rotate(-45deg)' : 'rotate(0deg)' }}
             >
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" className="w-full h-full">
@@ -182,6 +182,7 @@ export default function LandingPage() {
               videoStickyCardRef: r.videoStickyCardRef,
               videoPlaceholderRef: r.videoPlaceholderRef,
               careVideoBrandingRef: r.careVideoBrandingRef,
+              careVideoSensingRef: r.careVideoSensingRef,
               careVideoRef: r.careVideoRef,
             }}
             videoAfterTopPxRef={anim.videoAfterTopPxRef}

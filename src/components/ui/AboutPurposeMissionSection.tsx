@@ -60,11 +60,11 @@ export default function AboutPurposeMissionSection() {
                 Dignity-first care, always.
               </h2>
               <p className="mb-6" style={bodyStyle}>
-                We exist to ensure that everyone can age with grace, independence, and safety—without sacrificing privacy or comfort.
+                We exist to ensure that everyone can live with independence, dignity, and safety—without sacrificing privacy or comfort.
               </p>
               <ul className="list-disc list-outside pl-5 space-y-2.5" style={{ ...bodyStyle }}>
                 <li>Enable independent living without constant supervision</li>
-                <li>Provide families with peace of mind, not intrusive monitoring</li>
+                <li>Provide individuals, carers, providers, local authorities and NHS commissioners with support for proactive, person-centred care at home—not intrusive monitoring</li>
                 <li>Respect privacy while protecting wellbeing</li>
               </ul>
             </div>

@@ -10,8 +10,8 @@ import Image from 'next/image'
 const BULLETS = [
   'Reduce preventable emergencies',
   'Support independence with dignity',
-  'Reassure families without surveillance',
-  'Humanise welfare monitoring',
+  'Reassurance for individuals, carers, providers, local authorities and NHS commissioners—without surveillance',
+  'Deliver privacy-preserving, person-centred monitoring',
 ]
 
 export default function ImpactSection7() {

@@ -15,7 +15,7 @@ export default function ProductSection5() {
           <div className="relative w-full min-w-0 aspect-[4/3] sm:aspect-[1232/600] min-h-[180px] sm:min-h-[220px] md:min-h-[260px] lg:min-h-[280px] max-w-[1232px] mx-auto rounded-none sm:rounded-xl md:rounded-2xl overflow-hidden">
             <Image
               src="/images/men.png"
-              alt="Asthesis lifestyle – connected aging"
+              alt="Asthesis lifestyle – independent living and home-based support"
               fill
               className="object-cover object-center"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1232px"

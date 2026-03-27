@@ -14,7 +14,7 @@ import Footer from '@/components/ui/Footer'
 export default function AboutPage() {
   return (
     <main className="relative min-h-screen bg-background overflow-x-hidden">
-      <Navbar />
+      <Navbar solid />
       <AboutSection1 />
       <AboutSection2 />
       <AboutSection3 />

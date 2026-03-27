@@ -109,7 +109,7 @@ export default function SystemSection() {
         {/* Bullet Points */}
         <ul className="space-y-4">
           {[
-            'Wellness & behavior insights',
+            'Routine & activity insights for preventative care',
             'Safety & risk monitoring',
             'Mobility & environmental awareness',
             'Intelligent response & alerts'

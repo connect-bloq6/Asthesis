@@ -35,7 +35,7 @@ export default function ProductSection1() {
                   lineHeight: '1.3',
                 }}
               >
-                A vigilant wellness hub for safe, connected aging
+                An AI-powered home monitoring device for independent living and home-based support
               </p>
               <p
                 className="text-base sm:text-lg leading-relaxed mb-8 sm:mb-10"

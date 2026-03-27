@@ -44,7 +44,7 @@ export default function ContactPage() {
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-background">
-      <Navbar />
+      <Navbar solid />
 
       {/* Single section: map left, form right (Figma) – mobile/iPad: stacked; desktop: side by side */}
       <section className="w-full max-w-[1440px] mx-auto px-5 sm:px-6 md:px-8 lg:pl-10 lg:pr-0 pt-20 sm:pt-24 md:pt-28 pb-12 sm:pb-16 md:pb-24">
@@ -122,7 +122,7 @@ export default function ContactPage() {
                     type="text"
                     value={organisation}
                     onChange={(e) => setOrganisation(e.target.value)}
-                    placeholder="Care organisation or family name."
+                    placeholder="Organisation or contact name (e.g. care provider, commissioner)."
                     className="w-full px-4 py-3 rounded-lg border text-[#101828] placeholder-[#9CA3AF] text-sm focus:outline-none focus:ring-2 focus:ring-[#101828]/20 focus:border-[#101828]"
                     style={{ backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
                   />

@@ -56,7 +56,7 @@ export default function AboutSection1() {
               color: '#4A5565',
             }}
           >
-            Asthesis exists to protect dignity, independence, and peace of mind. We believe care technology should feel invisible, respectful, and deeply human.
+            Asthesis exists to protect dignity and independence, and to deliver support for proactive, person-centred care at home. We believe care technology should feel invisible, respectful, and deeply human.
           </p>
         </div>
       </div>

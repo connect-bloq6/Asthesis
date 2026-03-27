@@ -16,7 +16,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: 'Asthesis - A New Standard of Care',
-  description: 'Designed to support life—without getting in the way.',
+  description:
+    'AI-enabled technology enabled care (TEC): privacy-preserving remote monitoring without cameras or wearables, supporting independent living and home-first care models.',
 }
 
 export default function RootLayout({

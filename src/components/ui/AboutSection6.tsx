@@ -39,7 +39,7 @@ export default function AboutSection6() {
                 color: '#101828',
               }}
             >
-              Engineers, caregivers, and healthcare experts—together.
+              Engineers, carers, and healthcare experts—together.
             </h2>
             <div className="space-y-5 max-w-[587px]">
               <p
@@ -52,9 +52,10 @@ export default function AboutSection6() {
                   color: '#4A5565',
                 }}
               >
-                Asthesis is built by a multidisciplinary team that includes software engineers, AI researchers, geriatric care specialists, ethicists, and family caregivers.
+                Asthesis brings together expertise across engineering, AI, care, ethics and lived experience. We work at the intersection of health technology and human-centred care, with a focus on practical solutions for individuals, carers, providers, local authorities, NHS commissioners and wider care systems.
+
               </p>
-              <p
+              {/* <p
                 style={{
                   fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                   fontWeight: 400,
@@ -76,8 +77,8 @@ export default function AboutSection6() {
                   color: '#4A5565',
                 }}
               >
-                We collaborate closely with families, care organisations, and healthcare providers to ensure our solutions truly serve the people who need them most.
-              </p>
+                We collaborate closely with individuals, carers, providers, local authorities, NHS commissioners, care organisations and healthcare providers to ensure our solutions truly serve the people who need them most.
+              </p> */}
             </div>
           </div>
           <div className="relative w-full max-w-[620px] overflow-hidden rounded-xl sm:rounded-2xl lg:mx-0 mx-auto aspect-[592/500] min-h-[260px] sm:min-h-[300px] lg:min-h-[400px]">

@@ -189,8 +189,8 @@ export function useKnowMoreModal() {
               className="mx-auto mb-8 max-w-2xl text-center text-[0.95rem] leading-relaxed text-[#3D3D3D] md:mx-0 md:text-left md:text-[1.02rem]"
             >
               Asthesis brings together ambient intelligence, thoughtful design, and responsive AI to create a new
-              standard of Care at home. By understanding daily rhythms, sensing subtle changes, and enabling timely
-              support, Asthesis helps make aging feel safer, calmer, and more connected.
+              standard of care at home. By understanding daily rhythms, sensing subtle changes, and enabling timely
+              support, Asthesis helps deliver AI-enabled technology enabled care (TEC)—supporting independent living and home-based support with calmer, better-connected care.
             </p>
             <div className="mb-10 h-px w-full bg-gradient-to-r from-transparent via-[#1D1D1F]/12 to-transparent" aria-hidden />
 
@@ -241,7 +241,7 @@ export function useKnowMoreModal() {
                   <div className="relative aspect-[16/10] min-h-[200px] w-full bg-[#E8DFD4] lg:order-2 lg:aspect-auto lg:min-h-[280px]">
                     <Image
                       src={KNOW_MORE_FEATURE_IMAGES.connectedCare}
-                      alt="Video call on a laptop — connected Care and family reassurance"
+                      alt="Video call on a laptop — connected care and reassurance for care partners"
                       fill
                       className="object-cover"
                       sizes={knowMoreImageSizes}
@@ -256,8 +256,8 @@ export function useKnowMoreModal() {
                     </div>
                     <p className="mb-4 text-[0.9375rem] leading-relaxed text-[#3D3D3D] md:text-[1rem]">
                       From one-touch video calls to intelligent alerts and responsive support, Asthesis transforms
-                      advanced sensing into everyday reassurance. It is built to strengthen Care for older adults,
-                      families, and caregivers while preserving comfort, dignity, and independence.
+                      advanced sensing into everyday reassurance. It is built to strengthen care for individuals, carers,
+                      providers, local authorities and NHS commissioners while preserving comfort, dignity, and independence.
                     </p>
                     <ul className="space-y-1.5 border-t border-[#1D1D1F]/[0.06] pt-4 text-[0.8125rem] leading-snug text-[#6F6F6F] md:text-[0.875rem]">
                       <li className="flex gap-2">
@@ -297,8 +297,8 @@ export function useKnowMoreModal() {
                     </div>
                     <p className="mb-4 text-[0.9375rem] leading-relaxed text-[#3D3D3D] md:text-[1rem]">
                       With privacy shutters, secure system architecture, on-device AI processing, resilient
-                      connectivity, and dependable backup power, Asthesis is designed to deliver Care you can trust.
-                      Every layer is built to support safety, consent, and peace of mind.
+                      connectivity, and dependable backup power, Asthesis is designed to deliver care you can trust.
+                      Every layer is built to support safety, consent, and support for proactive, person-centred care at home.
                     </p>
                     <ul className="space-y-1.5 border-t border-[#1D1D1F]/[0.06] pt-4 text-[0.8125rem] leading-snug text-[#6F6F6F] md:text-[0.875rem]">
                       <li className="flex gap-2">

@@ -100,6 +100,7 @@ export function useLandingScrollTimeline(
   const videoStickyCardRef = useRef<HTMLDivElement>(null)
   const videoPlaceholderRef = useRef<HTMLDivElement>(null)
   const careVideoBrandingRef = useRef<HTMLDivElement>(null)
+  const careVideoSensingRef = useRef<HTMLSpanElement>(null)
   const careVideoRef = useRef<HTMLVideoElement>(null)
 
   const videoStickStartYRef = useRef(0)
@@ -433,6 +434,9 @@ export function useLandingScrollTimeline(
     let rafId = 0
 
     const tick = (now: number) => {
+      if (typeof window !== 'undefined') {
+        scrollYRef.current = window.scrollY || document.documentElement.scrollTop || 0
+      }
       const y = scrollYRef.current
       const vh = stableVhRef.current
       const HERO_HEIGHT_THRESHOLD = 0.12
@@ -633,12 +637,30 @@ export function useLandingScrollTimeline(
       }
 
       const careVideo = careVideoRef.current
-      if (careVideo && videoStickyModeRef.current === 'stuck') {
-        const videoNext = smoothedVideoTransitionRef.current
-        if (videoNext >= VIDEO_TRANSITION_PROGRESS_AT_50_PCT) {
+      if (careVideo) {
+        const vSticky = videoStickyModeRef.current
+        const tgtProgress = videoTransitionTargetRef.current
+        const stickyCard = videoStickyCardRef.current
+        const vhView = typeof window !== 'undefined' ? window.innerHeight : vh
+        let cardFullyOffScreen = false
+        if (stickyCard) {
+          const cr = stickyCard.getBoundingClientRect()
+          cardFullyOffScreen = cr.bottom <= 0 || cr.top >= vhView
+        }
+        const scrollPastStickyRangeEnd = stickRange > 1 && stickEnd > 0 && y >= stickEnd
+        let atDocumentScrollBottom = false
+        if (typeof document !== 'undefined') {
+          const docEl = document.documentElement
+          const maxScrollY = Math.max(0, docEl.scrollHeight - docEl.clientHeight)
+          atDocumentScrollBottom = maxScrollY > 0 && y >= maxScrollY - 32
+        }
+        const pastHalfHeight =
+          vSticky === 'after' ||
+          (vSticky === 'stuck' && tgtProgress >= VIDEO_TRANSITION_PROGRESS_AT_50_PCT)
+        if (pastHalfHeight || cardFullyOffScreen || scrollPastStickyRangeEnd || atDocumentScrollBottom) {
           if (!careVideo.paused) careVideo.pause()
-        } else if (careVideo.paused) {
-          careVideo.play().catch(() => {})
+        } else if (vSticky === 'stuck' && tgtProgress < VIDEO_TRANSITION_PROGRESS_AT_50_PCT && !cardFullyOffScreen) {
+          if (careVideo.paused) careVideo.play().catch(() => {})
         }
       }
 
@@ -749,6 +771,27 @@ export function useLandingScrollTimeline(
         }
       }
 
+      // Sensing label: move up by the same amount the card height shrinks (same vp as card).
+      // Fixed px caps were too small vs the real shrink; this tracks the card's bottom edge.
+      const sensingEl = careVideoSensingRef.current
+      if (sensingEl) {
+        if (mode === 'before') {
+          sensingEl.style.removeProperty('transform')
+          sensingEl.style.removeProperty('opacity')
+        } else if (baseH > 0) {
+          const endScale = VIDEO_TRANSITION_HEIGHT_SCALE_END
+          const currentHeight =
+            mode === 'after' ? baseH * endScale : baseH * (1 - (1 - endScale) * vp)
+          const heightDelta = baseH - currentHeight
+          sensingEl.style.transform = `translateY(${-heightDelta}px)`
+          const progress = mode === 'after' ? 1 : vp
+          sensingEl.style.opacity = String(Math.max(1 - progress * 0.2, 0.7))
+        } else {
+          sensingEl.style.removeProperty('transform')
+          sensingEl.style.removeProperty('opacity')
+        }
+      }
+
       rafId = requestAnimationFrame(tick)
     }
 
@@ -767,6 +810,7 @@ export function useLandingScrollTimeline(
       videoStickyCardRef,
       videoPlaceholderRef,
       careVideoBrandingRef,
+      careVideoSensingRef,
       careVideoRef,
       systemTextRef,
       styleTextRef,
