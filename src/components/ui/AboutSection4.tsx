@@ -47,27 +47,27 @@ const bodyStyle = {
 const values = [
   {
     icon: '/images/Frame.png',
-    title: 'Dignity First',
+    title: 'Dignity first',
     description:
-      "Every design decision starts with one question: does this preserve the person's sense of autonomy and respect? We never compromise on dignity.",
+      'We design for autonomy, consent and respect. Every decision starts with one question: does this protect the person\'s dignity and support independent living, not surveillance?',
   },
   {
     icon: '/images/Frame2.png',
-    title: 'Quiet Intelligence',
+    title: 'Quiet intelligence',
     description:
-      'The best technology disappears into the background. Asthesis works silently, learning patterns without demanding attention or disrupting routines.',
+      'The best care technology fits naturally into everyday life and works in the background. Asthesis learns patterns quietly, without demanding attention, adding wearables, or disrupting routines.',
   },
   {
     icon: '/images/Frame3.png',
-    title: 'Trust Through Transparency',
+    title: 'Trust through transparency',
     description:
-      "We earn trust by being radically clear about what we collect, how it's used, and who has access. No hidden agendas, no data exploitation.",
+      'Clear data use, strong privacy principles and user control are essential. We are open about what we measure, how information is used, and who can see it. There are no hidden agendas and no unnecessary data sharing.',
   },
   {
     icon: '/images/Frame4.png',
-    title: 'Care Without Fear',
+    title: 'Care without intrusion',
     description:
-      "Caring shouldn't mean living in constant worry. We create calm confidence—knowing help is available if needed, without hovering or anxiety.",
+      'Support should feel enabling, not supervisory. We focus on calm, proportionate help that is there when needed, without people feeling watched, overwhelmed by alerts, or checked on unnecessarily.',
   },
 ]
 

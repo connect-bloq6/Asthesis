@@ -39,7 +39,7 @@ export default function ImpactSection1() {
               color: '#101828',
             }}
           >
-            When care comes
+            When care only reacts
           </h1>
         </div>
       </div>

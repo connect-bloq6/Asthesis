@@ -4,6 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 
+const APP_LOGIN_URL = 'https://app.asthesis.com'
+
 const navItems = [
   { label: 'Homepage', href: '/' },
   { label: 'About Us', href: '/about' },
@@ -97,7 +99,7 @@ export default function Navbar({ solid = false }: NavbarProps) {
 
           {/* Login Button for Desktop - Hidden on mobile */}
           <Link
-            href="/login"
+            href={APP_LOGIN_URL}
             className="px-5 py-3 rounded-full bg-[#F5E6D3] hidden md:flex items-center gap-3 hover:bg-[#EBD9C3] transition-colors"
           >
             <span className="text-sm font-medium text-foreground">Login</span>
@@ -168,7 +170,7 @@ export default function Navbar({ solid = false }: NavbarProps) {
             
             {/* Login Button */}
             <Link
-              href="/login"
+              href={APP_LOGIN_URL}
               className="mt-6 mx-4 px-5 py-3 rounded-full bg-[#F5E6D3] flex items-center justify-center gap-3 hover:bg-[#EBD9C3] transition-colors"
               onClick={closeMenu}
             >

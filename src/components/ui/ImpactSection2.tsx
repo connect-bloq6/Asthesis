@@ -45,7 +45,7 @@ export default function ImpactSection2() {
                       textShadow: '0 1px 2px rgba(0,0,0,0.2)',
                     }}
                   >
-                    Too late
+                    not anticipates
                   </h2>
                   <p
                     className="max-w-[640px] text-white text-sm sm:text-base md:text-lg lg:text-[18px] leading-relaxed"
@@ -55,7 +55,7 @@ export default function ImpactSection2() {
                       textShadow: '0 1px 2px rgba(0,0,0,0.2)',
                     }}
                   >
-                    Across homes worldwide, preventable incidents go unnoticed — not from neglect, but from silence.
+                     In many homes, small but important changes in routine, mobility or sleep go unnoticed until they become a crisis. Not through neglect, but because health and social care teams simply don’t have continuous visibility between visits.
                   </p>
                 </div>
               </div>

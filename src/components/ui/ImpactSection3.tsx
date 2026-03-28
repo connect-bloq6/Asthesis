@@ -51,7 +51,7 @@ export default function ImpactSection3() {
                 lineHeight: '1.65',
               }}
             >
-              As demand for home-based care grows and support networks become more distributed, traditional care systems struggle to keep pace. Many rely on emergency buttons, scheduled check-ins, or constant supervision — systems that act only after something has already gone wrong. In most cases, the warning signs were present long before the emergency.
+              A growing number of people are living independently with limited day-to-day visibility for families and services. Traditional approaches often depend on emergency alarms, scheduled check-ins or escalation after a problem has already become serious.
             </p>
           </div>
         </div>

@@ -40,7 +40,7 @@ export default function ImpactSection4() {
           </span>
         </h2>
 
-        {/* Paragraph: exactly 3 lines – full width of section so line 1 doesn’t wrap */}
+        {/* Body: opening lines in grey, Asthesis line emphasised */}
         <div
           className="w-full mt-6 sm:mt-10 md:mt-12 text-center text-sm sm:text-base"
           style={{
@@ -50,13 +50,13 @@ export default function ImpactSection4() {
           }}
         >
           <span className="block" style={{ color: '#6E6E73' }}>
-            Falls, health declines, and environmental risks often develop through small, compounding changes in daily life.
+            Risk often emerges before crisis.
           </span>
           <span className="block mt-1" style={{ color: '#6E6E73' }}>
-            Missed routines. Altered movement. Extended inactivity. Environmental shifts.
+            Missed routines, altered movement, prolonged inactivity and environmental changes can all be early indicators that a person may need review or support.
           </span>
           <span className="block font-semibold mt-1" style={{ color: '#1D1D1F' }}>
-            Asthesis exists to close this gap.
+            Asthesis is designed to help close this gap through continuous, non-intrusive monitoring.
           </span>
         </div>
       </div>

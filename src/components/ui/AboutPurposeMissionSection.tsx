@@ -57,15 +57,16 @@ export default function AboutPurposeMissionSection() {
                 Our purpose
               </p>
               <h2 className="mb-5" style={mainHeadingStyle}>
-                Dignity-first care, always.
+                To enable person-centred, preventative care at home
               </h2>
               <p className="mb-6" style={bodyStyle}>
-                We exist to ensure that everyone can live with independence, dignity, and safety—without sacrificing privacy or comfort.
+                We believe people should be able to live with greater confidence in the place they call home. Our purpose is to support:
               </p>
               <ul className="list-disc list-outside pl-5 space-y-2.5" style={{ ...bodyStyle }}>
-                <li>Enable independent living without constant supervision</li>
-                <li>Provide individuals, carers, providers, local authorities and NHS commissioners with support for proactive, person-centred care at home—not intrusive monitoring</li>
-                <li>Respect privacy while protecting wellbeing</li>
+                <li>safer independent living</li>
+                <li>earlier recognition of deterioration or emerging risk</li>
+                <li>reduced reliance on intrusive monitoring</li>
+                <li>more dignified, personalised support</li>
               </ul>
             </div>
           </div>
@@ -81,15 +82,19 @@ export default function AboutPurposeMissionSection() {
                 Our mission
               </p>
               <h2 className="mb-5" style={mainHeadingStyle}>
-                Redefining welfare technology.
+                Redefining technology enabled care through intelligent, privacy-preserving monitoring
               </h2>
               <p className="mb-6" style={bodyStyle}>
-                We&apos;re building intelligent systems that understand context, respect boundaries, and act with care—not just algorithms.
+                Asthesis is developing systems that learn patterns over time, recognise meaningful change and provide useful insight without cameras, wearables or constant user input.
+              </p>
+              <p className="mb-4" style={bodyStyle}>
+                Our mission is to:
               </p>
               <ul className="list-disc list-outside pl-5 space-y-2.5" style={{ ...bodyStyle }}>
-                <li>Develop AI that learns routines without recording lives</li>
-                <li>Create technology that feels invisible and unobtrusive</li>
-                <li>Set new standards for ethical care innovation</li>
+                <li>support preventative and anticipatory care</li>
+                <li>enable early intervention</li>
+                <li>improve visibility between appointments or visits</li>
+                <li>set a higher standard for ethical, home-based care technology</li>
               </ul>
             </div>
           </div>

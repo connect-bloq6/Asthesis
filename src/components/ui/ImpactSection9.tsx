@@ -3,28 +3,27 @@
 import Image from 'next/image'
 
 /**
- * Impact – Section 8: three feature blocks. Icon (msg, like, heart) + title + description.
- * Icons left-aligned; titles and paragraphs left-aligned in a column; icon vertically centered with title.
+ * Impact – feature blocks + impact_l image + closing section (label, heading, paragraph).
  */
 
 const FEATURES = [
   {
     icon: '/images/msg.png',
-    title: 'Preventing Silent Emergencies',
+    title: 'Preventing avoidable harm',
     description:
-      'By detecting subtle changes in daily patterns, Asthesis supports proactive identification of risk and prioritisation of review — enabling early intervention and escalation based on emerging risk for individuals, carers, providers, local authorities and NHS commissioners.',
+      'By detecting subtle changes in daily patterns, Asthesis can help highlight concerns earlier and support proportionate intervention before a crisis develops.',
   },
   {
     icon: '/images/like.png',
-    title: 'Support across the care pathway',
+    title: 'Supporting carers and families',
     description:
-      "Distance doesn't have to mean disconnection. Asthesis delivers support for proactive, person-centred care at home for individuals, carers, providers, local authorities and NHS commissioners — without constant check-ins or invasive monitoring, and with relationships built on respect and trust.",
+      'Asthesis provides reassurance without requiring constant check-ins or intrusive monitoring, helping build confidence around home-based care.',
   },
   {
     icon: '/images/heart.png',
-    title: 'Strengthening Care Systems',
+    title: 'Strengthening care system responsiveness',
     description:
-      'Healthcare and social care organisations can shift from reactive response to proactive support — enabling targeted, person-centred intervention and smarter use of workforce capacity while respecting individual autonomy.',
+      'Asthesis can support services to move from reactive response to more proactive support, with better visibility of emerging need and more informed prioritisation.',
   },
 ]
 
@@ -32,7 +31,7 @@ export default function ImpactSection9() {
   return (
     <section
       className="relative w-full bg-white"
-      aria-label="Features"
+      aria-label="Impact features and closing"
     >
       <div className="max-w-[900px] mx-auto px-4 sm:px-6 md:px-10 lg:px-12 pt-10 sm:pt-16 md:pt-20 lg:pt-24 pb-10 sm:pb-14 md:pb-16">
         <div className="space-y-8 sm:space-y-12 md:space-y-14">
@@ -75,7 +74,7 @@ export default function ImpactSection9() {
           ))}
         </div>
       </div>
-      {/* men.png – responsive; full width in container */}
+      {/* impact_l.png – responsive; full width in container */}
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 pb-10 sm:pb-16 md:pb-24">
         <div className="relative w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl max-w-[1232px] aspect-[4/3] sm:aspect-[1232/600] min-h-[200px] sm:min-h-[280px] max-h-[420px] sm:max-h-[480px] lg:max-h-[520px] mx-auto">
           <Image
@@ -85,6 +84,44 @@ export default function ImpactSection9() {
             className="object-cover object-center"
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 100vw, 1232px"
           />
+        </div>
+        <div
+          className="max-w-[900px] mx-auto pt-10 sm:pt-14 md:pt-16 lg:pt-20"
+          aria-labelledby="impact-section9-closing-heading"
+        >
+          <p
+            className="uppercase tracking-[0.08em] mb-3 sm:mb-4"
+            style={{
+              fontFamily: 'var(--font-inter), Inter',
+              fontWeight: 500,
+              fontSize: '12px',
+              lineHeight: '20px',
+              letterSpacing: '0.1em',
+              color: '#6E6E73',
+            }}
+          >
+            CLOSING SECTION
+          </p>
+          <h2
+            id="impact-section9-closing-heading"
+            className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold leading-tight tracking-tight mb-4 sm:mb-6 text-[#101828]"
+            style={{
+              fontFamily: 'Inter, var(--font-inter), system-ui, sans-serif',
+              lineHeight: '1.25',
+            }}
+          >
+            A more preventative future for care at home
+          </h2>
+          <p
+            className="text-[#4A5565] text-sm sm:text-base md:text-lg leading-relaxed max-w-[768px]"
+            style={{
+              fontFamily: 'Inter, var(--font-inter), system-ui, sans-serif',
+              fontWeight: 400,
+              lineHeight: '1.6',
+            }}
+          >
+            We believe technology enabled care should help systems act earlier, support independence for longer, and improve the experience of care for individuals, families and services alike.
+          </p>
         </div>
       </div>
     </section>

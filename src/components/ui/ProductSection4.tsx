@@ -12,18 +12,21 @@ import Link from 'next/link'
 const FEATURES = [
   {
     image: '/images/motion.png',
-    title: 'Motion',
-    description: 'Understands daily movement patterns and detects anomalies',
+    title: 'Motion monitoring',
+    description:
+      'Builds an understanding of day-to-day movement patterns and helps identify anomalies that may indicate increased risk.',
   },
   {
     image: '/images/mapping.png',
-    title: 'LiDAR Gait Mapping',
-    description: 'Analyzes walking patterns to identify mobility changes and early fall risk indicators.',
+    title: 'LiDAR gait mapping',
+    description:
+      'Supports insight into walking patterns and mobility change, helping identify possible early indicators of deterioration or falls risk.',
   },
   {
     image: '/images/thermal.png',
-    title: 'Thermal Vision',
-    description: 'Recognises heat signatures and presence without using cameras or recording images.',
+    title: 'Thermal sensing',
+    description:
+      'Detects heat signatures and presence without cameras or recorded images, supporting a more privacy-conscious approach to remote monitoring.',
   },
 ]
 
@@ -74,7 +77,7 @@ export default function ProductSection4() {
             </p>
           </div>
           <div className="mt-6 lg:mt-0 lg:flex-shrink-0">
-            <Link
+            {/* <Link
               href="#explore"
               className="inline-flex items-center gap-2 w-fit px-4 py-2.5 sm:px-5 sm:py-2.5 rounded-full bg-[#F6EFE0] border border-[#E5D9C8] hover:bg-[#EBDCC8] transition-colors text-[#1D1D1F] text-[14px] sm:text-[15px] font-medium"
               style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
@@ -83,7 +86,7 @@ export default function ProductSection4() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden className="flex-shrink-0">
                 <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </Link>
+            </Link> */}
           </div>
         </div>
 
@@ -93,13 +96,13 @@ export default function ProductSection4() {
         {/* 3 feature cards at once, with left/right nav icons (Figma: outline circle 31×31, arrow #636363) */}
         <div className="relative flex items-center gap-4 sm:gap-6 lg:gap-8 pb-16 sm:pb-20 lg:pb-24 xl:pb-28">
           {/* Left icon – outline circle, dark grey arrow #636363 */}
-          <button
+          {/* <button
             type="button"
             className="flex-shrink-0 w-[31px] h-[31px] rounded-full border-2 border-[#636363] bg-transparent hover:bg-[#636363]/10 flex items-center justify-center transition-colors"
             aria-label="Previous"
           >
             <NavArrowLeft />
-          </button>
+          </button> */}
 
           {/* Three cards grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10 lg:gap-12 flex-1 min-w-0">
@@ -136,13 +139,13 @@ export default function ProductSection4() {
           </div>
 
           {/* Right icon – outline circle, dark grey arrow #636363 */}
-          <button
+          {/* <button
             type="button"
             className="flex-shrink-0 w-[31px] h-[31px] rounded-full border-2 border-[#636363] bg-transparent hover:bg-[#636363]/10 flex items-center justify-center transition-colors"
             aria-label="Next"
           >
             <NavArrowRight />
-          </button>
+          </button> */}
         </div>
       </div>
     </section>

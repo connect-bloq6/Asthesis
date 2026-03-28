@@ -4,7 +4,7 @@ import Image from 'next/image'
 
 /**
  * Impact – "OUR VISION" section. Same white bg as other sections. Left = device.png in gray card, right = text.
- * Heading: "coexist" #B94A3A; line 2 = "and safety". Description in exactly 3 lines.
+ * Heading: "coexist" #B94A3A. Vision paragraph below.
  */
 
 export default function ImpactSection8() {
@@ -31,7 +31,7 @@ export default function ImpactSection8() {
             </div>
           </div>
 
-          {/* Right column – OUR VISION, heading, description (3 lines); closer to image, shifted left */}
+          {/* Right column – OUR VISION, heading, description; closer to image, shifted left */}
           <div className="order-1 lg:order-2 min-w-0 lg:-ml-[3%] xl:-ml-[4%] lg:pl-0">
             <p
               className="uppercase tracking-[0.08em] mb-2 sm:mb-4"
@@ -53,10 +53,10 @@ export default function ImpactSection8() {
                 lineHeight: '1.25',
               }}
             >
-              <span className="block">A future where independence <span style={{ color: '#B94A3A' }}>coexist</span></span>
-              <span className="block mt-1">and safety</span>
+              <span className="block">
+                A future where independence and safety <span style={{ color: '#B94A3A' }}>coexist</span>.
+              </span>
             </h2>
-            {/* Description: exactly 3 lines – min-width so it stays 3 lines */}
             <div
               className="w-full max-w-full lg:min-w-[420px] text-[#4A5565] text-sm sm:text-base md:text-lg"
               style={{
@@ -65,9 +65,9 @@ export default function ImpactSection8() {
                 lineHeight: '1.5',
               }}
             >
-              <span className="block">We envision communities where people live independently for longer, with confidence rather than fear.</span>
-              <span className="block mt-0.5">Where care systems act early, calmly, and ethically.</span>
-              <span className="block mt-0.5">Asthesis is a step toward a more human future of care.</span>
+              <p className="m-0">
+                We imagine communities where people can live at home for longer, with confidence rather than fear, and where health and social care teams can act earlier, calmly and ethically, so support feels more human, not more intrusive.
+              </p>
             </div>
           </div>
         </div>

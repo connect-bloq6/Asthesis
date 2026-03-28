@@ -27,7 +27,7 @@ export default function ProductSection1() {
             >
               Asthesis
             </h1>
-            <div className="max-w-[440px]">
+            <div className="w-full max-w-[min(100%,680px)] lg:max-w-[min(100%,720px)]">
               <p
                 className="text-lg sm:text-xl font-bold text-[#1D1D1F] mb-3 sm:mb-4"
                 style={{
@@ -35,8 +35,27 @@ export default function ProductSection1() {
                   lineHeight: '1.3',
                 }}
               >
-                An AI-powered home monitoring device for independent living and home-based support
+                An AI-powered, home-based technology enabled care platform for proactive wellbeing monitoring
               </p>
+              <p
+                className="text-base sm:text-lg leading-relaxed mb-5 sm:mb-6"
+                style={{
+                  fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                  fontWeight: 400,
+                  color: '#6B6F76',
+                }}
+              >
+                Asthesis is an intelligent in-home solution designed to support early identification of risk, safer independent living and more informed decision-making across care pathways.
+              </p>
+              {/* <p
+                className="text-sm sm:text-base font-semibold text-[#1D1D1F] mb-2 sm:mb-2.5"
+                style={{
+                  fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                  lineHeight: '1.35',
+                }}
+              >
+                Supporting line
+              </p> */}
               <p
                 className="text-base sm:text-lg leading-relaxed mb-8 sm:mb-10"
                 style={{
@@ -45,10 +64,10 @@ export default function ProductSection1() {
                   color: '#6B6F76',
                 }}
               >
-                Asthesis is a proactive, intelligent home device designed to quietly monitor wellbeing, detect risk early, and support independence — without feeling intrusive or clinical.
+                By combining ambient monitoring, on-device AI and privacy-preserving sensing, Asthesis helps detect changes in routine, movement and wellbeing without requiring the user to wear or manage additional equipment.
               </p>
             </div>
-            <Link
+            {/* <Link
               href="#explore"
               className="inline-flex items-center gap-3 w-fit px-6 py-3.5 sm:px-7 sm:py-4 rounded-full bg-[#F6EFE0] border border-[#E5D9C8] hover:bg-[#EBDCC8] transition-colors text-[#1D1D1F] text-[15px] font-medium"
               style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
@@ -57,7 +76,7 @@ export default function ProductSection1() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden>
                 <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            </Link>
+            </Link> */}
           </div>
 
           {/* Right column – device: smaller, off-frame right, rotated (reference) */}

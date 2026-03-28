@@ -64,10 +64,10 @@ export function HeroSection({ videoRef, showChampagneGradient, onTimeUpdate }: P
                 Sensing What Matters
               </h1>
               <p
-                className="text-center font-semibold tracking-tight leading-snug max-w-[min(42rem,94vw)] bg-clip-text text-transparent text-balance"
+                className="text-center font-semibold tracking-tight leading-snug whitespace-nowrap bg-clip-text text-transparent"
                 style={{
                   fontFamily: 'var(--font-unbounded), Unbounded, system-ui, sans-serif',
-                  fontSize: 'clamp(1.125rem, 3vw, 1.625rem)',
+                  fontSize: 'clamp(0.75rem, 2.65vw, 1.625rem)',
                   backgroundImage: 'linear-gradient(to bottom, #9A7B3C 0%, #A68B45 35%, #B89850 65%, #D4BC7A 100%)',
                   WebkitBackgroundClip: 'text',
                   backgroundClip: 'text',

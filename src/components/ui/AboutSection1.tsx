@@ -43,7 +43,7 @@ export default function AboutSection1() {
               color: '#101828',
             }}
           >
-            We&apos;re building technology that quietly looks out for people—when it matters most.
+            We&apos;re building AI enabled home technology that quietly looks out for people, especially when it matters most.
           </h1>
 
           {/* Description – responsive font size: mobile/iPad smaller, desktop 20px */}
@@ -56,7 +56,7 @@ export default function AboutSection1() {
               color: '#4A5565',
             }}
           >
-            Asthesis exists to protect dignity and independence, and to deliver support for proactive, person-centred care at home. We believe care technology should feel invisible, respectful, and deeply human.
+            Asthesis exists to protect dignity and independence while supporting more proactive, person centred care at home for older, disabled and vulnerable people. Designed for health and social care teams across the NHS and local authorities, our privacy preserving, non intrusive monitoring helps identify emerging risks earlier, so the right support can be offered before a situation becomes a crisis, and people can remain safely in the place they call home for longer.
           </p>
         </div>
       </div>

@@ -8,10 +8,10 @@ import Image from 'next/image'
  */
 
 const BULLETS = [
-  'Reduce preventable emergencies',
-  'Support independence with dignity',
-  'Reassurance for individuals, carers, providers, local authorities and NHS commissioners—without surveillance',
-  'Deliver privacy-preserving, person-centred monitoring',
+  'Identify emerging risk earlier, before a crisis develops, strengthening technology enabled care pathways',
+  'Reduce avoidable escalation and emergency presentations, supporting home-first and virtual models of care',
+  'Support people to remain safely and independently at home',
+  'Provide reassurance without surveillance, through privacy preserving monitoring',
 ]
 
 export default function ImpactSection7() {
@@ -22,7 +22,7 @@ export default function ImpactSection7() {
     >
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-10 xl:px-12 py-10 sm:py-16 md:py-20 lg:py-24">
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-8 sm:gap-10 lg:gap-10 xl:gap-12 lg:items-center">
-          {/* Left column – more width so "but by" stays on line 1; shift ~1% right */}
+          {/* Left column; shift ~1% right */}
           <div className="order-2 lg:order-1 min-w-0 ml-[1%]">
             <p
               className="uppercase tracking-[0.08em] mb-3 sm:mb-4"
@@ -46,10 +46,9 @@ export default function ImpactSection7() {
             >
               <span className="block text-[#101828]">Preventing avoidable harm</span>
               <span className="block mt-1" style={{ color: '#B94A3A' }}>
-                through quiet awareness
+                through proactive insight
               </span>
             </h2>
-            {/* Description: exactly 2 lines – use full column width so "but by" stays on line 1 */}
             <div
               className="w-full max-w-full mb-5 sm:mb-8 text-[#4A5565] text-sm sm:text-base md:text-lg leading-relaxed"
               style={{
@@ -58,8 +57,9 @@ export default function ImpactSection7() {
                 lineHeight: '1.6',
               }}
             >
-              <span className="block">Asthesis is designed to support people before situations escalate — not by watching constantly, but by</span>
-              <span className="block mt-0.5">understanding context over time.</span>
+              <p className="m-0">
+                Asthesis supports a more preventative, person-centred and digitally enabled model of care by helping services:
+              </p>
             </div>
             <ul className="space-y-2 sm:space-y-3 list-disc list-inside text-[#4A5565] text-sm sm:text-base md:text-lg">
               {BULLETS.map((item) => (
@@ -81,7 +81,7 @@ export default function ImpactSection7() {
             <div className="relative w-full max-w-[280px] sm:max-w-[320px] md:max-w-[360px] lg:max-w-[380px] xl:max-w-[400px] mx-auto lg:mr-0 aspect-[4/5] max-h-[320px] sm:max-h-[380px] lg:max-h-[420px]">
               <Image
                 src="/images/Group.png"
-                alt="Asthesis device – designed to support people before situations escalate"
+                alt="Asthesis device supporting preventative, person-centred care at home"
                 fill
                 className="object-contain object-center"
                 sizes="(max-width: 1024px) 85vw, 420px"

@@ -3,7 +3,7 @@
 import Image from 'next/image'
 
 /**
- * Product page – Last section: full-width image (men2.png) with text overlay.
+ * Product page – Last section: full-width lifestyle image with “Proactive, not reactive” overlay.
  * Uses 100% width (not 100vw) to prevent overlay text cropping on mobile.
  */
 
@@ -33,7 +33,7 @@ export default function ProductSection5() {
               <div className="w-full h-full min-w-0 px-3 sm:px-6 md:px-12 lg:px-16 flex flex-col justify-start max-w-[1440px] mx-auto box-border">
                 <div className="max-w-[640px] w-[calc(100%-1.5rem)] sm:w-auto ml-0 sm:ml-[1%] pr-3 sm:pr-6 md:pr-8 py-3 sm:py-5 md:py-6 rounded-lg sm:rounded-xl md:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
                   <h2
-                    className="uppercase mb-2 sm:mb-4 md:mb-6"
+                    className="mb-2 sm:mb-4 md:mb-6"
                     style={{
                       fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                       fontWeight: 600,
@@ -44,32 +44,19 @@ export default function ProductSection5() {
                       color: '#0A0A0A',
                     }}
                   >
-                    Proactive, Not Reactive
+                    Proactive, not reactive
                   </h2>
-                  <div className="space-y-2 sm:space-y-3">
-                    <p
-                      className="max-w-[640px] text-[#0A0A0A] text-[14px] sm:text-[16px] leading-[22px] sm:leading-[25.6px]"
-                      style={{
-                        fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
-                        fontWeight: 400,
-                        fontStyle: 'normal',
-                        letterSpacing: '0px',
-                      }}
-                    >
-                      Unlike buttons that rely on user action, Asthesis anticipates — detecting subtle changes early and supporting safety before help is needed.
-                    </p>
-                    <p
-                      className="max-w-[640px] text-[#0A0A0A] text-[14px] sm:text-[16px] leading-[22px] sm:leading-[25.6px]"
-                      style={{
-                        fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
-                        fontWeight: 400,
-                        fontStyle: 'normal',
-                        letterSpacing: '0px',
-                      }}
-                    >
-                      Through continuous pattern learning and contextual awareness, the system understands what&apos;s normal and identifies meaningful deviations that matter.
-                    </p>
-                  </div>
+                  <p
+                    className="max-w-[640px] text-[#0A0A0A] text-[14px] sm:text-[16px] leading-[22px] sm:leading-[25.6px] m-0"
+                    style={{
+                      fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                      fontWeight: 400,
+                      fontStyle: 'normal',
+                      letterSpacing: '0px',
+                    }}
+                  >
+                    Many traditional solutions rely on the individual pressing a button or requesting help. Asthesis is designed to support a more proactive model by identifying meaningful deviation from normal patterns and helping trigger timely follow-up when needed.
+                  </p>
                 </div>
               </div>
             </div>
