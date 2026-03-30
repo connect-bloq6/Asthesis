@@ -4,7 +4,7 @@ const nextConfig = {
   reactStrictMode: true,
   
   // Transpile Three.js packages for better compatibility
-  transpilePackages: ['three'],
+  transpilePackages: ['three', '@asthesis/shared'],
   
   // Image configuration
   images: {

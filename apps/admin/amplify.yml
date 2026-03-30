@@ -1,0 +1,18 @@
+# AWS Amplify: set "Monorepo application root" to apps/admin (this file’s directory).
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - cd ../..
+        - npm ci
+    build:
+      commands:
+        - npm run build -w admin
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - ../../node_modules/**/*
