@@ -65,7 +65,7 @@ export default function ContactPage() {
                 className="text-xl sm:text-2xl md:text-[1.65rem] lg:text-[1.75rem] font-semibold text-[#101828] leading-snug mb-2 sm:mb-3"
                 style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
               >
-                Speak to us about technology enabled care commissioning
+                Talk To Us About Technology Enabled Care
               </h1>
               <p
                 className="text-[#4A5565] text-sm sm:text-[0.9375rem] leading-relaxed mb-4 sm:mb-5 md:mb-6"

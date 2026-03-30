@@ -86,10 +86,10 @@ export default function ImpactSection9() {
           />
         </div>
         <div
-          className="max-w-[900px] mx-auto pt-10 sm:pt-14 md:pt-16 lg:pt-20"
+          className="max-w-[900px] mx-auto pt-10 sm:pt-14 md:pt-16 lg:pt-20 text-center"
           aria-labelledby="impact-section9-closing-heading"
         >
-          <p
+          {/* <p
             className="uppercase tracking-[0.08em] mb-3 sm:mb-4"
             style={{
               fontFamily: 'var(--font-inter), Inter',
@@ -101,7 +101,7 @@ export default function ImpactSection9() {
             }}
           >
             CLOSING SECTION
-          </p>
+          </p> */}
           <h2
             id="impact-section9-closing-heading"
             className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold leading-tight tracking-tight mb-4 sm:mb-6 text-[#101828]"
@@ -113,7 +113,7 @@ export default function ImpactSection9() {
             A more preventative future for care at home
           </h2>
           <p
-            className="text-[#4A5565] text-sm sm:text-base md:text-lg leading-relaxed max-w-[768px]"
+            className="text-[#4A5565] text-sm sm:text-base md:text-lg leading-relaxed max-w-[768px] mx-auto"
             style={{
               fontFamily: 'Inter, var(--font-inter), system-ui, sans-serif',
               fontWeight: 400,

@@ -61,10 +61,11 @@ export default function ImpactSection7() {
                 Asthesis supports a more preventative, person-centred and digitally enabled model of care by helping services:
               </p>
             </div>
-            <ul className="space-y-2 sm:space-y-3 list-disc list-inside text-[#4A5565] text-sm sm:text-base md:text-lg">
+            <ul className="space-y-2 sm:space-y-3 list-disc list-outside pl-5 sm:pl-6 marker:text-[#4A5565] text-[#4A5565] text-sm sm:text-base md:text-lg">
               {BULLETS.map((item) => (
                 <li
                   key={item}
+                  className="pl-1.5 sm:pl-2"
                   style={{
                     fontFamily: 'Inter, var(--font-inter), system-ui, sans-serif',
                     fontWeight: 400,
