@@ -14,10 +14,43 @@ const inter = Inter({
   weight: ['300', '400', '500', '600', '700'],
 })
 
+const defaultTitle = 'Asthesis - A New Standard of Care'
+const defaultDescription =
+  'AI-enabled technology enabled care (TEC): privacy-preserving remote monitoring without cameras or wearables, supporting independent living and home-first care models.'
+
 export const metadata: Metadata = {
-  title: 'Asthesis - A New Standard of Care',
-  description:
-    'AI-enabled technology enabled care (TEC): privacy-preserving remote monitoring without cameras or wearables, supporting independent living and home-first care models.',
+  metadataBase: new URL('https://asthesis.com'),
+  title: {
+    default: defaultTitle,
+    template: '%s | Asthesis',
+  },
+  description: defaultDescription,
+  openGraph: {
+    type: 'website',
+    locale: 'en_GB',
+    siteName: 'Asthesis',
+    title: defaultTitle,
+    description: defaultDescription,
+    images: [
+      {
+        url: '/images/Ast_logo_icon.png',
+        width: 512,
+        height: 512,
+        alt: 'Asthesis',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: defaultTitle,
+    description: defaultDescription,
+    images: ['/images/Ast_logo_icon.png'],
+  },
+  icons: {
+    icon: [{ url: '/images/Ast_logo_icon.png', type: 'image/png' }],
+    apple: [{ url: '/images/Ast_logo_icon.png', type: 'image/png' }],
+    shortcut: '/images/Ast_logo_icon.png',
+  },
 }
 
 export default function RootLayout({
