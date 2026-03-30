@@ -1,0 +1,40 @@
+# AWS Amplify Hosting (monorepo): must live at repo root when "My app is a monorepo" is enabled.
+# Set AMPLIFY_MONOREPO_APP_ROOT on each Amplify app: apps/web (marketing) or apps/admin (portal).
+# buildPath: / runs npm from the monorepo root so workspaces resolve.
+version: 1
+applications:
+  - appRoot: apps/web
+    frontend:
+      buildPath: /
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build -w web
+      artifacts:
+        baseDirectory: apps/web/.next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
+
+  - appRoot: apps/admin
+    frontend:
+      buildPath: /
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - npm run build -w admin
+      artifacts:
+        baseDirectory: apps/admin/.next
+        files:
+          - '**/*'
+      cache:
+        paths:
+          - node_modules/**/*
