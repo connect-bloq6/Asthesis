@@ -1,7 +1,61 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
+import { useCallback, useRef } from 'react'
+
+const ASSETS_BASE = (process.env.NEXT_PUBLIC_ASSETS_BASE_URL || '').replace(/\/$/, '')
+const assetUrl = (path: string) => (ASSETS_BASE ? `${ASSETS_BASE}${path.startsWith('/') ? path : `/${path}`}` : path)
+
+/** s3://asthesis-prod-assets/videos/Feature_1.mp4, Feature_2.mp4 */
+const FEATURE_VIDEO_MOTION = assetUrl('/videos/Feature_1.mp4')
+const FEATURE_VIDEO_GAIT = assetUrl('/videos/Feature_2.mp4')
+
+function toggleVideoFullscreen(el: HTMLVideoElement) {
+  if (document.fullscreenElement) {
+    void document.exitFullscreen()
+    return
+  }
+  const req =
+    el.requestFullscreen?.() ??
+    (el as HTMLVideoElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen?.()
+  if (req && typeof (req as Promise<void>).then === 'function') {
+    void (req as Promise<void>).catch(() => {})
+  }
+}
+
+/** Same outer size for every feature: 16:9, full column width */
+const FEATURE_MEDIA_SHELL =
+  'relative w-full aspect-video rounded-xl overflow-hidden mb-5 sm:mb-6 ring-1 ring-black/[0.06] shrink-0'
+
+function FeatureVideo({ src, title }: { src: string; title: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null)
+
+  const onOpenFullscreen = useCallback(() => {
+    const el = videoRef.current
+    if (el) toggleVideoFullscreen(el)
+  }, [])
+
+  return (
+    <div className={`${FEATURE_MEDIA_SHELL} bg-[#0A0A0A]`}>
+      <video
+        ref={videoRef}
+        className="absolute inset-0 w-full h-full object-cover"
+        src={src}
+        playsInline
+        muted
+        loop
+        autoPlay
+        preload="auto"
+      />
+      <button
+        type="button"
+        className="absolute inset-0 z-10 cursor-pointer bg-transparent p-0 border-0"
+        aria-label={`View ${title} video in fullscreen`}
+        onClick={onOpenFullscreen}
+      />
+    </div>
+  )
+}
 
 /**
  * Product page – Section 4: "FEATURES AVAILABLE".
@@ -11,13 +65,13 @@ import Link from 'next/link'
 
 const FEATURES = [
   {
-    image: '/images/motion.png',
-    title: 'Motion monitoring',
+    videoSrc: FEATURE_VIDEO_GAIT,
+    title: 'Seizure Detection',
     description:
-      'Builds an understanding of day-to-day movement patterns and helps identify anomalies that may indicate increased risk.',
+      'Detects sudden and gradual changes in movement patterns that may indicate a seizure, helping to provide early intervention and support.',
   },
   {
-    image: '/images/mapping.png',
+    videoSrc: FEATURE_VIDEO_MOTION,
     title: 'LiDAR gait mapping',
     description:
       'Supports insight into walking patterns and mobility change, helping identify possible early indicators of deterioration or falls risk.',
@@ -28,7 +82,7 @@ const FEATURES = [
     description:
       'Detects heat signatures and presence without cameras or recorded images, supporting a more privacy-conscious approach to remote monitoring.',
   },
-]
+] as const
 
 /** Figma: left arrow vector, color #636363, ~6.5×11px in 31×31 circle */
 function NavArrowLeft() {
@@ -105,35 +159,41 @@ export default function ProductSection4() {
           </button> */}
 
           {/* Three cards grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10 lg:gap-12 flex-1 min-w-0">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-10 lg:gap-12 flex-1 min-w-0 md:items-stretch">
             {FEATURES.map((item) => (
-              <div key={item.title} className="flex flex-col">
-                <div className="relative w-full aspect-[3/4] max-w-[320px] mx-auto md:max-w-none rounded-xl overflow-hidden bg-[#F9FAFB] mb-5 sm:mb-6">
-                  <Image
-                    src={item.image}
-                    alt={item.title}
-                    fill
-                    className="object-contain object-center p-2"
-                    sizes="(max-width: 767px) 320px, (max-width: 1024px) 33vw, 380px"
-                  />
+              <div key={item.title} className="flex flex-col h-full min-w-0">
+                {'videoSrc' in item ? (
+                  <FeatureVideo src={item.videoSrc} title={item.title} />
+                ) : (
+                  <div className={`${FEATURE_MEDIA_SHELL} bg-[#F9FAFB]`}>
+                    <Image
+                      src={item.image}
+                      alt={item.title}
+                      fill
+                      className="object-contain object-center p-2"
+                      sizes="(max-width: 767px) 100vw, (max-width: 1024px) 33vw, 400px"
+                    />
+                  </div>
+                )}
+                <div className="flex flex-col flex-1 min-h-0">
+                  <h3
+                    className="text-lg sm:text-xl font-semibold text-[#0A0A0A] mb-2"
+                    style={{
+                      fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                    }}
+                  >
+                    {item.title}
+                  </h3>
+                  <p
+                    className="text-[#4A5565] text-sm sm:text-base leading-relaxed flex-1"
+                    style={{
+                      fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                      fontWeight: 400,
+                    }}
+                  >
+                    {item.description}
+                  </p>
                 </div>
-                <h3
-                  className="text-lg sm:text-xl font-semibold text-[#0A0A0A] mb-2"
-                  style={{
-                    fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
-                  }}
-                >
-                  {item.title}
-                </h3>
-                <p
-                  className="text-[#4A5565] text-sm sm:text-base leading-relaxed"
-                  style={{
-                    fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
-                    fontWeight: 400,
-                  }}
-                >
-                  {item.description}
-                </p>
               </div>
             ))}
           </div>
