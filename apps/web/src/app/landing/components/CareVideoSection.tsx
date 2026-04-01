@@ -62,7 +62,7 @@ export function CareVideoSection({ refs, videoAfterTopPxRef, videoStickyMode, is
               lineHeight: 1.2,
             }}
           >
-            Proactive, person-centred care at home
+            Proactive, person centred care at home
           </h2>
           <button
             type="button"

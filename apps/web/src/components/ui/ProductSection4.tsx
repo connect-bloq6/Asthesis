@@ -80,7 +80,7 @@ const FEATURES = [
     image: '/images/thermal.png',
     title: 'Thermal sensing',
     description:
-      'Detects heat signatures and presence without cameras or recorded images, supporting a more privacy-conscious approach to remote monitoring.',
+      'Detects heat signatures and presence without cameras or recorded images, supporting a more privacy conscious approach to remote monitoring.',
   },
 ] as const
 
@@ -127,7 +127,7 @@ export default function ProductSection4() {
                 fontWeight: 400,
               }}
             >
-              Asthesis is designed to quietly support daily life through intelligent sensing, thoughtful interaction, and dependable safety — all without demanding constant attention from the user.
+              Asthesis is designed to quietly support daily life through intelligent sensing, thoughtful interaction, and dependable safety, all without demanding constant attention from the user.
             </p>
           </div>
           <div className="mt-6 lg:mt-0 lg:flex-shrink-0">

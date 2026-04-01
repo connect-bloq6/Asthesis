@@ -14,9 +14,9 @@ const inter = Inter({
   weight: ['300', '400', '500', '600', '700'],
 })
 
-const defaultTitle = 'Asthesis - A New Standard of Care'
+const defaultTitle = 'Asthesis | A New Standard of Care'
 const defaultDescription =
-  'AI-enabled technology enabled care (TEC): privacy-preserving remote monitoring without cameras or wearables, supporting independent living and home-first care models.'
+  'AI enabled technology enabled care (TEC): privacy preserving remote monitoring without cameras or wearables, supporting independent living and home first care models.'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://asthesis.com'),

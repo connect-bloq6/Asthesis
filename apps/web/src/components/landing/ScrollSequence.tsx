@@ -420,7 +420,7 @@ It responds.<br></br>
               color: '#6F6F6F',
             }}
           >
-            All powered by on-device intelligence.<br></br>
+            All powered by on device intelligence.<br></br>
 All designed around consent.<br></br><br></br>
 
 Asthesis doesn’t wait for emergencies.<br></br>
@@ -467,7 +467,7 @@ It prevents them.
           >
             Asthesis learns rhythms, not identities.<br></br><br></br>
 
-By understanding motion, presence, and environmental balance, it recognizes when something changes — without turning your home into a monitored space.<br></br><br></br>
+By understanding motion, presence, and environmental balance, it recognizes when something changes, without turning your home into a monitored space.<br></br><br></br>
 
 No facial recognition.<br></br>
 No intrusive tracking.<br></br>
@@ -564,13 +564,13 @@ Engineered to be trusted.
                 color: '#6F6F6F',
               }}
             >
-              Precision-machined housing.<br></br>
+              Precision machined housing.<br></br>
               Dedicated AI processor.<br></br>
               Embedded sensing modules.<br></br>
               Secure communication core.<br></br>
               Resilient battery system.<br></br><br></br>
 
-              Everything engineered to disappear into the background — while working relentlessly in the foreground.<br></br><br></br>
+              Everything engineered to disappear into the background, while working relentlessly in the foreground.<br></br><br></br>
 
               Built to endure.<br></br>
               Built to protect.

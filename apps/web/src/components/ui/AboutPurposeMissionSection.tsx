@@ -57,7 +57,7 @@ export default function AboutPurposeMissionSection() {
                 Our purpose
               </p>
               <h2 className="mb-5" style={mainHeadingStyle}>
-                To enable person-centred, preventative care at home
+                To enable person centred, preventative care at home
               </h2>
               <p className="mb-6" style={bodyStyle}>
                 We believe people should be able to live with greater confidence in the place they call home. Our purpose is to support:
@@ -82,7 +82,7 @@ export default function AboutPurposeMissionSection() {
                 Our mission
               </p>
               <h2 className="mb-5" style={mainHeadingStyle}>
-                Redefining technology enabled care through intelligent, privacy-preserving monitoring
+                Redefining technology enabled care through intelligent, privacy preserving monitoring
               </h2>
               <p className="mb-6" style={bodyStyle}>
                 Asthesis is developing systems that learn patterns over time, recognise meaningful change and provide useful insight without cameras, wearables or constant user input.

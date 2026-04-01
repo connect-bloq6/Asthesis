@@ -2,7 +2,7 @@
 
 /**
  * Impact – Quote section. Two-line quote with "able" and "to ask" in reddish-brown.
- * Attribution: "— The principle behind Asthesis." (lighter grey, italic, right-aligned).
+ * Attribution: "The principle behind Asthesis." (lighter grey, italic, right-aligned).
  */
 
 export default function ImpactSection6() {
@@ -37,7 +37,7 @@ export default function ImpactSection6() {
             color: '#888888',
           }}
         >
-          — The principle behind Asthesis.
+          The principle behind Asthesis.
         </p>
       </div>
     </section>

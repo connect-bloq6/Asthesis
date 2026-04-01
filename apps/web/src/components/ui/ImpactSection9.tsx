@@ -17,7 +17,7 @@ const FEATURES = [
     icon: '/images/like.png',
     title: 'Supporting carers and families',
     description:
-      'Asthesis provides reassurance without requiring constant check-ins or intrusive monitoring, helping build confidence around home-based care.',
+      'Asthesis provides reassurance without requiring constant check-ins or intrusive monitoring, helping build confidence around home based care.',
   },
   {
     icon: '/images/heart.png',

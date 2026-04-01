@@ -288,7 +288,7 @@ export function FrameSequenceSection({
                 color: '#6F6F6F',
               }}
             >
-              Asthesis is AI-enabled technology enabled care (TEC): an AI-powered home monitoring device that helps health and care systems move from reactive response to proactive, person-centred support. It continuously learns daily patterns of routine, mobility and wellbeing, so changes can be identified early to enable safer independent living, preventative and anticipatory care for people at risk of deterioration, and timely intervention.
+              Asthesis is AI enabled technology enabled care (TEC): an AI powered home monitoring device that helps health and care systems move from reactive response to proactive, person centred support. It continuously learns daily patterns of routine, mobility and wellbeing, so changes can be identified early to enable safer independent living, preventative and anticipatory care for people at risk of deterioration, and timely intervention.
             </p>
             <p
               className="mb-4 w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-xl lg:max-w-2xl mx-auto lg:mx-0 text-center lg:text-left"
@@ -301,14 +301,14 @@ export function FrameSequenceSection({
                 color: '#6F6F6F',
               }}
             >
-              Designed as non-intrusive ambient monitoring in the home, Asthesis delivers privacy-preserving remote monitoring without cameras or wearables—supporting independent living and home-first care models, with insight that strengthens preventative care pathways for people at risk of deterioration.
+              Designed as non intrusive ambient monitoring in the home, Asthesis delivers privacy preserving remote monitoring without cameras or wearables, supporting independent living and home first care models, with insight that strengthens preventative care pathways for people at risk of deterioration.
             </p>
             <ul className="space-y-2 list-none pl-0 flex flex-col items-center lg:items-start w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-xl lg:max-w-2xl mx-auto lg:mx-0">
               {[
                 'Earlier identification of changes in mobility, routine and activity',
                 'More confident support for independent living',
                 'Better targeted intervention through technology enabled care',
-                'Reassurance for individuals, carers, providers, local authorities and NHS commissioners—without intrusive surveillance',
+                'Reassurance for individuals, carers, providers, local authorities and NHS commissioners, without intrusive surveillance',
               ].map((item, index) => (
                 <li
                   key={index}
@@ -441,7 +441,7 @@ export function FrameSequenceSection({
                 color: '#6F6F6F',
               }}
             >
-              Asthesis combines ambient sensing, on-device intelligence and continuous monitoring in a format designed for the home. It supports preventative and anticipatory care while respecting dignity, autonomy and privacy.
+              Asthesis combines ambient sensing, on device intelligence and continuous monitoring in a format designed for the home. It supports preventative and anticipatory care while respecting dignity, autonomy and privacy.
             </p>
           </div>
         </div>

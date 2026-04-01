@@ -111,7 +111,7 @@ export default function PowerReliabilitySection({ scrollProgress }: PowerReliabi
             textAlign: 'left'
           }}
         >
-          Designed to support continuous operation, it ensures Asthesis remains present and dependable—day and night, without interruption.
+          Designed to support continuous operation, it ensures Asthesis remains present and dependable, day and night, without interruption.
         </p>
       </div>
     </section>

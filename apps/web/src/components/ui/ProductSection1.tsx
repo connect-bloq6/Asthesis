@@ -35,7 +35,7 @@ export default function ProductSection1() {
                   lineHeight: '1.3',
                 }}
               >
-                An AI-powered, home-based technology enabled care platform for proactive wellbeing monitoring
+                An AI powered, home based technology enabled care platform for proactive wellbeing monitoring
               </p>
               <p
                 className="text-base sm:text-lg leading-relaxed mb-5 sm:mb-6"
@@ -64,7 +64,7 @@ export default function ProductSection1() {
                   color: '#6B6F76',
                 }}
               >
-                By combining ambient monitoring, on-device AI and privacy-preserving sensing, Asthesis helps detect changes in routine, movement and wellbeing without requiring the user to wear or manage additional equipment.
+                By combining ambient monitoring, on device AI and privacy preserving sensing, Asthesis helps detect changes in routine, movement and wellbeing without requiring the user to wear or manage additional equipment.
               </p>
             </div>
             {/* <Link

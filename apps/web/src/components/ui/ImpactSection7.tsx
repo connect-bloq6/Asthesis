@@ -9,7 +9,7 @@ import Image from 'next/image'
 
 const BULLETS = [
   'Identify emerging risk earlier, before a crisis develops, strengthening technology enabled care pathways',
-  'Reduce avoidable escalation and emergency presentations, supporting home-first and virtual models of care',
+  'Reduce avoidable escalation and emergency presentations, supporting home first and virtual models of care',
   'Support people to remain safely and independently at home',
   'Provide reassurance without surveillance, through privacy preserving monitoring',
 ]
@@ -58,7 +58,7 @@ export default function ImpactSection7() {
               }}
             >
               <p className="m-0">
-                Asthesis supports a more preventative, person-centred and digitally enabled model of care by helping services:
+                Asthesis supports a more preventative, person centred and digitally enabled model of care by helping services:
               </p>
             </div>
             <ul className="space-y-2 sm:space-y-3 list-disc list-outside pl-5 sm:pl-6 marker:text-[#4A5565] text-[#4A5565] text-sm sm:text-base md:text-lg">
@@ -82,7 +82,7 @@ export default function ImpactSection7() {
             <div className="relative w-full max-w-[280px] sm:max-w-[320px] md:max-w-[360px] lg:max-w-[380px] xl:max-w-[400px] mx-auto lg:mr-0 aspect-[4/5] max-h-[320px] sm:max-h-[380px] lg:max-h-[420px]">
               <Image
                 src="/images/Group.png"
-                alt="Asthesis device supporting preventative, person-centred care at home"
+                alt="Asthesis device supporting preventative, person centred care at home"
                 fill
                 className="object-contain object-center"
                 sizes="(max-width: 1024px) 85vw, 420px"

@@ -15,7 +15,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Asthesis — Contact enquiries',
+  title: 'Asthesis | Contact enquiries',
   description: 'Admin portal for Asthesis contact form submissions.',
   icons: {
     icon: [{ url: '/images/Ast_logo_icon.png', type: 'image/png' }],

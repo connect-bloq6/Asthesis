@@ -38,7 +38,7 @@ export default function AboutSection7() {
             className="mx-auto mb-6 sm:mb-8"
             style={mainHeadingStyle}
           >
-           The future of care is proactive, personalised and home-centred.
+           The future of care is proactive, personalised and home centred.
           </h2>
           <p
             className="mx-auto mb-10 sm:mb-12 max-w-[800px] w-full"

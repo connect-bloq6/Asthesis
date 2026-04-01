@@ -176,7 +176,7 @@ export default function PowerSection() {
                 
                 <p className="text-sm md:text-base text-foreground/60 leading-relaxed">
                   Designed to support continuous operation, it ensures Asthesis remains 
-                  present and dependable—day and night, without interruption.
+                  present and dependable, day and night, without interruption.
                 </p>
               </div>
             </div>

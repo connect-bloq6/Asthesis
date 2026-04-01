@@ -39,7 +39,7 @@ export default function AboutSection6() {
                 color: '#101828',
               }}
             >
-              Engineers, carers, and healthcare experts—together.
+              Engineers, carers, and healthcare experts, together.
             </h2>
             <div className="space-y-5 max-w-[587px]">
               <p
@@ -52,7 +52,7 @@ export default function AboutSection6() {
                   color: '#4A5565',
                 }}
               >
-                Asthesis brings together expertise across engineering, AI, care, ethics and lived experience. We work at the intersection of health technology and human-centred care, with a focus on practical solutions for individuals, carers, providers, local authorities, NHS commissioners and wider care systems.
+                Asthesis brings together expertise across engineering, AI, care, ethics and lived experience. We work at the intersection of health technology and human centred care, with a focus on practical solutions for individuals, carers, providers, local authorities, NHS commissioners and wider care systems.
 
               </p>
               {/* <p
@@ -65,7 +65,7 @@ export default function AboutSection6() {
                   color: '#4A5565',
                 }}
               >
-                We don&apos;t just understand technology—we understand what it&apos;s like to care for someone you love. That lived experience shapes every line of code, every feature, and every decision we make.
+                We don&apos;t just understand technology; we understand what it&apos;s like to care for someone you love. That lived experience shapes every line of code, every feature, and every decision we make.
               </p>
               <p
                 style={{

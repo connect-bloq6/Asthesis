@@ -103,7 +103,7 @@ export default function SystemSection() {
             textAlign: 'left'
           }}
         >
-          Asthesis goes beyond emergency response. It continuously learns, adapts, and responds to subtle changes in daily life — helping protect people before situations escalate.
+          Asthesis goes beyond emergency response. It continuously learns, adapts, and responds to subtle changes in daily life, helping protect people before situations escalate.
         </p>
 
         {/* Bullet Points */}

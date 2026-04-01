@@ -269,7 +269,7 @@ export default function HeroSection({ isLoaded = false }: HeroSectionProps) {
             color: '#878787',
           }}
         >
-          AI-enabled technology enabled care—designed to support life without getting in the way.
+          AI enabled technology enabled care, designed to support life without getting in the way.
         </p>
       </div>
 

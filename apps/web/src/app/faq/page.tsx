@@ -21,7 +21,7 @@ type FaqItem = {
   answer: string
 }
 
-/** Icons: faq1, faq3, faq5, faq2_bell, faq4 — reused per tab */
+/** Icons: faq1, faq3, faq5, faq2_bell, faq4, reused per tab */
 const FAQ_BY_TAB: Record<FaqTabId, FaqItem[]> = {
   general: [
     {
@@ -29,7 +29,7 @@ const FAQ_BY_TAB: Record<FaqTabId, FaqItem[]> = {
       icon: '/images/faq1.png',
       question: 'Is Asthesis suitable for people who need support at home?',
       answer:
-        'Yes. Asthesis is designed for non-intrusive ambient monitoring in the home: privacy-preserving remote monitoring without cameras or wearables, aligned with AI-enabled technology enabled care (TEC). It operates quietly in the background to support preventative and anticipatory care without disrupting daily routines.',
+        'Yes. Asthesis is designed for non intrusive ambient monitoring in the home: privacy preserving remote monitoring without cameras or wearables, aligned with AI enabled technology enabled care (TEC). It operates quietly in the background to support preventative and anticipatory care without disrupting daily routines.',
     },
     {
       id: 2,
@@ -50,14 +50,14 @@ const FAQ_BY_TAB: Record<FaqTabId, FaqItem[]> = {
       icon: '/images/faq2_bell.png',
       question: 'How does emergency detection work?',
       answer:
-        "Our AI-powered system continuously monitors activity patterns and can detect falls, prolonged inactivity, or unusual behaviour. When something concerning is detected, alerts are immediately sent to designated carers, care teams, or other nominated contacts—supporting early intervention and escalation based on emerging risk.",
+        "Our AI powered system continuously monitors activity patterns and can detect falls, prolonged inactivity, or unusual behaviour. When something concerning is detected, alerts are immediately sent to designated carers, care teams, or other nominated contacts, supporting early intervention and escalation based on emerging risk.",
     },
     {
       id: 5,
       icon: '/images/faq4.png',
       question: 'Can multiple contacts receive alerts?',
       answer:
-        "Yes. You can add unlimited nominated contacts—including individuals, carers, providers, local authorities and NHS commissioners where appropriate—to receive notifications. Each person can customize their alert preferences and access levels through our intuitive mobile app.",
+        "Yes. You can add unlimited nominated contacts, including individuals, carers, providers, local authorities and NHS commissioners where appropriate, to receive notifications. Each person can customize their alert preferences and access levels through our intuitive mobile app.",
     },
   ],
   safety: [
@@ -66,14 +66,14 @@ const FAQ_BY_TAB: Record<FaqTabId, FaqItem[]> = {
       icon: '/images/faq1.png',
       question: 'How is my data protected?',
       answer:
-        'Data is handled using industry-standard security practices, including encryption in transit and at rest where applicable. Access is strictly controlled, and we design our systems to meet applicable healthcare and data protection expectations.',
+        'Data is handled using industry standard security practices, including encryption in transit and at rest where applicable. Access is strictly controlled, and we design our systems to meet applicable healthcare and data protection expectations.',
     },
     {
       id: 2,
       icon: '/images/faq3.png',
       question: 'Does Asthesis use cameras or record audio in the home?',
       answer:
-        'Asthesis is built around ambient sensing—not cameras in living spaces and not continuous audio recording for surveillance. The focus is on patterns that support care while respecting dignity and privacy.',
+        'Asthesis is built around ambient sensing: not cameras in living spaces and not continuous audio recording for surveillance. The focus is on patterns that support care while respecting dignity and privacy.',
     },
     {
       id: 3,
@@ -94,7 +94,7 @@ const FAQ_BY_TAB: Record<FaqTabId, FaqItem[]> = {
       icon: '/images/faq4.png',
       question: 'What privacy principles does Asthesis follow?',
       answer:
-        'We apply privacy-by-design: collecting what is needed for safe, useful care insights, being transparent about use of data, and supporting your control over who is involved in your care circle.',
+        'We apply privacy by design: collecting what is needed for safe, useful care insights, being transparent about use of data, and supporting your control over who is involved in your care circle.',
     },
   ],
   installation: [
@@ -117,14 +117,14 @@ const FAQ_BY_TAB: Record<FaqTabId, FaqItem[]> = {
       icon: '/images/faq5.png',
       question: 'Who performs the installation?',
       answer:
-        'Installation may be carried out by trained installers or partners, or guided self-setup where appropriate. You will be told exactly what to expect before the visit or delivery.',
+        'Installation may be carried out by trained installers or partners, or guided self setup where appropriate. You will be told exactly what to expect before the visit or delivery.',
     },
     {
       id: 4,
       icon: '/images/faq2_bell.png',
       question: 'Where can I get technical support?',
       answer:
-        'Support is available through the channels we provide with your subscription or contract—such as email, phone, or in-app help—so you can report issues, ask questions, or request changes to your setup.',
+        'Support is available through the channels we provide with your subscription or contract, such as email, phone, or in-app help, so you can report issues, ask questions, or request changes to your setup.',
     },
     {
       id: 5,

@@ -65,7 +65,7 @@ Asthesis was created to address a clear challenge in health and social care: too
                   color: '#4A5565',
                 }}
               >
-                A two-year-old boy was found lifeless beside his father—days after his father had suffered a fatal heart attack at home. There is a likelihood the child might still be alive if his father had survived. What followed was not a sudden event, but a quiet unfolding—missed visits, unanswered messages, and a door that remained closed while, inside, the child was left alone without care or help.
+                A two-year-old boy was found lifeless beside his father, days after his father had suffered a fatal heart attack at home. There is a likelihood the child might still be alive if his father had survived. What followed was not a sudden event, but a quiet unfolding: missed visits, unanswered messages, and a door that remained closed while, inside, the child was left alone without care or help.
 </p>
 
 <p
@@ -78,7 +78,7 @@ Asthesis was created to address a clear challenge in health and social care: too
                   color: '#4A5565',
                 }}
               >
-This tragedy reveals something deeper: how fragile independence can become without continuous awareness. Emergencies don’t always happen loudly—sometimes they happen in silence, behind closed doors. And in those moments, the difference between life and loss is not just response, but timely awareness.    </p>
+This tragedy reveals something deeper: how fragile independence can become without continuous awareness. Emergencies don’t always happen loudly; sometimes they happen in silence, behind closed doors. And in those moments, the difference between life and loss is not just response, but timely awareness.    </p>
               {/* <p
                 style={{
                   fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
@@ -113,7 +113,7 @@ Asthesis began with a simple but urgent question: how can we help people live we
                   color: '#4A5565',
                 }}
               >
-That question shaped our approach from day one. We are developing home-based technology that can identify subtle changes in routine, movement, and activity—supporting preventative and anticipatory care for people at risk of deterioration and home-first care models.
+That question shaped our approach from day one. We are developing home based technology that can identify subtle changes in routine, movement, and activity, supporting preventative and anticipatory care for people at risk of deterioration and home first care models.
 
               </p>
             </div>
@@ -121,7 +121,7 @@ That question shaped our approach from day one. We are developing home-based tec
           <div className="relative w-full max-w-[620px] overflow-hidden rounded-xl sm:rounded-2xl lg:rounded-2xl lg:mx-0 mx-auto aspect-[592/500] min-h-[260px] sm:min-h-[300px] lg:min-h-[400px]">
             <Image
               src="/images/About1.png"
-              alt="Our story – care and independence"
+              alt="Our story, care and independence"
               fill
               className="object-cover rounded-xl sm:rounded-2xl"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 90vw, 620px"

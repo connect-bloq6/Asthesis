@@ -69,7 +69,7 @@ export default function StyleSection({ scrollProgress }: StyleSectionProps) {
             textAlign: 'left'
           }}
         >
-          Asthesis understands patterns, not people. By observing rhythms of daily life — movement, presence, and environmental context — it builds an understanding of what is normal, and recognizes when something changes.
+          Asthesis understands patterns, not people. By observing rhythms of daily life, movement, presence, and environmental context, it builds an understanding of what is normal, and recognizes when something changes.
         </p>
       </div>
     </section>

@@ -1,4 +1,4 @@
-# Asthesis - Next.js + Three.js Project
+# Asthesis: Next.js + Three.js Project
 
 An immersive 3D web experience built with Next.js 14 and Three.js (React Three Fiber).
 

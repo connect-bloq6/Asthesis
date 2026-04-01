@@ -96,7 +96,7 @@ export default function HousingSection({ scrollProgress }: HousingSectionProps) 
             textAlign: 'left'
           }}
         >
-          The main body is crafted from anodized aluminum, chosen for its strength, longevity, and reassuring weight. Its form avoids the cold language of medical devices, instead feeling familiar, stable, and intentional—designed to belong in the home.
+          The main body is crafted from anodized aluminum, chosen for its strength, longevity, and reassuring weight. Its form avoids the cold language of medical devices, instead feeling familiar, stable, and intentional, designed to belong in the home.
         </p>
       </div>
     </section>

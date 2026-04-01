@@ -56,7 +56,7 @@ export default function ImpactSection4() {
             Missed routines, altered movement, prolonged inactivity and environmental changes can all be early indicators that a person may need review or support.
           </span>
           <span className="block font-semibold mt-1" style={{ color: '#1D1D1F' }}>
-            Asthesis is designed to help close this gap through continuous, non-intrusive monitoring.
+            Asthesis is designed to help close this gap through continuous, non intrusive monitoring.
           </span>
         </div>
       </div>

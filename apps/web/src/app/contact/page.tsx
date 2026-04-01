@@ -135,7 +135,7 @@ export default function ContactPage() {
                   style={inter}
                   role="status"
                 >
-                  Thank you — your message has been sent. We will be in touch soon.
+                  Thank you. Your message has been sent. We will be in touch soon.
                 </p>
               ) : null}
 

@@ -34,7 +34,7 @@ const labelStyle = {
 } as const
 
 const principles = [
-  { value: '100%', label: 'Privacy-first design' },
+  { value: '100%', label: 'Privacy first design' },
   { value: 'Zero', label: 'Data sold to third parties' },
   { value: 'Full', label: 'User consent and control' },
   { value: '24/7', label: 'Ethical commitment' },
