@@ -47,9 +47,9 @@ export const metadata: Metadata = {
     images: ['/images/Ast_logo_icon.png'],
   },
   icons: {
-    icon: [{ url: '/images/Ast_logo_icon.png', type: 'image/png' }],
-    apple: [{ url: '/images/Ast_logo_icon.png', type: 'image/png' }],
-    shortcut: '/images/Ast_logo_icon.png',
+    icon: [{ url: '/images/log-modified.png', type: 'image/png' }],
+    apple: [{ url: '/images/log-modified.png', type: 'image/png' }],
+    shortcut: '/images/log-modified.png',
   },
 }
 
