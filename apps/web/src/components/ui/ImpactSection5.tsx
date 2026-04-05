@@ -16,7 +16,7 @@ export default function ImpactSection5() {
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 pt-0 pb-10 sm:pb-16 md:pb-24">
         <div className="relative w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl max-w-[1232px] aspect-[1232/520] min-h-[160px] sm:min-h-[200px] md:min-h-[240px] lg:min-h-[260px] mx-auto">
           <Image
-            src="/images/Impact1.png"
+            src="/images/impact1.png"
             alt="People together in a living room, comfort and connection"
             fill
             className="object-cover object-center"
