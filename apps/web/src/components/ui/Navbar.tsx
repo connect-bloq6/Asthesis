@@ -47,15 +47,13 @@ export default function Navbar({ solid = false }: NavbarProps) {
             onClick={scrollToTop}
             aria-label="Asthesis, scroll to top"
           >
-            <span className="relative block h-8 w-8 shrink-0 md:h-9 md:w-9">
-              <Image
-                src="/images/log-modified.png"
-                alt=""
-                fill
-                className="object-contain"
-                sizes="(max-width: 768px) 32px, 36px"
-              />
-            </span>
+            <Image
+              src="/images/Ast_logo_icon.png"
+              alt=""
+              width={36}
+              height={36}
+              className="h-8 w-8 md:h-9 md:w-9 shrink-0 object-contain"
+            />
             <span>Asthesis</span>
           </button>
 
