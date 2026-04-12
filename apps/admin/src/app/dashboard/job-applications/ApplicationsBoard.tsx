@@ -86,7 +86,9 @@ export function ApplicationsBoard({ rows, marketingBase }: ApplicationsBoardProp
                         </span>
                       )
                     ) : (
-                      <span style={{ color: BODY_MUTED }}>—</span>
+                      <span className="italic" style={{ color: BODY_MUTED }} title="Job posting was removed">
+                        Posting removed
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3" style={{ color: HEADING_TEXT }}>

@@ -33,7 +33,8 @@ export type JobPostingUpdate = Partial<
 export type JobApplicationRow = {
   id: string
   created_at: string
-  job_id: string
+  /** Null if the posting was deleted after the application was submitted. */
+  job_id: string | null
   full_name: string
   email: string
   phone: string
