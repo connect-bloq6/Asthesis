@@ -12,6 +12,11 @@ applications:
             - npm ci
         build:
           commands:
+            # Amplify Hosting: console env vars are not available to Next.js API/SSR Lambdas unless
+            # they are present at build time. See https://docs.aws.amazon.com/amplify/latest/userguide/ssr-environment-variables.html
+            - rm -f apps/web/.env.production
+            - env | grep -e '^SUPABASE_SERVICE_ROLE_KEY=' >> apps/web/.env.production
+            - env | grep -e '^FIGMA_ACCESS_TOKEN=' >> apps/web/.env.production || true
             - npm run build -w web
       artifacts:
         baseDirectory: apps/web/.next
