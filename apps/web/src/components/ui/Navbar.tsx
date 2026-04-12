@@ -36,103 +36,109 @@ export default function Navbar({ solid = false }: NavbarProps) {
     closeMenu()
   }
 
+  const shellClass = solid
+    ? 'border-neutral-200/90 bg-white'
+    : 'border-white/50 bg-white/90 backdrop-blur-md'
+
   return (
     <>
-      <nav className={`fixed top-0 left-0 right-0 z-50 px-8 py-4 md:px-12 md:py-5 lg:px-16 transition-colors duration-300 ease-out ${solid ? 'bg-white border-b border-[#E5E7EB]' : 'bg-transparent border-b border-transparent'}`}>
-        <div className="flex items-center justify-between max-w-[1440px] mx-auto">
-          {/* Logo */}
-          <button
-            type="button"
-            className="flex items-center gap-3 shrink-0 text-xl md:text-2xl font-semibold text-foreground cursor-pointer bg-transparent border-0 p-0"
-            onClick={scrollToTop}
-            aria-label="Asthesis, scroll to top"
-          >
-            <Image
-              src="/images/Ast_logo_icon.png"
-              alt=""
-              width={36}
-              height={36}
-              className="h-8 w-8 md:h-9 md:w-9 shrink-0 object-contain"
-            />
-            <span>Asthesis</span>
-          </button>
+      {/* Full-width inset wrapper + floating card bar */}
+      <nav
+        className="fixed top-3 left-0 right-0 z-50 px-4 sm:top-4 sm:px-6 md:top-5 md:px-8 lg:px-10 xl:px-12"
+        aria-label="Primary"
+      >
+        <div
+          className={`mx-auto flex max-w-[1440px] items-center rounded-2xl border px-5 py-2.5 shadow-[0_10px_40px_-12px_rgba(0,0,0,0.18)] transition-[background-color,box-shadow,border-color] duration-300 ease-out sm:px-8 sm:py-3 md:rounded-3xl md:px-10 md:py-3.5 lg:px-12 lg:py-4 ${shellClass}`}
+        >
+          <div className="flex w-full min-h-[44px] items-center justify-between md:grid md:min-h-[48px] md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-center md:gap-3">
+            {/* Branding — far left, icon + name tight */}
+            <button
+              type="button"
+              className="flex shrink-0 items-center justify-start gap-1.5 text-left text-lg font-semibold tracking-tight text-foreground md:text-xl cursor-pointer border-0 bg-transparent p-0"
+              onClick={scrollToTop}
+              aria-label="Asthesis, scroll to top"
+            >
+              <Image
+                src="/images/Ast_logo_icon.png"
+                alt=""
+                width={36}
+                height={36}
+                className="h-7 w-7 shrink-0 object-contain md:h-8 md:w-8"
+              />
+              <span>Asthesis</span>
+            </button>
 
-          {/* Navigation Links - Hidden on mobile */}
-          <ul className="hidden md:flex items-center gap-8 lg:gap-12">
-            {navItems.map((item) => (
-              <li key={item.label}>
-                <Link
-                  href={item.href}
-                  className="relative text-sm font-medium text-foreground inline-block after:content-[''] after:absolute after:left-0 after:bottom-0 after:h-[2px] after:bg-foreground after:w-0 after:transition-[width] after:duration-300 after:ease-out hover:after:w-full"
+            {/* Main nav — centered column, even spacing, medium-emphasis text */}
+            <ul className="hidden min-w-0 md:flex md:items-center md:justify-center md:gap-6 lg:gap-8 xl:gap-10">
+              {navItems.map((item) => (
+                <li key={item.label} className="shrink-0">
+                  <Link
+                    href={item.href}
+                    className="whitespace-nowrap text-sm font-medium text-neutral-600 transition-colors hover:text-foreground"
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex shrink-0 items-center justify-end gap-2 md:gap-3">
+              {/* Mobile menu toggle */}
+              <button
+                type="button"
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-neutral-100 text-foreground transition-colors hover:bg-neutral-200/90 md:hidden"
+                aria-label="Menu"
+                aria-expanded={isMenuOpen}
+                onClick={toggleMenu}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-45' : ''}`}
                 >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+                  {isMenuOpen ? (
+                    <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  ) : (
+                    <path d="M8 1V15M1 8H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  )}
+                </svg>
+              </button>
 
-          {/* Hamburger/Plus Button */}
-          <button
-            className="w-12 h-12 rounded-lg bg-[#E5E5E5] flex items-center justify-center hover:bg-[#D1D1D1] transition-colors md:hidden"
-            aria-label="Menu"
-            onClick={toggleMenu}
-          >
-            <svg 
-              width="16" 
-              height="16" 
-              viewBox="0 0 16 16" 
-              fill="none" 
-              xmlns="http://www.w3.org/2000/svg"
-              className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-45' : ''}`}
-            >
-              {isMenuOpen ? (
-                <>
-                  <path d="M4 4L12 12M12 4L4 12" stroke="#1D1D1F" strokeWidth="2" strokeLinecap="round" />
-                </>
-              ) : (
-                <>
-                  <path d="M8 1V15M1 8H15" stroke="#1D1D1F" strokeWidth="2" strokeLinecap="round" />
-                </>
-              )}
-            </svg>
-          </button>
-
-          {/* Login Button for Desktop - Hidden on mobile */}
-          <Link
-            href={APP_LOGIN_URL}
-            className="px-5 py-3 rounded-full bg-[#F5E6D3] hidden md:flex items-center gap-3 hover:bg-[#EBD9C3] transition-colors"
-          >
-            <span className="text-sm font-medium text-foreground">Login</span>
-            <svg 
-              width="24" 
-              height="24" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path 
-                d="M15 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H15" 
-                stroke="#1D1D1F" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              />
-              <path 
-                d="M10 17L15 12L10 7" 
-                stroke="#9CA3AF" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              />
-              <path 
-                d="M15 12H3" 
-                stroke="#9CA3AF" 
-                strokeWidth="2" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              />
-            </svg>
-          </Link>
+              {/* Login — desktop */}
+              <Link
+                href={APP_LOGIN_URL}
+                className="hidden items-center gap-2.5 rounded-full bg-[#F5E6D3] px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-[#EBD9C3] md:inline-flex lg:gap-3 lg:px-5 lg:py-3"
+              >
+                <span>Login</span>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path
+                    d="M15 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H15"
+                    stroke="#1D1D1F"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M10 17L15 12L10 7"
+                    stroke="#9CA3AF"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M15 12H3"
+                    stroke="#9CA3AF"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
+            </div>
+          </div>
         </div>
       </nav>
 

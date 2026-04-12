@@ -1,7 +1,7 @@
 'use client'
 
 import type React from 'react'
-import type { CSSProperties, RefObject } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 
 function legacySectionRef(r: RefObject<HTMLElement | null>): React.LegacyRef<HTMLElement> {
   return r as React.LegacyRef<HTMLElement>
@@ -16,7 +16,6 @@ function legacyVideoRef(r: RefObject<HTMLVideoElement | null>): React.LegacyRef<
   return r as React.LegacyRef<HTMLVideoElement>
 }
 import {
-  FRAME_SCROLL_OUT_VH,
   PART2_SCROLL_VH,
   PART3_SCROLL_VH,
   PART4_SCROLL_VH,
@@ -52,8 +51,9 @@ type Props = {
   alphaPlaybackMode: 'webm' | 'mp4'
   isDesktopViewport: boolean
   frameStickyMode: 'before' | 'stuck' | 'after'
-  frameScrollOutProgress: number
   polygonOpacity: number
+  /** Post-canvas CTA + footer: same frame section; stacks above fixed viewport (z-10) so continuation scrolls over the pin */
+  children?: ReactNode
 }
 
 export function FrameSequenceSection({
@@ -61,8 +61,8 @@ export function FrameSequenceSection({
   alphaPlaybackMode,
   isDesktopViewport,
   frameStickyMode,
-  frameScrollOutProgress,
   polygonOpacity,
+  children,
 }: Props) {
   const {
     frameSectionRef,
@@ -82,39 +82,42 @@ export function FrameSequenceSection({
     typeof window !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
 
   const sectionVh =
-    100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH + FRAME_SCROLL_OUT_VH
+    100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH
+  const narrativeSpacerVh = sectionVh - 100
+
+  const narrativeViewportStyle: CSSProperties = {
+    height: '100vh',
+    minHeight: '100vh',
+    border: 'none',
+    left: 0,
+    right: 0,
+    width: '100%',
+    zIndex: 5,
+    ...(frameStickyMode === 'stuck'
+      ? { position: 'fixed', top: 0 }
+      : frameStickyMode === 'after'
+        ? { position: 'absolute', bottom: 0 }
+        : { position: 'relative' }),
+  }
 
   return (
     <section
       ref={legacySectionRef(frameSectionRef)}
       className="relative w-full bg-white border-0 border-none"
-      style={{ height: `${sectionVh}vh`, border: 'none' }}
+      style={{ border: 'none' }}
     >
-      {frameStickyMode === 'stuck' && <div aria-hidden style={{ height: '100vh' }} />}
-      <div
-        className="w-full flex items-center justify-center border-0 border-none bg-white overflow-hidden lg:overflow-visible"
-        style={{
-          height: '100vh',
-          minHeight: '100vh',
-          border: 'none',
-          ...(frameStickyMode === 'before' && { position: 'relative' }),
-          ...(frameStickyMode === 'stuck' && {
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 5,
-            transform:
-              frameScrollOutProgress > 0 ? `translateY(-${frameScrollOutProgress * FRAME_SCROLL_OUT_VH}vh)` : undefined,
-          }),
-          ...(frameStickyMode === 'after' && {
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-          }),
-        }}
-      >
+      {/* One frame-scene column: narrative track (z-0) + handoff (z-10) so CTA rises over the fixed pin, not under it. */}
+      <div className="relative w-full">
+        <div className="relative z-0 w-full">
+        {(frameStickyMode === 'stuck' || frameStickyMode === 'after') && (
+          <div aria-hidden className="pointer-events-none w-full" style={{ height: '100vh' }} />
+        )}
+        <div
+          className={`flex w-full items-center justify-center border-0 border-none bg-white ${
+            frameStickyMode === 'stuck' ? 'overflow-hidden' : 'overflow-hidden lg:overflow-visible'
+          }`}
+          style={narrativeViewportStyle}
+        >
         <div
           className="absolute inset-0 flex items-center justify-center pointer-events-none z-0"
           style={{ opacity: polygonOpacity }}
@@ -125,11 +128,11 @@ export function FrameSequenceSection({
             className="w-[72vmin] h-[72vmin] max-w-[1150px] max-h-[1150px] sm:w-[78vmin] sm:h-[78vmin] md:w-[1150px] md:h-[1150px] md:max-w-none md:max-h-none lg:w-[1365px] lg:h-[1365px]"
             fill="none"
           >
-            <polygon points="25,50 40,35 55,50 40,65" stroke="#9A9A9A" strokeWidth="0.13" />
-            <polygon points="45,50 60,35 75,50 60,65" stroke="#9A9A9A" strokeWidth="0.13" />
+            <polygon points="25,50 40,35 55,50 40,65" stroke="#EBEBEB" strokeWidth="0.13" />
+            <polygon points="45,50 60,35 75,50 60,65" stroke="#EBEBEB" strokeWidth="0.13" />
             {[[25, 50], [40, 35], [55, 50], [40, 65], [45, 50], [60, 35], [75, 50], [60, 65]].map(([x, y], i) => (
               <g key={i} transform={`translate(${x},${y}) scale(0.2)`}>
-                <path d="M-3 0h6M0 -3v6" stroke="#9A9A9A" strokeWidth="0.65" strokeLinecap="round" />
+                <path d="M-3 0h6M0 -3v6" stroke="#EBEBEB" strokeWidth="0.65" strokeLinecap="round" />
               </g>
             ))}
           </svg>
@@ -249,7 +252,7 @@ export function FrameSequenceSection({
           aria-hidden
         >
           <div className="max-w-full lg:max-w-3xl text-center lg:text-left [&>*]:text-center lg:[&>*]:text-left">
-            <div
+            {/* <div
               className="mb-3"
               style={{
                 fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
@@ -262,7 +265,7 @@ export function FrameSequenceSection({
               }}
             >
               SYSTEM
-            </div>
+            </div> */}
             <h2
               className="mb-4"
               style={{
@@ -288,7 +291,7 @@ export function FrameSequenceSection({
                 color: '#6F6F6F',
               }}
             >
-              Asthesis is AI enabled technology enabled care (TEC): an AI powered home monitoring device that helps health and care systems move from reactive response to proactive, person centred support. It continuously learns daily patterns of routine, mobility and wellbeing, so changes can be identified early to enable safer independent living, preventative and anticipatory care for people at risk of deterioration, and timely intervention.
+              Asthesis: an AI powered home monitoring device, with AI enabled technology enabled care that helps health and care systems move from reactive response to proactive, person centred support. It continuously learns daily patterns of routine, mobility and wellbeing, so changes can be identified early to enable safer independent living, preventative and anticipatory care for people at risk of deterioration, and timely intervention.
             </p>
             <p
               className="mb-4 w-full max-w-[13.2rem] sm:max-w-[19.2rem] md:max-w-xl lg:max-w-2xl mx-auto lg:mx-0 text-center lg:text-left"
@@ -344,7 +347,7 @@ export function FrameSequenceSection({
           aria-hidden
         >
           <div className="mx-auto lg:mx-0 lg:ml-auto max-w-full lg:max-w-2xl text-center lg:text-right [&>*]:text-center lg:[&>*]:text-right">
-            <div
+            {/* <div
               className="mb-3"
               style={{
                 fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
@@ -357,7 +360,7 @@ export function FrameSequenceSection({
               }}
             >
               STYLE
-            </div>
+            </div> */}
             <h2
               className="mb-4"
               style={{
@@ -402,7 +405,7 @@ export function FrameSequenceSection({
           aria-hidden
         >
           <div className="max-w-full lg:max-w-xl text-center lg:text-left [&>*]:text-center lg:[&>*]:text-left">
-            <div
+            {/* <div
               className="mb-2"
               style={{
                 fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
@@ -415,7 +418,7 @@ export function FrameSequenceSection({
               }}
             >
               DESIGN
-            </div>
+            </div> */}
             <h2
               className="mb-3"
               style={{
@@ -441,7 +444,7 @@ export function FrameSequenceSection({
                 color: '#6F6F6F',
               }}
             >
-              Asthesis combines ambient sensing, on device intelligence and continuous monitoring in a format designed for the home. It supports preventative and anticipatory care while respecting dignity, autonomy and privacy.
+              Asthesis combines ambient sensing, on device intelligence and continuous monitoring in a format designed for the home. It supports preventative and anticipatory, care while respecting dignity, autonomy and privacy.
             </p>
           </div>
         </div>
@@ -460,7 +463,7 @@ export function FrameSequenceSection({
           aria-hidden
         >
           <div className="mx-auto lg:mx-0 lg:ml-auto max-w-full lg:max-w-xl text-center lg:text-right [&>*]:text-center lg:[&>*]:text-right">
-            <div
+            {/* <div
               className="mb-2"
               style={{
                 fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
@@ -473,7 +476,7 @@ export function FrameSequenceSection({
               }}
             >
               CARE
-            </div>
+            </div> */}
             <h2
               className="mb-3"
               style={{
@@ -518,7 +521,7 @@ export function FrameSequenceSection({
           aria-hidden
         >
           <div className="mx-auto lg:mx-0 lg:ml-auto max-w-full lg:max-w-xl text-center lg:text-right [&>*]:text-center lg:[&>*]:text-right">
-            <div
+            {/* <div
               className="mb-2"
               style={{
                 fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
@@ -531,7 +534,7 @@ export function FrameSequenceSection({
               }}
             >
               INSIDE ASTHESIS
-            </div>
+            </div> */}
             <h2
               className="mb-3"
               style={{
@@ -561,6 +564,19 @@ export function FrameSequenceSection({
             </p>
           </div>
         </div>
+        </div>
+
+        <div aria-hidden className="w-full pointer-events-none" style={{ height: `${narrativeSpacerVh}vh` }} />
+        </div>
+
+        {children != null && (
+          <div
+            className="landing-post-frame-handoff relative z-10 w-full bg-white"
+            style={isDesktopViewport ? undefined : { paddingBottom: 24 }}
+          >
+            {children}
+          </div>
+        )}
       </div>
     </section>
   )

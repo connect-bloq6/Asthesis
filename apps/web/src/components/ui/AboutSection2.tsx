@@ -59,6 +59,7 @@ export default function AboutSection2() {
             aria-label="View video in fullscreen"
             onClick={onOpenFullscreen}
           />
+          
         </div>
       </div>
     </section>

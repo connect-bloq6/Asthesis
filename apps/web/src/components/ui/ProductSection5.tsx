@@ -25,13 +25,13 @@ export default function ProductSection5() {
               className="absolute inset-0 z-[1] pointer-events-none"
               style={{
                 background:
-                  'linear-gradient(105deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 28%, transparent 55%)',
+                  'linear-gradient(to left, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.14) 38%, transparent 62%)',
               }}
             />
             {/* Text overlay – mobile responsive */}
-            <div className="absolute inset-0 z-10 flex flex-col justify-start pt-3 sm:pt-5 md:pt-8 lg:pt-10 xl:pt-12 pb-3 sm:pb-4 overflow-visible">
-              <div className="w-full h-full min-w-0 px-3 sm:px-6 md:px-12 lg:px-16 flex flex-col justify-start max-w-[1440px] mx-auto box-border">
-                <div className="max-w-[640px] w-[calc(100%-1.5rem)] sm:w-auto ml-0 sm:ml-[1%] pr-3 sm:pr-6 md:pr-8 py-3 sm:py-5 md:py-6 rounded-lg sm:rounded-xl md:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
+            <div className="absolute inset-0 z-10 flex flex-col items-end justify-start pt-3 sm:pt-5 md:pt-8 lg:pt-10 xl:pt-12 pb-3 sm:pb-4 overflow-visible">
+              <div className="w-full h-full min-w-0 px-3 sm:px-6 md:px-12 lg:px-16 flex flex-col items-end justify-start max-w-[1440px] mx-auto box-border">
+                <div className="max-w-[640px] w-[calc(100%-1.5rem)] sm:w-auto ml-auto mr-0 sm:mr-[1%] pl-3 sm:pl-6 md:pl-8 py-3 sm:py-5 md:py-6 rounded-lg sm:rounded-xl md:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 text-left">
                   <h2
                     className="mb-2 sm:mb-4 md:mb-6"
                     style={{

@@ -75,7 +75,8 @@ function supportsVp9Webm(): boolean {
 export function useLandingScrollTimeline(
   enabled: boolean,
   isDesktopViewport: boolean,
-  heroVideoRef: React.RefObject<HTMLVideoElement | null>
+  heroVideoRef: React.RefObject<HTMLVideoElement | null>,
+  careVideoScrollTransition = true
 ) {
   const stableVhRef = useStableViewportHeight()
 
@@ -83,7 +84,6 @@ export function useLandingScrollTimeline(
   const [navbarSolid, setNavbarSolid] = useState(false)
   const [polygonOpacity, setPolygonOpacity] = useState(0)
   const [frameStickyMode, setFrameStickyMode] = useState<'before' | 'stuck' | 'after'>('before')
-  const [frameScrollOutProgress, setFrameScrollOutProgress] = useState(0)
   const [videoStickyMode, setVideoStickyMode] = useState<'before' | 'stuck' | 'after'>('before')
   const [alphaPlaybackMode, setAlphaPlaybackMode] = useState<'webm' | 'mp4'>('webm')
 
@@ -162,7 +162,6 @@ export function useLandingScrollTimeline(
   const lastNavRef = useRef(false)
   const lastPolyRef = useRef(0)
   const lastFrameStickyRef = useRef<'before' | 'stuck' | 'after'>('before')
-  const lastScrollOutRef = useRef(0)
   const lastVideoModeForStateRef = useRef<'before' | 'stuck' | 'after'>('before')
 
   const getVideoForShot = useCallback((shot: 1 | 2 | 3 | 4) => {
@@ -226,7 +225,7 @@ export function useLandingScrollTimeline(
   }, [])
 
   useLayoutEffect(() => {
-    if (!enabled) return
+    if (!enabled || !careVideoScrollTransition) return
     const run = () => measureVideoStickyBounds()
     run()
     const raf = requestAnimationFrame(run)
@@ -239,7 +238,7 @@ export function useLandingScrollTimeline(
       window.removeEventListener('orientationchange', run)
       window.visualViewport?.removeEventListener('resize', run)
     }
-  }, [enabled, measureVideoStickyBounds, isDesktopViewport])
+  }, [enabled, measureVideoStickyBounds, isDesktopViewport, careVideoScrollTransition])
 
   const syncCanvasSize = useCallback(() => {
     const canvas = canvasRef.current
@@ -439,12 +438,17 @@ export function useLandingScrollTimeline(
       }
       const y = scrollYRef.current
       const vh = stableVhRef.current
+      const fs = frameSectionRef.current
+      const sequenceStartPx =
+        fs && typeof fs.getBoundingClientRect === 'function'
+          ? Math.round(y + fs.getBoundingClientRect().top)
+          : undefined
       const HERO_HEIGHT_THRESHOLD = 0.12
       const threshold = vh * HERO_HEIGHT_THRESHOLD
       const hc = y >= threshold
       const ns = y >= vh
       const po = Math.min(1, y / vh)
-      const L0 = computeLayoutPx(vh)
+      const L0 = computeLayoutPx(vh, sequenceStartPx)
       if (y >= L0.sequenceStart) {
         const hv = heroVideoRef.current
         if (hv && !hv.paused) hv.pause()
@@ -462,11 +466,7 @@ export function useLandingScrollTimeline(
         setPolygonOpacity(po)
       }
 
-      const raw = scrollToRawProgress(y, vh)
-      if (Math.abs(raw.frameScrollOutProgress - lastScrollOutRef.current) > 0.002) {
-        lastScrollOutRef.current = raw.frameScrollOutProgress
-        setFrameScrollOutProgress(raw.frameScrollOutProgress)
-      }
+      const raw = scrollToRawProgress(y, vh, sequenceStartPx)
       if (raw.frameStickyMode !== lastFrameStickyRef.current) {
         lastFrameStickyRef.current = raw.frameStickyMode
         setFrameStickyMode(raw.frameStickyMode)
@@ -475,57 +475,67 @@ export function useLandingScrollTimeline(
       part3TargetRef.current = raw.part3Progress
       part4TargetRef.current = raw.part4Progress
 
-      let stickStart = videoStickStartYRef.current
-      let stickEnd = videoStickEndYRef.current
-      let stickRange = stickEnd - stickStart
-      if (stickRange <= 1) {
-        measureVideoStickyBounds()
+      let stickStart = 0
+      let stickEnd = 0
+      let stickRange = 0
+      if (careVideoScrollTransition) {
         stickStart = videoStickStartYRef.current
         stickEnd = videoStickEndYRef.current
         stickRange = stickEnd - stickStart
-      }
-      const hysV = VIDEO_STICKY_HYSTERESIS_PX
-      const card = videoStickyCardRef.current
-      let vMode: 'before' | 'stuck' | 'after' = 'before'
-      let vProgress = 0
-      if (stickRange > 1) {
-        if (y < stickStart - hysV) {
-          vMode = 'before'
-          vProgress = 0
-        } else if (y > stickEnd + hysV) {
-          vMode = 'after'
-          vProgress = 1
-        } else {
-          vMode = 'stuck'
-          vProgress = clamp((y - stickStart) / stickRange, 0, 1)
-          if (prevVideoModeRef.current !== 'stuck' && card) {
-            const rectH = card.getBoundingClientRect().height
-            videoCardBaseHeightRef.current =
-              rectH > 60 ? rectH : (card.offsetWidth || 0) * (9 / 16)
-          }
+        if (stickRange <= 1) {
+          measureVideoStickyBounds()
+          stickStart = videoStickStartYRef.current
+          stickEnd = videoStickEndYRef.current
+          stickRange = stickEnd - stickStart
         }
-        videoTransitionTargetRef.current = vProgress
-        const prevM = prevVideoModeRef.current
-        if (vMode !== prevM) {
-          if (vMode === 'after' || vMode === 'before') {
-            smoothedVideoTransitionRef.current = vProgress
-          } else if (vMode === 'stuck') {
-            if (card) {
+        const hysV = VIDEO_STICKY_HYSTERESIS_PX
+        const card = videoStickyCardRef.current
+        let vMode: 'before' | 'stuck' | 'after' = 'before'
+        let vProgress = 0
+        if (stickRange > 1) {
+          if (y < stickStart - hysV) {
+            vMode = 'before'
+            vProgress = 0
+          } else if (y > stickEnd + hysV) {
+            vMode = 'after'
+            vProgress = 1
+          } else {
+            vMode = 'stuck'
+            vProgress = clamp((y - stickStart) / stickRange, 0, 1)
+            if (prevVideoModeRef.current !== 'stuck' && card) {
               const rectH = card.getBoundingClientRect().height
               videoCardBaseHeightRef.current =
                 rectH > 60 ? rectH : (card.offsetWidth || 0) * (9 / 16)
             }
-            smoothedVideoTransitionRef.current = vProgress
           }
-          prevVideoModeRef.current = vMode
-          videoStickyModeRef.current = vMode
-          if (vMode !== lastVideoModeForStateRef.current) {
-            lastVideoModeForStateRef.current = vMode
-            setVideoStickyMode(vMode)
+          videoTransitionTargetRef.current = vProgress
+          const prevM = prevVideoModeRef.current
+          if (vMode !== prevM) {
+            if (vMode === 'after' || vMode === 'before') {
+              smoothedVideoTransitionRef.current = vProgress
+            } else if (vMode === 'stuck') {
+              if (card) {
+                const rectH = card.getBoundingClientRect().height
+                videoCardBaseHeightRef.current =
+                  rectH > 60 ? rectH : (card.offsetWidth || 0) * (9 / 16)
+              }
+              smoothedVideoTransitionRef.current = vProgress
+            }
+            prevVideoModeRef.current = vMode
+            videoStickyModeRef.current = vMode
+            if (vMode !== lastVideoModeForStateRef.current) {
+              lastVideoModeForStateRef.current = vMode
+              setVideoStickyMode(vMode)
+            }
+          } else {
+            videoStickyModeRef.current = vMode
           }
-        } else {
-          videoStickyModeRef.current = vMode
         }
+      } else {
+        videoStickyModeRef.current = 'before'
+        videoTransitionTargetRef.current = 0
+        smoothedVideoTransitionRef.current = 0
+        prevVideoModeRef.current = 'before'
       }
 
       const dtSec = Math.min(0.1, (now - lastTickTimeRef.current) / 1000)
@@ -533,7 +543,7 @@ export function useLandingScrollTimeline(
       const isMobile = isMobileRef.current
       const smoothFactor = 1 - Math.exp(-dtSec / (isMobile ? SMOOTHING_TIME_CONSTANT_MOBILE : SMOOTHING_TIME_CONSTANT))
 
-      if (videoStickyModeRef.current === 'stuck') {
+      if (careVideoScrollTransition && videoStickyModeRef.current === 'stuck') {
         const tgt = videoTransitionTargetRef.current
         const cur = smoothedVideoTransitionRef.current
         smoothedVideoTransitionRef.current = cur + (tgt - cur) * smoothFactor
@@ -551,7 +561,7 @@ export function useLandingScrollTimeline(
       const t4 = part4TargetRef.current
       smoothedPart4Ref.current += (t4 - smoothedPart4Ref.current) * smoothFactor
 
-      const L = computeLayoutPx(vh)
+      const L = computeLayoutPx(vh, sequenceStartPx)
       const totalPx = L.part1Height + L.part2Height + L.part3HeightPx + L.part4HeightPx
       const masterProgress = totalPx > 0 ? clamp((y - L.sequenceStart) / totalPx, 0, 1) : 0
       const cumFrames = cumFramesRef.current
@@ -637,7 +647,7 @@ export function useLandingScrollTimeline(
       }
 
       const careVideo = careVideoRef.current
-      if (careVideo) {
+      if (careVideoScrollTransition && careVideo) {
         const vSticky = videoStickyModeRef.current
         const tgtProgress = videoTransitionTargetRef.current
         const stickyCard = videoStickyCardRef.current
@@ -682,7 +692,7 @@ export function useLandingScrollTimeline(
           100 *
           vh
       )
-      const insideVisible = p4Norm > 0 || raw.frameScrollOutProgress > 0.001
+      const insideVisible = p4Norm > 0
       const insideOffsetPx = roundToDprPx(
         (((insideVisible && p4Norm > 0 ? INSIDE_FROM_BOTTOM_VH - INSIDE_FROM_BOTTOM_VH * p4Norm : INSIDE_FROM_BOTTOM_VH) + INSIDE_VERTICAL_OFFSET_VH) / 100) * vh
       )
@@ -698,8 +708,7 @@ export function useLandingScrollTimeline(
         raw.frameStickyMode !== 'before' || seqProgress > 0.001 || p2Norm > 0.001 ? 1 : smoothstep(0, 0.04, seqProgress / Math.max(STYLE_TEXT_DELAY, 0.01))
       const designOp = smoothstep(0, 0.03, p2Norm) * (p3Norm < 0.995 ? 1 : smoothstep(1, 0.92, p3Norm))
       const careOp = smoothstep(0, 0.03, p3Norm) * (p4Norm < 0.995 ? 1 : smoothstep(1, 0.92, p4Norm))
-      const insideOp =
-        raw.frameScrollOutProgress > 0.002 ? 1 : smoothstep(0, 0.035, p4Norm)
+      const insideOp = smoothstep(0, 0.035, p4Norm)
 
       if (styleTextRef.current) styleTextRef.current.style.opacity = String(styleOp)
       if (designTextRef.current) designTextRef.current.style.opacity = String(designOp)
@@ -713,82 +722,82 @@ export function useLandingScrollTimeline(
         canvas.style.transform = `translateZ(0) scale(${scale})`
       }
 
-      const vp = smoothedVideoTransitionRef.current
-      const baseH = videoCardBaseHeightRef.current
-      const phEl = videoPlaceholderRef.current
-      const cardEl = videoStickyCardRef.current
-      const mode = videoStickyModeRef.current
+      if (careVideoScrollTransition) {
+        const vp = smoothedVideoTransitionRef.current
+        const baseH = videoCardBaseHeightRef.current
+        const phEl = videoPlaceholderRef.current
+        const cardEl = videoStickyCardRef.current
+        const mode = videoStickyModeRef.current
 
-      const shouldWriteVideoStyles =
-        !isMobile ||
-        mode !== 'stuck' ||
-        lastWrittenVideoProgressRef.current < 0 ||
-        Math.abs(vp - lastWrittenVideoProgressRef.current) >= MOBILE_VIDEO_PROGRESS_WRITE_THROTTLE
+        const shouldWriteVideoStyles =
+          !isMobile ||
+          mode !== 'stuck' ||
+          lastWrittenVideoProgressRef.current < 0 ||
+          Math.abs(vp - lastWrittenVideoProgressRef.current) >= MOBILE_VIDEO_PROGRESS_WRITE_THROTTLE
 
-      if (mode === 'before') lastWrittenVideoProgressRef.current = -1
+        if (mode === 'before') lastWrittenVideoProgressRef.current = -1
 
-      if (shouldWriteVideoStyles) {
-        lastWrittenVideoProgressRef.current = vp
-        if (phEl) {
-          if (mode === 'before' || baseH <= 0) {
-            phEl.style.height = '0px'
-          } else if (mode === 'stuck') {
-            phEl.style.height = `${baseH * (1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * vp)}px`
-          } else {
-            phEl.style.height = `${baseH * VIDEO_TRANSITION_HEIGHT_SCALE_END}px`
-          }
-        }
-
-        if (cardEl) {
-          if (mode === 'before') {
-            cardEl.style.width = ''
-            cardEl.style.marginLeft = ''
-            cardEl.style.marginRight = ''
-            cardEl.style.borderRadius = ''
-            cardEl.style.transform = ''
-            cardEl.style.transformOrigin = ''
-            cardEl.style.height = ''
-            cardEl.style.aspectRatio = ''
-          } else {
-            const wPct = 100 - (100 - VIDEO_TRANSITION_WIDTH_END_PCT) * vp
-            cardEl.style.width = `${wPct}%`
-            cardEl.style.marginLeft = 'auto'
-            cardEl.style.marginRight = 'auto'
-            cardEl.style.borderRadius = `${VIDEO_TRANSITION_BORDER_RADIUS_PX * vp}px`
-            cardEl.style.transform = `scale(${1 - (1 - VIDEO_TRANSITION_SCALE_END) * vp}, 1)`
-            cardEl.style.transformOrigin = 'center top'
-            if (baseH > 0) {
-              cardEl.style.height = `${baseH * (mode === 'stuck' ? 1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * vp : VIDEO_TRANSITION_HEIGHT_SCALE_END)}px`
-              cardEl.style.aspectRatio = ''
+        if (shouldWriteVideoStyles) {
+          lastWrittenVideoProgressRef.current = vp
+          if (phEl) {
+            if (mode === 'before' || baseH <= 0) {
+              phEl.style.height = '0px'
+            } else if (mode === 'stuck') {
+              phEl.style.height = `${baseH * (1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * vp)}px`
+            } else {
+              phEl.style.height = `${baseH * VIDEO_TRANSITION_HEIGHT_SCALE_END}px`
             }
           }
+
+          if (cardEl) {
+            if (mode === 'before') {
+              cardEl.style.width = ''
+              cardEl.style.marginLeft = ''
+              cardEl.style.marginRight = ''
+              cardEl.style.borderRadius = ''
+              cardEl.style.transform = ''
+              cardEl.style.transformOrigin = ''
+              cardEl.style.height = ''
+              cardEl.style.aspectRatio = ''
+            } else {
+              const wPct = 100 - (100 - VIDEO_TRANSITION_WIDTH_END_PCT) * vp
+              cardEl.style.width = `${wPct}%`
+              cardEl.style.marginLeft = 'auto'
+              cardEl.style.marginRight = 'auto'
+              cardEl.style.borderRadius = `${VIDEO_TRANSITION_BORDER_RADIUS_PX * vp}px`
+              cardEl.style.transform = `scale(${1 - (1 - VIDEO_TRANSITION_SCALE_END) * vp}, 1)`
+              cardEl.style.transformOrigin = 'center top'
+              if (baseH > 0) {
+                cardEl.style.height = `${baseH * (mode === 'stuck' ? 1 - (1 - VIDEO_TRANSITION_HEIGHT_SCALE_END) * vp : VIDEO_TRANSITION_HEIGHT_SCALE_END)}px`
+                cardEl.style.aspectRatio = ''
+              }
+            }
+          }
+
+          const brand = careVideoBrandingRef.current
+          if (brand) {
+            brand.style.top = `${8 + 7 * vp}%`
+            brand.style.transform = `translate(-50%, -50%) scale(${1 + 0.85 * vp})`
+          }
         }
 
-        const brand = careVideoBrandingRef.current
-        if (brand) {
-          brand.style.top = `${8 + 7 * vp}%`
-          brand.style.transform = `translate(-50%, -50%) scale(${1 + 0.85 * vp})`
-        }
-      }
-
-      // Sensing label: move up by the same amount the card height shrinks (same vp as card).
-      // Fixed px caps were too small vs the real shrink; this tracks the card's bottom edge.
-      const sensingEl = careVideoSensingRef.current
-      if (sensingEl) {
-        if (mode === 'before') {
-          sensingEl.style.removeProperty('transform')
-          sensingEl.style.removeProperty('opacity')
-        } else if (baseH > 0) {
-          const endScale = VIDEO_TRANSITION_HEIGHT_SCALE_END
-          const currentHeight =
-            mode === 'after' ? baseH * endScale : baseH * (1 - (1 - endScale) * vp)
-          const heightDelta = baseH - currentHeight
-          sensingEl.style.transform = `translateY(${-heightDelta}px)`
-          const progress = mode === 'after' ? 1 : vp
-          sensingEl.style.opacity = String(Math.max(1 - progress * 0.2, 0.7))
-        } else {
-          sensingEl.style.removeProperty('transform')
-          sensingEl.style.removeProperty('opacity')
+        const sensingEl = careVideoSensingRef.current
+        if (sensingEl) {
+          if (mode === 'before') {
+            sensingEl.style.removeProperty('transform')
+            sensingEl.style.removeProperty('opacity')
+          } else if (baseH > 0) {
+            const endScale = VIDEO_TRANSITION_HEIGHT_SCALE_END
+            const currentHeight =
+              mode === 'after' ? baseH * endScale : baseH * (1 - (1 - endScale) * vp)
+            const heightDelta = baseH - currentHeight
+            sensingEl.style.transform = `translateY(${-heightDelta}px)`
+            const progress = mode === 'after' ? 1 : vp
+            sensingEl.style.opacity = String(Math.max(1 - progress * 0.2, 0.7))
+          } else {
+            sensingEl.style.removeProperty('transform')
+            sensingEl.style.removeProperty('opacity')
+          }
         }
       }
 
@@ -797,7 +806,15 @@ export function useLandingScrollTimeline(
 
     rafId = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(rafId)
-  }, [enabled, heroVideoRef, isDesktopViewport, measureVideoStickyBounds, seekToFrame, stableVhRef])
+  }, [
+    enabled,
+    heroVideoRef,
+    isDesktopViewport,
+    measureVideoStickyBounds,
+    seekToFrame,
+    stableVhRef,
+    careVideoScrollTransition,
+  ])
 
   const refs = useMemo(
     () => ({
@@ -831,7 +848,6 @@ export function useLandingScrollTimeline(
     navbarSolid,
     polygonOpacity,
     frameStickyMode,
-    frameScrollOutProgress,
     videoStickyMode,
     alphaPlaybackMode,
     refs,

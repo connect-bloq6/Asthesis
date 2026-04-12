@@ -69,7 +69,10 @@ function usePrefersReducedMotion() {
   return reduced
 }
 
-function FeatureVideoCarousel() {
+export type ProductFeatureCarouselVariant = 'default' | 'hero'
+
+export function ProductFeatureVideoCarousel({ variant = 'default' }: { variant?: ProductFeatureCarouselVariant }) {
+  const isHero = variant === 'hero'
   const slideCount = FEATURES.length
   const [index, setIndex] = useState(0)
   const reducedMotion = usePrefersReducedMotion()
@@ -154,17 +157,56 @@ function FeatureVideoCarousel() {
       <div
         role="region"
         aria-roledescription="carousel"
-        aria-label="Product features"
+        aria-labelledby={isHero ? 'product-features-available-heading' : undefined}
+        aria-label={isHero ? undefined : 'Product features'}
         tabIndex={0}
         onKeyDown={onKeyDown}
-        className="rounded-[24px] border border-[#E5E7EB] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+        className={
+          isHero
+            ? 'overflow-hidden rounded-[24px] border border-[#E5E7EB] bg-white shadow-[0_24px_80px_-20px_rgba(0,0,0,0.18)] outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white sm:rounded-[28px]'
+            : 'rounded-[24px] border border-[#E5E7EB] bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] outline-none focus-visible:ring-2 focus-visible:ring-[#0A0A0A]/20 focus-visible:ring-offset-2 focus-visible:ring-offset-white'
+        }
       >
         <p className="sr-only" aria-live="polite">
           Slide {index + 1} of {slideCount}: {FEATURES[index].title}
         </p>
 
+        {isHero && (
+          <header className="relative overflow-hidden rounded-t-[24px] border-b border-[#ECEEF1] bg-[#FAFBFC] sm:rounded-t-[28px]">
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.55]"
+              aria-hidden
+              style={{
+                background:
+                  'radial-gradient(120% 90% at 0% 0%, rgba(246,239,224,0.35) 0%, transparent 52%), radial-gradient(80% 70% at 100% 0%, rgba(10,10,10,0.04) 0%, transparent 45%)',
+              }}
+            />
+            <div className="relative px-5 py-8 sm:px-8 sm:py-9 lg:px-11 lg:py-10 xl:px-14 xl:py-11">
+              <p
+                className="mb-3 text-[13px] font-medium uppercase tracking-[0.14em] text-[#8B9199]"
+                style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
+              >
+                Product
+              </p>
+              <h2
+                id="product-features-available-heading"
+                className="max-w-[18ch] text-[clamp(1.875rem,4.2vw,2.75rem)] font-semibold leading-[1.06] tracking-[-0.03em] text-[#0A0A0A] sm:max-w-none"
+                style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
+              >
+                Features Available
+              </h2>
+              <p
+                className="mt-4 max-w-2xl text-[15px] leading-relaxed text-[#5C6370] sm:text-base sm:leading-relaxed"
+                style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif', fontWeight: 400 }}
+              >
+                Intelligent sensing, thoughtful interaction, and dependable safety, without demanding constant attention.
+              </p>
+            </div>
+          </header>
+        )}
+
         <div
-          className="overflow-hidden rounded-[24px] cursor-grab active:cursor-grabbing touch-pan-y"
+          className={`overflow-hidden cursor-grab active:cursor-grabbing touch-pan-y ${isHero ? '' : 'rounded-[24px]'}`}
           onPointerDown={onPointerDown}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerCancel}
@@ -183,11 +225,33 @@ function FeatureVideoCarousel() {
                 aria-roledescription="slide"
                 aria-label={`${i + 1} of ${slideCount}: ${item.title}`}
                 aria-hidden={i !== index}
-                className="min-w-full w-full flex-shrink-0 px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10"
+                className={
+                  isHero
+                    ? 'min-w-full w-full flex-shrink-0 bg-white px-5 pb-9 pt-7 sm:px-8 sm:pb-10 sm:pt-8 lg:px-11 lg:pb-12 lg:pt-9 xl:px-14 xl:pb-14 xl:pt-10'
+                    : 'min-w-full w-full flex-shrink-0 px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10'
+                }
               >
-                <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-10 xl:gap-12">
-                  <div className="relative w-full lg:w-[62%] lg:max-w-none lg:flex-shrink-0">
-                    <div className="relative w-full aspect-video overflow-hidden rounded-[20px] bg-[#0A0A0A] ring-1 ring-black/[0.06]">
+                <div
+                  className={
+                    isHero
+                      ? 'flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-12 xl:gap-14'
+                      : 'flex flex-col gap-8 lg:flex-row lg:items-center lg:gap-10 xl:gap-12'
+                  }
+                >
+                  <div
+                    className={
+                      isHero
+                        ? 'relative w-full lg:w-[min(72%,920px)] lg:max-w-none lg:flex-shrink-0'
+                        : 'relative w-full lg:w-[62%] lg:max-w-none lg:flex-shrink-0'
+                    }
+                  >
+                    <div
+                      className={
+                        isHero
+                          ? 'relative w-full aspect-video overflow-hidden rounded-[20px] bg-[#0A0A0A] ring-1 ring-black/[0.08] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.35)] sm:rounded-[22px] lg:shadow-[0_28px_70px_-18px_rgba(0,0,0,0.4)]'
+                          : 'relative w-full aspect-video overflow-hidden rounded-[20px] bg-[#0A0A0A] ring-1 ring-black/[0.06]'
+                      }
+                    >
                       {'videoSrc' in item ? (
                         <video
                           ref={(el) => {
@@ -198,7 +262,7 @@ function FeatureVideoCarousel() {
                           controls
                           muted
                           playsInline
-                          preload="metadata"
+                          preload={isHero && i === 0 ? 'auto' : 'metadata'}
                           aria-label={`${item.title} demonstration video`}
                         />
                       ) : (
@@ -214,7 +278,13 @@ function FeatureVideoCarousel() {
                     </div>
                   </div>
 
-                  <div className="flex min-w-0 flex-1 flex-col justify-center lg:max-w-md xl:max-w-lg">
+                  <div
+                    className={
+                      isHero
+                        ? 'flex min-w-0 flex-1 flex-col justify-center lg:max-w-md xl:max-w-xl'
+                        : 'flex min-w-0 flex-1 flex-col justify-center lg:max-w-md xl:max-w-lg'
+                    }
+                  >
                     <span
                       className="mb-3 inline-flex w-fit rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-1 text-xs font-medium uppercase tracking-wide text-[#636363]"
                       style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
@@ -229,13 +299,21 @@ function FeatureVideoCarousel() {
                       {String(i + 1).padStart(2, '0')}
                     </p>
                     <h3
-                      className="mb-3 text-xl font-semibold text-[#0A0A0A] sm:text-2xl lg:text-[1.65rem] lg:leading-snug"
+                      className={
+                        isHero
+                          ? 'mb-3 text-2xl font-semibold text-[#0A0A0A] sm:text-3xl lg:text-[1.85rem] lg:leading-snug xl:text-[2rem]'
+                          : 'mb-3 text-xl font-semibold text-[#0A0A0A] sm:text-2xl lg:text-[1.65rem] lg:leading-snug'
+                      }
                       style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
                     >
                       {item.title}
                     </h3>
                     <p
-                      className="max-w-prose text-[#4A5565] text-base leading-relaxed sm:text-[17px] sm:leading-relaxed"
+                      className={
+                        isHero
+                          ? 'max-w-prose text-[#4A5565] text-base leading-relaxed sm:text-lg sm:leading-relaxed'
+                          : 'max-w-prose text-[#4A5565] text-base leading-relaxed sm:text-[17px] sm:leading-relaxed'
+                      }
                       style={{
                         fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
                         fontWeight: 400,
@@ -250,7 +328,13 @@ function FeatureVideoCarousel() {
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-5 border-t border-[#F3F4F6] px-5 py-5 sm:flex-row sm:justify-between sm:px-8 lg:px-10">
+        <div
+          className={
+            isHero
+              ? 'flex flex-col items-center gap-5 border-t border-[#F3F4F6] px-4 py-5 sm:flex-row sm:justify-between sm:px-7 lg:px-10 xl:px-12'
+              : 'flex flex-col items-center gap-5 border-t border-[#F3F4F6] px-5 py-5 sm:flex-row sm:justify-between sm:px-8 lg:px-10'
+          }
+        >
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -292,8 +376,7 @@ function FeatureVideoCarousel() {
 
 /**
  * Product page – Section 4: "FEATURES AVAILABLE".
- * Intro: heading, description, Explore the Device button, separator line.
- * Feature carousel: one large media + text per slide, arrows and dots.
+ * Intro copy; feature carousel lives at page top (see ProductFeatureVideoCarousel on product page).
  */
 export default function ProductSection4() {
   return (
@@ -303,7 +386,7 @@ export default function ProductSection4() {
     >
       <div className="max-w-[1280px] mx-auto w-full px-3 sm:px-4 lg:px-4 xl:px-6 pt-20 sm:pt-24 lg:pt-28 xl:pt-32 pb-20 sm:pb-24 lg:pb-28 xl:pb-32">
         {/* Intro: heading, description, button */}
-        <div className="flex flex-col lg:flex-row lg:items-end lg:gap-10 mb-10 sm:mb-12">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:gap-10">
           <div className="min-w-0 lg:flex-1 lg:min-w-[720px] lg:pr-8">
             <h2
               className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#0A0A0A] uppercase tracking-tight mb-4 sm:mb-5"
@@ -337,10 +420,6 @@ export default function ProductSection4() {
           </div>
         </div>
 
-        {/* Horizontal separator */}
-        <div className="border-b border-[#E5E7EB] w-full mb-12 sm:mb-16" />
-
-        <FeatureVideoCarousel />
       </div>
     </section>
   )

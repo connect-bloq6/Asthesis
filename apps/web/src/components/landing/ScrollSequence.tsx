@@ -475,8 +475,7 @@ No unnecessary recording.<br></br><br></br>
 
 Just intelligent awareness.<br></br><br></br>
 
-Designed for dignity.<br></br>
-Built for trust.
+Sensing What Matters.
           </p>
         </motion.div>
 

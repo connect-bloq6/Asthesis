@@ -4,7 +4,6 @@
  */
 
 import {
-  FRAME_SCROLL_OUT_VH,
   FRAME_STICKY_HYSTERESIS_PX,
   PART2_SCROLL_VH,
   PART3_SCROLL_VH,
@@ -52,8 +51,9 @@ export function globalFrameToPartNorms(
   return { seqProgress, p2Norm, p3Norm, p4Norm }
 }
 
-export function computeLayoutPx(vh: number) {
-  const sequenceStart = vh
+/** @param sequenceStartPx Document Y where the frame sequence begins (defaults to one viewport = hero-only layout). */
+export function computeLayoutPx(vh: number, sequenceStartPx?: number) {
+  const sequenceStart = sequenceStartPx !== undefined ? sequenceStartPx : vh
   const part1Height = (SEQUENCE_SCROLL_VH / 100) * vh
   const part2Start = sequenceStart + part1Height
   const part2Height = (PART2_SCROLL_VH / 100) * vh
@@ -63,9 +63,8 @@ export function computeLayoutPx(vh: number) {
   const part4HeightPx = (PART4_SCROLL_VH / 100) * vh
   const frameSectionContentVh =
     100 + SEQUENCE_SCROLL_VH + PART2_SCROLL_VH + PART3_SCROLL_VH + PART4_SCROLL_VH
-  const scrollOutStartPx = vh + (frameSectionContentVh / 100) * vh
-  const scrollOutHeightPx = (FRAME_SCROLL_OUT_VH / 100) * vh
-  const scrollOutEndPx = scrollOutStartPx + scrollOutHeightPx
+  /** Document Y where frame narrative scroll is consumed; sticky ends here (no extra release band). */
+  const frameNarrativeEndPx = sequenceStart + (frameSectionContentVh / 100) * vh
   return {
     sequenceStart,
     part1Height,
@@ -75,15 +74,14 @@ export function computeLayoutPx(vh: number) {
     part3HeightPx,
     part4StartPx,
     part4HeightPx,
-    scrollOutStartPx,
-    scrollOutHeightPx,
-    scrollOutEndPx,
+    scrollOutStartPx: frameNarrativeEndPx,
+    scrollOutEndPx: frameNarrativeEndPx,
   }
 }
 
 /** Raw scroll-derived progress (instant); used as targets for smoothing / frame target. */
-export function scrollToRawProgress(scrollY: number, vh: number) {
-  const L = computeLayoutPx(vh)
+export function scrollToRawProgress(scrollY: number, vh: number, sequenceStartPx?: number) {
+  const L = computeLayoutPx(vh, sequenceStartPx)
   let part1Progress = 0
   let part2Progress = 0
   let part3Progress = 0
@@ -100,10 +98,6 @@ export function scrollToRawProgress(scrollY: number, vh: number) {
   } else if (scrollY >= L.part3StartPx) {
     part3Progress = Math.min(1, (scrollY - L.part3StartPx) / L.part3HeightPx)
   }
-  const frameScrollOutProgress =
-    scrollY >= L.scrollOutStartPx
-      ? clamp((scrollY - L.scrollOutStartPx) / L.scrollOutHeightPx, 0, 1)
-      : 0
   const hysF = FRAME_STICKY_HYSTERESIS_PX
   let frameStickyMode: 'before' | 'stuck' | 'after' = 'before'
   if (scrollY < L.sequenceStart - hysF) frameStickyMode = 'before'
@@ -116,7 +110,6 @@ export function scrollToRawProgress(scrollY: number, vh: number) {
     part2Progress,
     part3Progress,
     part4Progress,
-    frameScrollOutProgress,
     frameStickyMode,
   }
 }

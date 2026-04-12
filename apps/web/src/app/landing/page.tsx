@@ -4,20 +4,21 @@
  * - A single requestAnimationFrame loop reads scrollYRef, computes raw section progress (timeline.ts),
  *   advances the displayed global frame toward the scroll target (canvas sync), and applies all text
  *   transforms + opacities from that same displayed frame (fixes fast upward scroll text flicker).
- * - Final care video: sticky bounds from layout; on mode enter, transition progress snaps to scroll target;
- *   while stuck, one smoothed progress drives width, radius, scale, height, placeholder, and branding via refs.
+ * - Care video (static, no scroll-driven transition) sits directly under the hero; frame sequence follows.
+ *   Frame scene + post-canvas CTA + footer share one section (fixed narrative viewport + handoff stacked above for continued scroll).
  */
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Navbar from '@/components/ui/Navbar'
+import Footer from '@/components/ui/Footer'
 import LoadingScreen from '@/components/ui/LoadingScreen'
 import { GRADIENT_DURATION_MS, GRADIENT_START_TIME } from './constants'
 import { useLandingScrollTimeline } from './hooks/useLandingScrollTimeline'
 import { HeroSection } from './components/HeroSection'
 import { FrameSequenceSection } from './components/FrameSequenceSection'
 import { CareVideoSection } from './components/CareVideoSection'
-import { useKnowMoreModal } from './components/KnowMoreModal'
+import { PostCanvasCtaSection } from './components/PostCanvasCtaSection'
 
 export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true)
@@ -27,9 +28,7 @@ export default function LandingPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
 
   const animEnabled = gradientTransitionComplete && !isLoading
-  const anim = useLandingScrollTimeline(animEnabled, isDesktopViewport, videoRef)
-
-  const { openKnowMore, portal: knowMorePortal } = useKnowMoreModal()
+  const anim = useLandingScrollTimeline(animEnabled, isDesktopViewport, videoRef, false)
 
   useEffect(() => {
     const m = typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)')
@@ -150,6 +149,14 @@ export default function LandingPage() {
         )}
 
         {gradientTransitionComplete && (
+          <CareVideoSection
+            showFooter={false}
+            careSectionRef={r.careSectionRef}
+            careVideoRef={r.careVideoRef}
+          />
+        )}
+
+        {gradientTransitionComplete && (
           <FrameSequenceSection
             refs={{
               frameSectionRef: r.frameSectionRef,
@@ -167,32 +174,13 @@ export default function LandingPage() {
             alphaPlaybackMode={rest.alphaPlaybackMode}
             isDesktopViewport={isDesktopViewport}
             frameStickyMode={rest.frameStickyMode}
-            frameScrollOutProgress={rest.frameScrollOutProgress}
             polygonOpacity={rest.polygonOpacity}
-          />
-        )}
-
-        {gradientTransitionComplete && (
-          <CareVideoSection
-            refs={{
-              careSectionRef: r.careSectionRef,
-              careVideoStickyRef: r.careVideoStickyRef,
-              videoStickSentinelRef: r.videoStickSentinelRef,
-              videoStickyWrapperRef: r.videoStickyWrapperRef,
-              videoStickyCardRef: r.videoStickyCardRef,
-              videoPlaceholderRef: r.videoPlaceholderRef,
-              careVideoBrandingRef: r.careVideoBrandingRef,
-              careVideoSensingRef: r.careVideoSensingRef,
-              careVideoRef: r.careVideoRef,
-            }}
-            videoAfterTopPxRef={anim.videoAfterTopPxRef}
-            videoStickyMode={rest.videoStickyMode}
-            isDesktopViewport={isDesktopViewport}
-            onKnowMore={openKnowMore}
-          />
+          >
+            <PostCanvasCtaSection />
+            <Footer />
+          </FrameSequenceSection>
         )}
       </main>
-      {knowMorePortal}
     </>
   )
 }

@@ -11,20 +11,22 @@ import ImpactSection6 from '@/components/ui/ImpactSection6'
 import ImpactSection7 from '@/components/ui/ImpactSection7'
 import ImpactSection8 from '@/components/ui/ImpactSection8'
 import ImpactSection9 from '@/components/ui/ImpactSection9'
+import ImpactCareersSection from '@/components/ui/ImpactCareersSection'
 
 export default function ImpactPage() {
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-white">
       <Navbar solid />
-      <ImpactSection1 />
+      {/* <ImpactSection1 />
       <ImpactSection2 />
       <ImpactSection3 />
       <ImpactSection4 />
       <ImpactSection5 />
-      <ImpactSection6 />
+      <ImpactSection6 /> */}
       <ImpactSection7 />
       <ImpactSection8 />
       <ImpactSection9 />
+      <ImpactCareersSection />
       <Footer />
     </main>
   )

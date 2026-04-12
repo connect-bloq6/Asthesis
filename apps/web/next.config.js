@@ -1,3 +1,15 @@
+const path = require('path')
+
+// Load monorepo root `.env*` into `process.env` so Supabase vars can live in one file at the repo root
+// (Next.js otherwise only auto-loads from `apps/web/`).
+try {
+  const { loadEnvConfig } = require('@next/env')
+  const repoRoot = path.join(__dirname, '..', '..')
+  loadEnvConfig(repoRoot, process.env.NODE_ENV !== 'production')
+} catch {
+  /* ignore */
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable React strict mode for better development experience

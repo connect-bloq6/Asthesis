@@ -16,7 +16,7 @@ export default function AboutPage() {
     <main className="relative min-h-screen bg-background overflow-x-hidden">
       <Navbar solid />
       <AboutSection1 />
-      <AboutSection2 />
+      {/* <AboutSection2 /> */}
       <AboutSection3 />
       <AboutPurposeMissionSection />
       <AboutSection4 />

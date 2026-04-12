@@ -12,7 +12,6 @@ export const PART3_SCALE_START = 1.32
 export const PART3_SCALE_END = 1
 export const PART4_SCROLL_VH = 170
 export const PART4_FRAME_EASING = 0.72
-export const FRAME_SCROLL_OUT_VH = 28
 
 export const VIDEO_STICK_TOP_OFFSET_PX = 72
 export const VIDEO_STICKY_SCROLL_VH_DESKTOP = 100

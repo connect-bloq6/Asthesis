@@ -1,5 +1,7 @@
 'use client'
 
+import AboutSection2 from "./AboutSection2"
+
 /**
  * About page – Section 1: "Who we are"
  * Typography and layout from Figma:
@@ -30,7 +32,20 @@ export default function AboutSection1() {
           >
             Who we are
           </p>
-
+          <h2
+              className="max-w-[552px] mb-6"
+              style={{
+                fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif',
+                fontWeight: 500,
+                fontSize: 'clamp(28px, 4vw, 40px)',
+                lineHeight: '1.2',
+                letterSpacing: '-1px',
+                color: '#101828',
+              }}
+            >
+             Why Asthesis?
+            </h2>
+            <AboutSection2 />
           {/* Main heading */}
           <h1
             className="max-w-[1005px] mb-5 sm:mb-6 md:mb-8"
