@@ -49,7 +49,9 @@ export function CareerApplyForm({ jobId, jobTitle }: CareerApplyFormProps) {
       const data = (await res.json().catch(() => ({}))) as { error?: string; hint?: string }
       if (!res.ok) {
         const msg = data.error ?? 'Something went wrong. Please try again.'
-        setError(data.hint ? `${msg} ${data.hint}` : msg)
+        const withHint =
+          process.env.NODE_ENV === 'development' && data.hint ? `${msg} ${data.hint}` : msg
+        setError(withHint)
         return
       }
       setSuccess(true)

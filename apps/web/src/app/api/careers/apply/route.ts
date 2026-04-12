@@ -36,21 +36,32 @@ function safeFileStem(name: string): string {
 export async function POST(req: NextRequest) {
   const service = createServiceClient()
   if (!service) {
+    const isDev = process.env.NODE_ENV !== 'production'
     const hasUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL?.trim())
     const hasPubKey = Boolean(
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() ||
         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY?.trim()
     )
     const hasService = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim())
+    const hint =
+      !hasService
+        ? 'Set SUPABASE_SERVICE_ROLE_KEY for the web app (e.g. in apps/web/.env.local or apps/admin/.env.local), then restart the dev server.'
+        : !hasUrl || !hasPubKey
+          ? 'Set NEXT_PUBLIC_SUPABASE_URL and a public Supabase key in apps/web/.env.local.'
+          : 'Check that Supabase URL and service role key belong to the same project.'
+
+    if (isDev) {
+      console.error('[careers/apply] service client unavailable:', hint)
+    } else {
+      console.error('[careers/apply] service client unavailable', { hasService, hasUrl, hasPubKey })
+    }
+
     return NextResponse.json(
       {
-        error: 'Applications are temporarily unavailable. Missing server configuration.',
-        hint:
-          !hasService
-            ? 'Set SUPABASE_SERVICE_ROLE_KEY for the web app (e.g. in apps/web/.env.local or apps/admin/.env.local), then restart the dev server.'
-            : !hasUrl || !hasPubKey
-              ? 'Set NEXT_PUBLIC_SUPABASE_URL and a public Supabase key in apps/web/.env.local.'
-              : 'Check that Supabase URL and service role key belong to the same project.',
+        error: isDev
+          ? 'Applications are temporarily unavailable. Missing server configuration.'
+          : 'We could not submit your application right now. Please try again in a few minutes.',
+        ...(isDev ? { hint } : {}),
       },
       { status: 503 }
     )

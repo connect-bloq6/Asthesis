@@ -204,13 +204,16 @@ export default function ImpactCareersSection() {
                     {jobs.length === 0 ? (
                       <>
                         <p>No open roles are listed yet.</p>
-                        <p className="text-xs leading-relaxed">
-                          If the role exists in Supabase: turn on <strong className="font-medium text-[#374151]">Published</strong>{' '}
-                          in admin, add <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> to{' '}
-                          <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">apps/web/.env.local</code> (or the repo root{' '}
-                          <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">.env</code>), restart the dev server, and use the same{' '}
-                          <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> as in admin.
-                        </p>
+                        {process.env.NODE_ENV === 'development' ? (
+                          <p className="text-xs leading-relaxed">
+                            If the role exists in Supabase: turn on{' '}
+                            <strong className="font-medium text-[#374151]">Published</strong> in admin, add{' '}
+                            <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">SUPABASE_SERVICE_ROLE_KEY</code> to{' '}
+                            <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">apps/web/.env.local</code> (or the repo root{' '}
+                            <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">.env</code>), restart the dev server, and use the same{' '}
+                            <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> as in admin.
+                          </p>
+                        ) : null}
                       </>
                     ) : (
                       <p>No roles match your filters. Try clearing location or team filters.</p>
