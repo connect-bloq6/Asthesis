@@ -95,7 +95,7 @@ export default function ImpactCareersSection() {
       style={{ backgroundColor: SECTION_BG }}
       aria-labelledby="impact-careers-heading"
     >
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-10 lg:px-12 py-12 sm:py-16 md:py-20">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-10 lg:px-12 py-16 sm:py-20 md:py-24">
         <h2
           id="impact-careers-heading"
           className="text-xl sm:text-2xl md:text-3xl font-semibold leading-snug tracking-tight max-w-[720px] mb-8 sm:mb-10"

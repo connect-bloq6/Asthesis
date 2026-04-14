@@ -60,35 +60,6 @@ export default function LandingPage() {
     return () => clearTimeout(timer)
   }, [showChampagneGradient])
 
-  const careVideoRef = anim.refs.careVideoRef
-  useEffect(() => {
-    if (!gradientTransitionComplete) return
-    let observer: IntersectionObserver | null = null
-    let cancelled = false
-    const attach = () => {
-      if (cancelled) return
-      const video = careVideoRef.current
-      if (!video) {
-        requestAnimationFrame(attach)
-        return
-      }
-      observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) video.play().catch(() => {})
-          })
-        },
-        { threshold: 0.25, rootMargin: '0px' }
-      )
-      observer.observe(video)
-    }
-    attach()
-    return () => {
-      cancelled = true
-      observer?.disconnect()
-    }
-  }, [gradientTransitionComplete, careVideoRef])
-
   const { refs: r, ...rest } = anim
 
   return (

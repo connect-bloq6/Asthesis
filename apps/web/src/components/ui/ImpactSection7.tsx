@@ -20,7 +20,7 @@ export default function ImpactSection7() {
       className="relative w-full bg-white"
       aria-label="Our mission"
     >
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-10 xl:px-12 py-10 sm:py-16 md:py-20 lg:py-24">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-10 xl:px-12 py-14 sm:py-20 md:py-24 lg:py-28">
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.6fr] gap-8 sm:gap-10 lg:gap-10 xl:gap-12 lg:items-center">
           {/* Left column; shift ~1% right */}
           <div className="order-2 lg:order-1 min-w-0 ml-[1%]">

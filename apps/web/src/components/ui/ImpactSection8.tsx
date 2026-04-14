@@ -13,7 +13,7 @@ export default function ImpactSection8() {
       className="relative w-full bg-white"
       aria-label="Our vision"
     >
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-10 xl:px-12 py-10 sm:py-12 md:py-16 lg:py-20">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-10 lg:px-10 xl:px-12 py-14 sm:py-16 md:py-20 lg:py-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-3 xl:gap-4 lg:items-start">
           {/* Left column – device card: image and card bottom aligned (no gap) */}
           <div className="order-2 lg:order-1 flex justify-center lg:justify-start w-full">

@@ -33,7 +33,7 @@ export default function ImpactSection9() {
       className="relative w-full bg-white"
       aria-label="Impact features and closing"
     >
-      <div className="max-w-[900px] mx-auto px-4 sm:px-6 md:px-10 lg:px-12 pt-10 sm:pt-16 md:pt-20 lg:pt-24 pb-10 sm:pb-14 md:pb-16">
+      <div className="max-w-[900px] mx-auto px-4 sm:px-6 md:px-10 lg:px-12 pt-14 sm:pt-20 md:pt-24 lg:pt-28 pb-14 sm:pb-16 md:pb-20">
         <div className="space-y-8 sm:space-y-12 md:space-y-14">
           {FEATURES.map((item) => (
             <div
@@ -75,7 +75,7 @@ export default function ImpactSection9() {
         </div>
       </div>
       {/* impact_l.png – responsive; full width in container */}
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 pb-10 sm:pb-16 md:pb-24">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 pb-14 sm:pb-20 md:pb-28">
         <div className="relative w-full overflow-hidden rounded-lg sm:rounded-xl md:rounded-2xl max-w-[1232px] aspect-[4/3] sm:aspect-[1232/600] min-h-[200px] sm:min-h-[280px] max-h-[420px] sm:max-h-[480px] lg:max-h-[520px] mx-auto">
           <Image
             src="/images/impact_l.png"
@@ -86,7 +86,7 @@ export default function ImpactSection9() {
           />
         </div>
         <div
-          className="max-w-[900px] mx-auto pt-10 sm:pt-14 md:pt-16 lg:pt-20 text-center"
+          className="max-w-[900px] mx-auto pt-14 sm:pt-16 md:pt-20 lg:pt-24 text-center"
           aria-labelledby="impact-section9-closing-heading"
         >
           {/* <p

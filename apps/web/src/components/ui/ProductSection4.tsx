@@ -75,10 +75,23 @@ export function ProductFeatureVideoCarousel({ variant = 'default' }: { variant?:
   const isHero = variant === 'hero'
   const slideCount = FEATURES.length
   const [index, setIndex] = useState(0)
+  const [carouselInView, setCarouselInView] = useState(true)
   const reducedMotion = usePrefersReducedMotion()
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
+  const carouselRootRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ startX: number; pointerId: number } | null>(null)
   const transitionMs = reducedMotion ? 0 : CAROUSEL_TRANSITION_MS
+
+  useEffect(() => {
+    const el = carouselRootRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const io = new IntersectionObserver(
+      ([e]) => setCarouselInView(e?.isIntersecting ?? false),
+      { threshold: 0.12, rootMargin: '0px' }
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
 
   const goTo = useCallback(
     (i: number) => {
@@ -95,14 +108,21 @@ export function ProductFeatureVideoCarousel({ variant = 'default' }: { variant?:
     FEATURES.forEach((item, i) => {
       const el = videoRefs.current[i]
       if (!el) return
+      if (!carouselInView) {
+        el.pause()
+        return
+      }
       if (i === index && 'videoSrc' in item) {
-        el.muted = true
-        void el.play().catch(() => {})
+        el.muted = false
+        void el.play().catch(() => {
+          el.muted = true
+          void el.play().catch(() => {})
+        })
       } else {
         el.pause()
       }
     })
-  }, [index])
+  }, [index, carouselInView])
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -153,7 +173,7 @@ export function ProductFeatureVideoCarousel({ variant = 'default' }: { variant?:
   }, [])
 
   return (
-    <div className="w-full">
+    <div ref={carouselRootRef} className="w-full">
       <div
         role="region"
         aria-roledescription="carousel"
@@ -260,8 +280,9 @@ export function ProductFeatureVideoCarousel({ variant = 'default' }: { variant?:
                           className="absolute inset-0 h-full w-full object-cover"
                           src={item.videoSrc}
                           controls
-                          muted
+                          muted={false}
                           playsInline
+                          controlsList="nofullscreen noremoteplayback"
                           preload={isHero && i === 0 ? 'auto' : 'metadata'}
                           aria-label={`${item.title} demonstration video`}
                         />

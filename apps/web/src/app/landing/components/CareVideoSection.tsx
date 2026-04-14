@@ -3,6 +3,7 @@
 import type React from 'react'
 import type { RefObject } from 'react'
 import Footer from '@/components/ui/Footer'
+import { useVideoViewportPlayPause } from '@/hooks/useVideoViewportPlayPause'
 
 const ASSETS_BASE = (process.env.NEXT_PUBLIC_ASSETS_BASE_URL || '').replace(/\/$/, '')
 const assetUrl = (path: string) => (ASSETS_BASE ? `${ASSETS_BASE}${path.startsWith('/') ? path : `/${path}`}` : path)
@@ -15,6 +16,8 @@ type Props = {
 }
 
 export function CareVideoSection({ careSectionRef, careVideoRef, showFooter = true }: Props) {
+  useVideoViewportPlayPause(careVideoRef, { threshold: 0.25, preferUnmuted: true })
+
   return (
     <section
       ref={careSectionRef as React.RefObject<HTMLElement>}
@@ -31,9 +34,9 @@ export function CareVideoSection({ careSectionRef, careVideoRef, showFooter = tr
               className="absolute inset-0 w-full h-full object-cover"
               src={assetUrl('/videos/landing_page_video.mp4')}
               playsInline
-              muted
+              muted={false}
               loop
-              autoPlay
+              preload="auto"
             />
             <div className="absolute inset-0 flex flex-col pointer-events-none">
               <div

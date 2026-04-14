@@ -1,25 +1,13 @@
 'use client'
 
-import { useCallback, useRef } from 'react'
+import { useRef } from 'react'
+import { useVideoViewportPlayPause } from '@/hooks/useVideoViewportPlayPause'
 
 const ASSETS_BASE = (process.env.NEXT_PUBLIC_ASSETS_BASE_URL || '').replace(/\/$/, '')
 const assetUrl = (path: string) => (ASSETS_BASE ? `${ASSETS_BASE}${path.startsWith('/') ? path : `/${path}`}` : path)
 
 /** s3://asthesis-prod-assets/videos/About_Us.mp4 */
 const ABOUT_VIDEO_SRC = assetUrl('/videos/About_Us.mp4')
-
-function toggleVideoFullscreen(el: HTMLVideoElement) {
-  if (document.fullscreenElement) {
-    void document.exitFullscreen()
-    return
-  }
-  const req =
-    el.requestFullscreen?.() ??
-    (el as HTMLVideoElement & { webkitRequestFullscreen?: () => Promise<void> }).webkitRequestFullscreen?.()
-  if (req && typeof (req as Promise<void>).then === 'function') {
-    void (req as Promise<void>).catch(() => {})
-  }
-}
 
 /**
  * About page – Section 2: Hero video
@@ -30,11 +18,7 @@ function toggleVideoFullscreen(el: HTMLVideoElement) {
 /** Hero video: max content width, 16:9 */
 export default function AboutSection2() {
   const videoRef = useRef<HTMLVideoElement>(null)
-
-  const onOpenFullscreen = useCallback(() => {
-    const el = videoRef.current
-    if (el) toggleVideoFullscreen(el)
-  }, [])
+  useVideoViewportPlayPause(videoRef, { threshold: 0.2, preferUnmuted: true })
 
   return (
     <section
@@ -48,18 +32,11 @@ export default function AboutSection2() {
             className="absolute inset-0 w-full h-full object-cover"
             src={ABOUT_VIDEO_SRC}
             playsInline
-            muted
+            muted={false}
             loop
-            autoPlay
             preload="auto"
+            aria-label="About Asthesis video"
           />
-          <button
-            type="button"
-            className="absolute inset-0 z-10 cursor-pointer bg-transparent p-0 border-0"
-            aria-label="View video in fullscreen"
-            onClick={onOpenFullscreen}
-          />
-          
         </div>
       </div>
     </section>

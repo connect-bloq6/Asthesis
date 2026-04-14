@@ -15,7 +15,7 @@ export default function ProductPage() {
       <div className="relative bg-white w-full min-h-screen overflow-visible">
         <Navbar solid />
         <section
-          className="relative mt-6 w-full overflow-x-hidden overflow-y-visible pt-6 pb-10 sm:mt-8 sm:pt-8 sm:pb-12 lg:mt-10 lg:pt-10 lg:pb-16"
+          className="relative w-full overflow-x-hidden overflow-y-visible pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-28 lg:pb-24"
           aria-label="Product highlights"
         >
           <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
