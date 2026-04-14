@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 type LoginFormProps = {
@@ -19,7 +18,6 @@ export function LoginForm({
   inputBorder,
   buttonBg,
 }: LoginFormProps) {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -39,8 +37,9 @@ export function LoginForm({
       setError(signError.message)
       return
     }
-    router.refresh()
-    router.push('/dashboard')
+    // Full navigation so the next request always sends fresh Supabase cookies and the dashboard
+    // layout is not served from a stale RSC cache tied to the previous session.
+    window.location.assign('/dashboard')
   }
 
   return (

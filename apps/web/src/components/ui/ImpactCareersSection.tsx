@@ -91,11 +91,11 @@ export default function ImpactCareersSection() {
   return (
     <section
       id="careers"
-      className="relative w-full border-t border-[#E5E7EB] scroll-mt-24"
+      className="relative w-full border-t border-[#E5E7EB] scroll-mt-24 pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-20 sm:pb-24 md:pb-28 lg:pb-32"
       style={{ backgroundColor: SECTION_BG }}
       aria-labelledby="impact-careers-heading"
     >
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-10 lg:px-12 py-16 sm:py-20 md:py-24">
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-10 lg:px-12">
         <h2
           id="impact-careers-heading"
           className="text-xl sm:text-2xl md:text-3xl font-semibold leading-snug tracking-tight max-w-[720px] mb-8 sm:mb-10"
@@ -204,7 +204,7 @@ export default function ImpactCareersSection() {
                     {jobs.length === 0 ? (
                       <>
                         <p>No open roles are listed yet.</p>
-                        {process.env.NODE_ENV === 'development' ? (
+                    {/*}    {process.env.NODE_ENV === 'development' ? (
                           <p className="text-xs leading-relaxed">
                             If the role exists in Supabase: turn on{' '}
                             <strong className="font-medium text-[#374151]">Published</strong> in admin, add{' '}
@@ -213,7 +213,7 @@ export default function ImpactCareersSection() {
                             <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">.env</code>), restart the dev server, and use the same{' '}
                             <code className="text-[11px] bg-[#F3F4F6] px-1 rounded">NEXT_PUBLIC_SUPABASE_URL</code> as in admin.
                           </p>
-                        ) : null}
+                        ) : null}*/}
                       </>
                     ) : (
                       <p>No roles match your filters. Try clearing location or team filters.</p>

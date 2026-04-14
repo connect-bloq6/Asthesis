@@ -40,6 +40,9 @@ export async function DashboardHeader() {
             <Link href="/dashboard/job-applications" className={navLinkClass} style={inter}>
               Applications
             </Link>
+            <Link href="/dashboard/users" className={navLinkClass} style={inter}>
+              Users
+            </Link>
           </nav>
         </div>
         <SignOutButton />

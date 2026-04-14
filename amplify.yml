@@ -35,6 +35,9 @@ applications:
             - npm ci
         build:
           commands:
+            # Same pattern as web: service role must be baked in for server actions that call Auth admin APIs.
+            - rm -f apps/admin/.env.production
+            - env | grep -e '^SUPABASE_SERVICE_ROLE_KEY=' >> apps/admin/.env.production || true
             - npm run build -w admin
       artifacts:
         baseDirectory: apps/admin/.next

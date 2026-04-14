@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { BUTTON_BG } from '@asthesis/shared'
@@ -8,16 +7,13 @@ import { BUTTON_BG } from '@asthesis/shared'
 const inter = { fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' } as const
 
 export function SignOutButton() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   async function signOut() {
     setLoading(true)
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.refresh()
-    router.push('/login')
-    setLoading(false)
+    window.location.assign('/login')
   }
 
   return (
