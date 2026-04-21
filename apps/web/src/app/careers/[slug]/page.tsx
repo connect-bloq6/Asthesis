@@ -27,7 +27,7 @@ export default async function CareerDetailPage({ params }: PageProps) {
       <Navbar solid />
       <article className="max-w-[900px] mx-auto px-4 sm:px-6 md:px-10 pt-24 sm:pt-28 pb-16">
         <Link
-          href="/impact#careers"
+          href="/careers#careers"
           className="text-sm text-[#4B5563] hover:text-[#101828] mb-8 inline-block"
           style={inter}
         >

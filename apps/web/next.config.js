@@ -12,6 +12,10 @@ try {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [{ source: '/impact', destination: '/careers', permanent: true }]
+  },
+
   // Enable React strict mode for better development experience
   reactStrictMode: true,
   

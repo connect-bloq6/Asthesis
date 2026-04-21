@@ -18,7 +18,7 @@ export default async function CareersAdminPage() {
           Job postings
         </h1>
         <p className="text-sm mb-8" style={{ ...inter, color: BODY_MUTED }}>
-          Create and manage roles shown on the Impact page careers section and on public job detail URLs.
+          Create and manage roles shown on the public Careers page and on job detail URLs.
         </p>
 
         {error ? (

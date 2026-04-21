@@ -28,10 +28,10 @@ export function CareVideoSection({ careSectionRef, careVideoRef, showFooter = tr
           className="w-full overflow-hidden border border-white/30 bg-[#1a1a1a] shadow-xl"
           style={{ boxShadow: '0 0 0 1px rgba(255,255,255,0.2)' }}
         >
-          <div className="relative aspect-video w-full min-h-[280px] sm:min-h-[320px] md:min-h-[420px]">
+          <div className="relative aspect-video w-full">
             <video
               ref={careVideoRef as React.LegacyRef<HTMLVideoElement>}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 h-full w-full object-contain"
               src={assetUrl('/videos/landing_page_video.mp4')}
               playsInline
               muted={false}

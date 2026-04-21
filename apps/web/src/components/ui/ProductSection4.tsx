@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 const ASSETS_BASE = (process.env.NEXT_PUBLIC_ASSETS_BASE_URL || '').replace(/\/$/, '')
@@ -9,6 +8,7 @@ const assetUrl = (path: string) => (ASSETS_BASE ? `${ASSETS_BASE}${path.startsWi
 /** s3://asthesis-prod-assets/videos/Feature_1.mp4, Feature_2.mp4 */
 const FEATURE_VIDEO_MOTION = assetUrl('/videos/Feature_1.mp4')
 const FEATURE_VIDEO_GAIT = assetUrl('/videos/Feature_2.mp4')
+const FEATURE_VIDEO_LAST = assetUrl('/videos/last_video.mp4')
 
 const CAROUSEL_TRANSITION_MS = 400
 
@@ -32,7 +32,7 @@ const FEATURES = [
   {
     id: 3,
     category: 'Privacy',
-    image: '/images/thermal.png',
+    videoSrc: FEATURE_VIDEO_LAST,
     title: 'Thermal sensing',
     description:
       'Detects heat signatures and presence without cameras or recorded images, supporting a more privacy conscious approach to remote monitoring.',
@@ -112,7 +112,7 @@ export function ProductFeatureVideoCarousel({ variant = 'default' }: { variant?:
         el.pause()
         return
       }
-      if (i === index && 'videoSrc' in item) {
+      if (i === index) {
         el.muted = false
         void el.play().catch(() => {
           el.muted = true
@@ -272,30 +272,19 @@ export function ProductFeatureVideoCarousel({ variant = 'default' }: { variant?:
                           : 'relative w-full aspect-video overflow-hidden rounded-[20px] bg-[#0A0A0A] ring-1 ring-black/[0.06]'
                       }
                     >
-                      {'videoSrc' in item ? (
-                        <video
-                          ref={(el) => {
-                            videoRefs.current[i] = el
-                          }}
-                          className="absolute inset-0 h-full w-full object-cover"
-                          src={item.videoSrc}
-                          controls
-                          muted={false}
-                          playsInline
-                          controlsList="nofullscreen noremoteplayback"
-                          preload={isHero && i === 0 ? 'auto' : 'metadata'}
-                          aria-label={`${item.title} demonstration video`}
-                        />
-                      ) : (
-                        <Image
-                          src={item.image}
-                          alt={`${item.title}: thermal sensing visualization`}
-                          fill
-                          className="object-contain object-center p-3 sm:p-4"
-                          sizes="(max-width: 1023px) 100vw, 62vw"
-                          priority={i === 0}
-                        />
-                      )}
+                      <video
+                        ref={(el) => {
+                          videoRefs.current[i] = el
+                        }}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        src={item.videoSrc}
+                        controls
+                        muted={false}
+                        playsInline
+                        controlsList="nofullscreen noremoteplayback"
+                        preload={isHero && i === 0 ? 'auto' : 'metadata'}
+                        aria-label={`${item.title} demonstration video`}
+                      />
                     </div>
                   </div>
 

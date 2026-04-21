@@ -28,7 +28,7 @@ function ChevronDown() {
   )
 }
 
-export default function ImpactCareersSection() {
+export default function CareersSection() {
   const [jobs, setJobs] = useState<JobPostingPublic[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -93,11 +93,11 @@ export default function ImpactCareersSection() {
       id="careers"
       className="relative w-full border-t border-[#E5E7EB] scroll-mt-24 pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-20 sm:pb-24 md:pb-28 lg:pb-32"
       style={{ backgroundColor: SECTION_BG }}
-      aria-labelledby="impact-careers-heading"
+      aria-labelledby="careers-section-heading"
     >
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-10 lg:px-12">
         <h2
-          id="impact-careers-heading"
+          id="careers-section-heading"
           className="text-xl sm:text-2xl md:text-3xl font-semibold leading-snug tracking-tight max-w-[720px] mb-8 sm:mb-10"
           style={{ ...inter, color: HEADING_TEXT }}
         >

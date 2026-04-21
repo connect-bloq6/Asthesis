@@ -10,13 +10,13 @@ const navItems = [
   { label: 'Homepage', href: '/' },
   { label: 'About Us', href: '/about' },
   { label: 'Product', href: '/product' },
-  { label: 'Impact', href: '/impact' },
+  { label: 'Careers', href: '/careers' },
   { label: 'FAQ', href: '/faq' },
   { label: 'Contact Us', href: '/contact' },
 ]
 
 type NavbarProps = {
-  /** Use white background (e.g. Impact, FAQ, About) instead of transparent */
+  /** Use white background (e.g. Careers, FAQ, About) instead of transparent */
   solid?: boolean
 }
 
@@ -58,13 +58,15 @@ export default function Navbar({ solid = false }: NavbarProps) {
               onClick={scrollToTop}
               aria-label="Asthesis, scroll to top"
             >
-              <Image
-                src="/images/Ast_logo_icon.png"
-                alt=""
-                width={36}
-                height={36}
-                className="h-7 w-7 shrink-0 object-contain md:h-8 md:w-8"
-              />
+              <span className="inline-flex shrink-0 origin-left scale-[1.3]">
+                <Image
+                  src="/images/log-modified.png"
+                  alt=""
+                  width={36}
+                  height={36}
+                  className="h-7 w-7 object-contain md:h-8 md:w-8"
+                />
+              </span>
               <span>Asthesis</span>
             </button>
 
